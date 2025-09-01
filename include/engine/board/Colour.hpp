@@ -5,8 +5,8 @@
 namespace engine::board {
 
 enum Colour : uint8_t {
-    WHITE = 0,
-    BLACK = 1,
+    WHITE,
+    BLACK,
 };
 
 } // namespace engine::board

@@ -14,4 +14,21 @@ enum Piece : uint8_t {
     KING = 6,
 };
 
+// clang-format off
+static const char* const UNICODE_PIECES[12] = {
+    "♙",
+    "♘",
+    "♗",
+    "♖",
+    "♕",
+    "♔",
+    "♟",
+    "♞",
+    "♝",
+    "♜",
+    "♛",
+    "♚",
+};
+// clang-format on
+
 } // namespace engine::board

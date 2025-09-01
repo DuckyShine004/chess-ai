@@ -15,7 +15,13 @@ class Board {
 
     Board(std::string fen);
 
+    void print();
+
   private:
+    static constexpr uint8_t _PIECE_MASK = 0x07;
+    static constexpr uint8_t _COLOUR_MASK = 0x08;
+    static constexpr uint8_t _COLOUR_BIT = 3;
+
     uint8_t _squares[64];
     uint8_t _sideToMove;
 
@@ -27,6 +33,14 @@ class Board {
     int getSquare(int rank, int file);
 
     int getSquareFromPosition(const std::string &position);
+
+    Piece getPieceFromSquare(int rank, int file);
+
+    Piece getPieceFromSquare(int square);
+
+    Colour getColourFromSquare(int rank, int file);
+
+    Colour getColourFromSquare(int square);
 
     void createPiece(int rank, int file, Piece piece, Colour colour);
 

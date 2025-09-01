@@ -10,6 +10,8 @@ class Application {
   public:
     Application();
 
+    void run();
+
   private:
     Board _board;
 };
