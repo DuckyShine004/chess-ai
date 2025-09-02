@@ -1,8 +1,6 @@
 #pragma once
 
-#include "engine/board/Board.hpp"
-
-using namespace engine::board;
+#include "engine/Engine.hpp"
 
 namespace application {
 
@@ -13,7 +11,7 @@ class Application {
     void run();
 
   private:
-    Board _board;
+    engine::Engine _engine;
 };
 
 } // namespace application

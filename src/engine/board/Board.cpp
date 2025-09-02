@@ -181,6 +181,7 @@ void Board::print() {
 
         std::cout << "\n  +---+---+---+---+---+---+---+---+\n";
     }
+
     std::cout << "    A   B   C   D   E   F   G   H\n";
 }
 
