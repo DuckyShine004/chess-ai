@@ -15,7 +15,7 @@ enum Piece : uint8_t {
 };
 
 // clang-format off
-static const char* const UNICODE_PIECES[12] = {
+inline constexpr const char* UNICODE_PIECES[12] = {
     "♙",
     "♘",
     "♗",
@@ -28,6 +28,17 @@ static const char* const UNICODE_PIECES[12] = {
     "♜",
     "♛",
     "♚",
+};
+
+inline constexpr Piece BACKRANK_PIECES[8] = {
+    ROOK,
+    KNIGHT,
+    BISHOP,
+    KING,
+    QUEEN,
+    BISHOP,
+    KNIGHT,
+    ROOK,
 };
 // clang-format on
 

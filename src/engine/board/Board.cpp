@@ -16,18 +16,14 @@ namespace engine::board {
 Board::Board() {
     memset(this->_squares, 0, sizeof(this->_squares));
 
-    Piece backRankPieces[8] = {
-        Piece::ROOK, Piece::KNIGHT, Piece::BISHOP, Piece::QUEEN, Piece::KING, Piece::BISHOP, Piece::KNIGHT, Piece::ROOK,
-    };
-
     for (int file = 0; file < 8; ++file) {
-        this->createPiece(this->getSquare(0, file), backRankPieces[file], Colour::WHITE);
-        this->createPiece(this->getSquare(1, file), Piece::PAWN, Colour::WHITE);
+        this->createPieceInSquare(this->getSquare(0, file), BACKRANK_PIECES[file], Colour::WHITE);
+        this->createPieceInSquare(this->getSquare(1, file), Piece::PAWN, Colour::WHITE);
     }
 
     for (int file = 0; file < 8; ++file) {
-        this->createPiece(this->getSquare(7, file), backRankPieces[file], Colour::BLACK);
-        this->createPiece(this->getSquare(6, file), Piece::PAWN, Colour::BLACK);
+        this->createPieceInSquare(this->getSquare(7, file), BACKRANK_PIECES[file], Colour::BLACK);
+        this->createPieceInSquare(this->getSquare(6, file), Piece::PAWN, Colour::BLACK);
     }
 
     this->_sideToMove = Colour::WHITE;
@@ -92,7 +88,7 @@ Board::Board(std::string fen) {
     this->_enPassantSquare = fenStates[3] == "-" ? -1 : this->getSquareFromPosition(fenStates[3]);
 
     this->_halfMove = fenStates[4] == "-" ? 0 : std::stoi(fenStates[4]);
-    this->_fullMove = fenStates[4] == "-" ? 1 : std::stoi(fenStates[5]);
+    this->_fullMove = fenStates[5] == "-" ? 1 : std::stoi(fenStates[5]);
 }
 
 int Board::getSquare(int rank, int file) {
@@ -134,14 +130,32 @@ Colour Board::getColourFromSquare(int square) {
     return static_cast<Colour>(colour);
 }
 
-void Board::createPiece(int rank, int file, Piece piece, Colour colour) {
+void Board::createPieceInSquare(int rank, int file, Piece piece, Colour colour) {
     int square = this->getSquare(rank, file);
 
-    this->createPiece(square, piece, colour);
+    this->createPieceInSquare(square, piece, colour);
 }
 
-void Board::createPiece(int square, Piece piece, Colour colour) {
+void Board::createPieceInSquare(int square, Piece piece, Colour colour) {
     this->_squares[square] = (piece | (colour << this->_COLOUR_BIT));
+}
+
+void Board::removeFromSquare(int rank, int file) {
+    int square = this->getSquare(rank, file);
+
+    this->removeFromSquare(square);
+}
+
+void Board::removeFromSquare(int square) {
+    this->_squares[square] = Piece::EMPTY;
+}
+
+int Board::getRankFromSquare(int square) {
+    return square / 8;
+}
+
+int Board::getFileFromSquare(int square) {
+    return square % 8;
 }
 
 void Board::createPieceFromFen(int rank, int file, char pieceNotation) {
@@ -179,7 +193,11 @@ void Board::createPieceFromFen(int rank, int file, char pieceNotation) {
         return;
     }
 
-    this->createPiece(rank, file, piece, colour);
+    this->createPieceInSquare(rank, file, piece, colour);
+}
+
+bool Board::isWhiteTurn() {
+    return this->_sideToMove == Colour::WHITE;
 }
 
 void Board::print() {

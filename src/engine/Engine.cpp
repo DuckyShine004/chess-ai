@@ -1,8 +1,11 @@
 #include <limits>
+#include <iostream>
 
 #include "engine/Engine.hpp"
 
 using namespace engine::board;
+
+using namespace engine::move;
 
 namespace engine {
 
@@ -11,10 +14,41 @@ Engine::Engine() {
     std::string fen = "r1bqkbnr/pppppppp/n7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 2 2";
 
     this->_board = Board(fen);
+
+    Move move;
+
+    move.from = this->_board.getSquareFromPosition("c2");
+    move.to = this->_board.getSquareFromPosition("c6");
+
+    move.piece = this->_board.getPieceFromSquare(move.from);
+    move.colour = this->_board.getColourFromSquare(move.from);
+
+    this->makeMove(move);
+    // this->unmakeMove(move);
 }
 
 Board &Engine::getBoard() {
     return this->_board;
+}
+
+std::vector<Move> Engine::getMoves() {
+    return {};
+}
+
+std::vector<Move> Engine::getLegalMoves() {
+    return {};
+}
+
+std::vector<Move> Engine::getQuietMoves() {
+    return {};
+}
+
+void Engine::makeMove(Move &move) {
+    this->_board.removeFromSquare(move.from);
+    this->_board.createPieceInSquare(move.to, move.piece, move.colour);
+}
+
+void Engine::unmakeMove() {
 }
 
 // Implement null heuristic TODO
