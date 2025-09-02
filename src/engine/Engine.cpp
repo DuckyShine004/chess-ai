@@ -1,3 +1,5 @@
+#include <limits>
+
 #include "engine/Engine.hpp"
 
 using namespace engine::board;
@@ -13,6 +15,83 @@ Engine::Engine() {
 
 Board &Engine::getBoard() {
     return this->_board;
+}
+
+int Engine::search(int alpha, int beta, int depth) {
+    // Perform quiescence search after
+    if (depth == 0) {
+        return this->quiescence(alpha, beta);
+    }
+
+    int bestScore = std::numeric_limits<int>::min();
+
+    // For all moves: TODO
+    int score = -this->search(-beta, -alpha, depth - 1);
+
+    if (score > bestScore) {
+        bestScore = score;
+
+        if (score > alpha) {
+            alpha = score;
+        }
+
+        if (score >= beta) {
+            return bestScore;
+        }
+    }
+
+    return bestScore;
+}
+
+int Engine::quiescence(int alpha, int beta) {
+    int evaluation = this->evaluate();
+
+    // Standing pat- allows quiescence to stabilise
+    int bestScore = this->evaluate();
+
+    if (bestScore >= beta) {
+        return bestScore;
+    }
+
+    if (bestScore > alpha) {
+        alpha = bestScore;
+    }
+
+    // Examine all captures: TODO
+    // Make capture: TODO
+    int score = -this->quiescence(-beta, -alpha);
+    // Take back capture: TODO
+    if (score >= beta) {
+        return score;
+    }
+
+    if (score > bestScore) {
+        bestScore = score;
+    }
+
+    if (score > alpha) {
+        alpha = score;
+    }
+
+    return score;
+}
+
+int Engine::evaluate() {
+    int materialScore = this->getMaterialScore();
+    int mobilityScore = this->getMobilityScore();
+
+    int score = materialScore + mobilityScore;
+    int sideToMove = 1; // White = +1, Black=-1
+
+    return score * sideToMove;
+}
+
+int Engine::getMaterialScore() {
+    return 1;
+}
+
+int Engine::getMobilityScore() {
+    return 1;
 }
 
 } // namespace engine
