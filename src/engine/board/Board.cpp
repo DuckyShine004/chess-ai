@@ -3,6 +3,7 @@
 
 #include "engine/board/Board.hpp"
 #include "engine/board/Piece.hpp"
+#include "engine/board/Castle.hpp"
 
 #include "utility/StringUtility.hpp"
 
@@ -30,7 +31,7 @@ Board::Board() {
     }
 
     this->_sideToMove = Colour::WHITE;
-    // this->_castlingFlags=
+    this->_castlingRights = this->_FULL_CASTLE_MASK;
     this->_enPassantSquare = -1;
     this->_halfMove = 0;
     this->_fullMove = 1;
@@ -64,9 +65,31 @@ Board::Board(std::string fen) {
 
     this->_sideToMove = fenStates[1] == "w" ? Colour::WHITE : Colour::BLACK;
 
-    // castling rights third field TODO
+    this->_castlingRights = 0;
+    std::string castlingRights = fenStates[2];
 
-    this->_enPassantSquare = fenStates[3] == "-" ? -1 : getSquareFromPosition(fenStates[3]);
+    if (fenStates[2] != "-") {
+        for (char c : fenStates[2]) {
+            switch (c) {
+            case 'K':
+                this->_castlingRights |= Castle::WHITE_KING;
+                break;
+            case 'Q':
+                this->_castlingRights |= Castle::WHITE_QUEEN;
+                break;
+            case 'k':
+                this->_castlingRights |= Castle::BLACK_KING;
+                break;
+            case 'q':
+                this->_castlingRights |= Castle::BLACK_QUEEN;
+                break;
+            default:
+                break;
+            }
+        }
+    }
+
+    this->_enPassantSquare = fenStates[3] == "-" ? -1 : this->getSquareFromPosition(fenStates[3]);
 
     this->_halfMove = fenStates[4] == "-" ? 0 : std::stoi(fenStates[4]);
     this->_fullMove = fenStates[4] == "-" ? 1 : std::stoi(fenStates[5]);

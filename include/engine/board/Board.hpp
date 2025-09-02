@@ -21,9 +21,11 @@ class Board {
     static constexpr uint8_t _PIECE_MASK = 0x07;
     static constexpr uint8_t _COLOUR_MASK = 0x08;
     static constexpr uint8_t _COLOUR_BIT = 3;
+    static constexpr uint8_t _FULL_CASTLE_MASK = 0xF;
 
     uint8_t _squares[64];
     uint8_t _sideToMove;
+    uint8_t _castlingRights;
 
     int8_t _enPassantSquare;
 

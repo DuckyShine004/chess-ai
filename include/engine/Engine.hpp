@@ -3,14 +3,6 @@
 #include "engine/board/Board.hpp"
 
 namespace engine {
-// // USING NEGAMAX- requires symmetric evaluation in relation to the side to moveA
-// int getMaterialScore() {
-//     return 0;
-// }
-
-// int getMobilityScore() {
-//     return 0;
-// }
 
 class Engine {
   public:

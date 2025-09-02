@@ -17,6 +17,7 @@ Board &Engine::getBoard() {
     return this->_board;
 }
 
+// Implement null heuristic TODO
 int Engine::search(int alpha, int beta, int depth) {
     // Perform quiescence search after
     if (depth == 0) {
@@ -25,8 +26,12 @@ int Engine::search(int alpha, int beta, int depth) {
 
     int bestScore = std::numeric_limits<int>::min();
 
+    // Get all legal moves
+
     // For all moves: TODO
+    // make move
     int score = -this->search(-beta, -alpha, depth - 1);
+    // unmake move
 
     if (score > bestScore) {
         bestScore = score;
@@ -86,6 +91,7 @@ int Engine::evaluate() {
     return score * sideToMove;
 }
 
+// Note to self: using Negamax framework
 int Engine::getMaterialScore() {
     return 1;
 }
