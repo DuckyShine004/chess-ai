@@ -33,6 +33,8 @@ class Board {
 
     void removeFromSquare(int square);
 
+    int getSquare(int rank, int file);
+
     int getRankFromSquare(int square);
 
     int getFileFromSquare(int square);
@@ -56,8 +58,6 @@ class Board {
 
     uint16_t _halfMove;
     uint16_t _fullMove;
-
-    int getSquare(int rank, int file);
 
     void createPieceFromFen(int rank, int file, char pieceNotation);
 };

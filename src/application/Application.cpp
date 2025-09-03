@@ -10,7 +10,7 @@ Application::Application() {
 }
 
 void Application::run() {
-    this->_engine.getBoard().print();
+    this->_engine.run();
 }
 
 } // namespace application

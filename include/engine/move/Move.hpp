@@ -16,9 +16,38 @@ struct Move {
     engine::board::Piece piece;
     engine::board::Colour colour;
 
+    engine::board::Piece capturedPiece;
+
     Move() {
-        enPassantSquare = -1;
+        this->capturedPiece = engine::board::Piece::EMPTY;
+
+        this->enPassantSquare = -1;
+    }
+
+    Move(int from, int to, engine::board::Piece piece, engine::board::Colour colour) {
+        this->from = from;
+        this->to = to;
+
+        this->piece = piece;
+        this->colour = colour;
+
+        this->capturedPiece = engine::board::Piece::EMPTY;
+
+        this->enPassantSquare = -1;
     }
 };
+
+// clang-format off
+inline constexpr int KNIGHT_MOVES[8][2] = {
+    {-2, -1},
+    {-2, 1},
+    {-1, -2},
+    {-1, 2},
+    {1, -2},
+    {1, 2},
+    {2, -1},
+    {2, 1}
+};
+// clang-format on
 
 } // namespace engine::move
