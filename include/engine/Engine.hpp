@@ -21,10 +21,9 @@ class Engine {
   private:
     engine::board::Board _board;
 
-    // Get all pseudo-legal moves
     std::vector<engine::move::Move> getMoves(engine::board::Colour side);
 
-    std::vector<engine::move::Move> getLegalMoves();
+    std::vector<engine::move::Move> getLegalMoves(engine::board::Colour side);
 
     std::vector<engine::move::Move> getQuietMoves(engine::board::Colour side);
 
@@ -56,7 +55,7 @@ class Engine {
 
     void addToMoves(std::vector<engine::move::Move> &moves, std::vector<engine::move::Move> &&otherMoves);
 
-    bool isMoveLegal(engine::move::Move &move, engine::board::Colour side);
+    bool isMoveLegal(engine::move::Move &move);
 
     void makeMove(engine::move::Move &move);
 

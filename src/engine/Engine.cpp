@@ -13,26 +13,23 @@ Engine::Engine() {
     // std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR - - - - -";
     // std::string fen = "r1bqkbnr/pppppppp/n7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 2 2";
     // std::string fen = "rnbqkbnr/pppppppp/8/8/2N5/1P1K4/P1PPPPPP/R1BQ1BNR w KQkq - 0 1";
-    std::string fen = "8/8/8/4K3/8/8/8/8 w KQkq - 0 1";
+    std::string fen = "8/8/2b5/8/1N2K3/8/8/8 w - - 0 1";
 
     this->_board = Board(fen);
 }
 
 void Engine::run() {
-    std::vector<Move> quietMoves = this->getQuietMoves(Colour::WHITE);
-    // std::vector<Move> captureMoves = this->getCaptureMoves(Colour::WHITE);
+    std::vector<Move> moves = this->getMoves(Colour::WHITE);
 
-    for (Move &move : quietMoves) {
+    for (Move &move : moves) {
+        if (!isMoveLegal(move)) {
+            continue;
+        }
+
         makeMove(move);
         this->_board.print();
         unmakeMove(move);
     }
-    // for (Move &move : captureMoves) {
-    //     makeMove(move);
-    //     this->_board.print();
-    //     unmakeMove(move);
-    // }
-    // this->_board.print();
 }
 
 Board &Engine::getBoard() {
@@ -40,11 +37,18 @@ Board &Engine::getBoard() {
 }
 
 std::vector<Move> Engine::getMoves(Colour side) {
-    return {};
+    std::vector<Move> moves;
+
+    this->addToMoves(moves, this->getQuietMoves(side));
+    this->addToMoves(moves, this->getCaptureMoves(side));
+
+    return moves;
 }
 
-std::vector<Move> Engine::getLegalMoves() {
-    return {};
+std::vector<Move> Engine::getLegalMoves(Colour side) {
+    std::vector<Move> moves = this->getMoves(side);
+
+    return moves;
 }
 
 std::vector<Move> Engine::getQuietMoves(Colour side) {
@@ -490,12 +494,12 @@ void Engine::addToMoves(std::vector<Move> &moves, std::vector<Move> &&otherMoves
     }
 }
 
-bool Engine::isMoveLegal(Move &move, Colour side) {
+bool Engine::isMoveLegal(Move &move) {
     bool isMoveLegal = true;
 
     this->makeMove(move);
 
-    Colour otherSide = static_cast<Colour>(side ^ 1);
+    Colour otherSide = static_cast<Colour>(move.colour ^ 1);
 
     std::vector<Move> enemyMoves = this->getCaptureMoves(otherSide);
 
@@ -539,7 +543,7 @@ int Engine::search(int alpha, int beta, int depth) {
 
     int bestScore = std::numeric_limits<int>::min();
 
-    std::vector<Move> moves = this->getLegalMoves();
+    std::vector<Move> moves = this->getMoves(Colour::WHITE);
 
     for (Move &move : moves) {
         this->makeMove(move);
