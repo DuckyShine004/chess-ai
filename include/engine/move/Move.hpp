@@ -77,6 +77,13 @@ inline constexpr int BISHOP_MOVES[4][2] = {
     {1, -1},
     {1, 1}
 };
+
+inline constexpr int ROOK_MOVES[4][2] = {
+    {1, 0},
+    {-1, 0},
+    {0, -1},
+    {0, 1}
+};
 // clang-format on
 
 } // namespace engine::move
