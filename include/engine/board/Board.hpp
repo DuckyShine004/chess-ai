@@ -41,6 +41,8 @@ class Board {
 
     int getSquareFromPosition(const std::string &position);
 
+    std::string getPositionFromSquare(int square);
+
     void print();
 
   private:

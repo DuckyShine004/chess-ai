@@ -10,6 +10,7 @@ namespace engine::move {
 struct Move {
     int from; // from square index
     int to;
+
     // Check what type of move it is (mask variable)
     int8_t enPassantSquare;
 
@@ -38,6 +39,27 @@ struct Move {
 };
 
 // clang-format off
+inline constexpr int SECOND_RANK[2] = {
+    1,
+    6
+};
+
+inline constexpr int PAWN_MOVES[2][2] = {
+    {1, 2},
+    {-1, -2}
+};
+
+inline constexpr int PAWN_ATTACKS[2][2][2] = {
+    {
+        {1, -1},
+        {1, 1}
+    },
+    {
+        {-1, -1},
+        {-1, 1}
+    }
+};
+
 inline constexpr int KNIGHT_MOVES[8][2] = {
     {-2, -1},
     {-2, 1},
@@ -47,6 +69,13 @@ inline constexpr int KNIGHT_MOVES[8][2] = {
     {1, 2},
     {2, -1},
     {2, 1}
+};
+
+inline constexpr int BISHOP_MOVES[4][2] = {
+    {-1, -1},
+    {-1, 1},
+    {1, -1},
+    {1, 1}
 };
 // clang-format on
 

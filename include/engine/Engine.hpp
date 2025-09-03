@@ -30,9 +30,17 @@ class Engine {
 
     std::vector<engine::move::Move> getCaptureMoves(engine::board::Colour side);
 
+    std::vector<engine::move::Move> getPawnQuietMoves(int square, engine::board::Colour side);
+
+    std::vector<engine::move::Move> getPawnCaptureMoves(int square, engine::board::Colour side);
+
     std::vector<engine::move::Move> getKnightQuietMoves(int square, engine::board::Colour colour);
 
     std::vector<engine::move::Move> getKnightCaptureMoves(int square, engine::board::Colour side);
+
+    std::vector<engine::move::Move> getBishopQuietMoves(int square, engine::board::Colour colour);
+
+    std::vector<engine::move::Move> getBishopCaptureMoves(int square, engine::board::Colour side);
 
     void addToMoves(std::vector<engine::move::Move> &moves, std::vector<engine::move::Move> &&otherMoves);
 

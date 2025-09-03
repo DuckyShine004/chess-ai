@@ -102,6 +102,18 @@ int Board::getSquareFromPosition(const std::string &position) {
     return this->getSquare(rank, file);
 }
 
+std::string Board::getPositionFromSquare(int square) {
+    int rank = this->getRankFromSquare(square);
+    int file = this->getFileFromSquare(square);
+
+    std::string position = "";
+
+    position += (file + 'a');
+    position += (rank + '1');
+
+    return position;
+}
+
 Piece Board::getPieceFromSquare(int rank, int file) {
     int square = this->getSquare(rank, file);
 

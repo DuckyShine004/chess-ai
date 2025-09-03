@@ -12,25 +12,26 @@ namespace engine {
 Engine::Engine() {
     // std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR - - - - -";
     // std::string fen = "r1bqkbnr/pppppppp/n7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 2 2";
-    std::string fen = "rnbqkbnr/pppppppp/8/8/3N4/8/PPPPPPPP/R1BQKBNR w KQkq - 0 1";
+    std::string fen = "rnbqkbnr/pppppppp/8/8/2N5/1P1K4/P1PPPPPP/R1BQ1BNR w KQkq - 0 1";
 
     this->_board = Board(fen);
 }
 
 void Engine::run() {
     std::vector<Move> quietMoves = this->getQuietMoves(Colour::WHITE);
-    std::vector<Move> captureMoves = this->getCaptureMoves(Colour::WHITE);
+    // std::vector<Move> captureMoves = this->getCaptureMoves(Colour::WHITE);
 
-    // for (Move &move : quietMoves) {
-    //     makeMove(move);
-    //     this->_board.print();
-    //     unmakeMove(move);
-    // }
+    for (Move &move : quietMoves) {
+        makeMove(move);
+        this->_board.print();
+        unmakeMove(move);
+    }
     // for (Move &move : captureMoves) {
     //     makeMove(move);
     //     this->_board.print();
     //     unmakeMove(move);
     // }
+    // this->_board.print();
 }
 
 Board &Engine::getBoard() {
@@ -58,8 +59,14 @@ std::vector<Move> Engine::getQuietMoves(Colour side) {
         Piece piece = this->_board.getPieceFromSquare(square);
 
         switch (piece) {
+        case Piece::PAWN:
+            this->addToMoves(moves, this->getPawnQuietMoves(square, side));
+            break;
         case Piece::KNIGHT:
             this->addToMoves(moves, this->getKnightQuietMoves(square, side));
+            break;
+        case Piece::BISHOP:
+            this->addToMoves(moves, this->getBishopQuietMoves(square, side));
             break;
         default:
             break;
@@ -85,9 +92,77 @@ std::vector<Move> Engine::getCaptureMoves(Colour side) {
         case Piece::KNIGHT:
             this->addToMoves(moves, this->getKnightCaptureMoves(square, side));
             break;
+        case Piece::BISHOP:
+            this->addToMoves(moves, this->getBishopCaptureMoves(square, side));
+            break;
         default:
             break;
         }
+    }
+
+    return moves;
+}
+
+std::vector<Move> Engine::getPawnQuietMoves(int square, Colour side) {
+    std::vector<Move> moves;
+
+    int rank = this->_board.getRankFromSquare(square);
+    int file = this->_board.getFileFromSquare(square);
+
+    for (int i = 0; i < 2; ++i) {
+        int toRank = rank + PAWN_MOVES[side][i];
+        int toFile = file;
+
+        if (toRank < 0 || toRank >= 8) {
+            break;
+        }
+
+        int toSquare = this->_board.getSquare(toRank, toFile);
+
+        if (this->_board.getPieceFromSquare(toSquare) != Piece::EMPTY) {
+            break;
+        }
+
+        if (i == 0) {
+            moves.emplace_back(square, toSquare, Piece::PAWN, side);
+        } else {
+            if (rank == SECOND_RANK[side]) {
+                moves.emplace_back(square, toSquare, Piece::PAWN, side);
+            }
+        }
+    }
+
+    return moves;
+}
+
+std::vector<Move> Engine::getPawnCaptureMoves(int square, Colour side) {
+    std::vector<Move> moves;
+
+    int rank = this->_board.getRankFromSquare(square);
+    int file = this->_board.getFileFromSquare(square);
+
+    for (int i = 0; i < 2; ++i) {
+        int toRank = rank + PAWN_ATTACKS[side][i][0];
+        int toFile = file + PAWN_ATTACKS[side][i][1];
+
+        if (toRank < 0 || toRank >= 8 || toFile < 0 || toFile >= 8) {
+            break;
+        }
+
+        int toSquare = this->_board.getSquare(toRank, toFile);
+
+        Piece toPiece = this->_board.getPieceFromSquare(toSquare);
+        Colour toColour = this->_board.getColourFromSquare(toSquare);
+
+        if (toPiece == Piece::EMPTY || toColour == side) {
+            continue;
+        }
+
+        Move move(square, toSquare, Piece::PAWN, side);
+
+        move.capturedPiece = toPiece;
+
+        moves.push_back(move);
     }
 
     return moves;
@@ -114,11 +189,7 @@ std::vector<Move> Engine::getKnightQuietMoves(int square, Colour side) {
             continue;
         }
 
-        Move move(square, toSquare, Piece::KNIGHT, side);
-
-        if (this->isMoveLegal(move, side)) {
-            moves.push_back(move);
-        }
+        moves.emplace_back(square, toSquare, Piece::KNIGHT, side);
     }
 
     return moves;
@@ -151,8 +222,83 @@ std::vector<Move> Engine::getKnightCaptureMoves(int square, Colour side) {
 
         move.capturedPiece = toPiece;
 
-        if (this->isMoveLegal(move, side)) {
+        moves.push_back(move);
+    }
+
+    return moves;
+}
+
+std::vector<Move> Engine::getBishopQuietMoves(int square, Colour side) {
+    std::vector<Move> moves;
+
+    int rank = this->_board.getRankFromSquare(square);
+    int file = this->_board.getFileFromSquare(square);
+
+    for (int i = 0; i < 4; ++i) {
+        int coefficient = 1;
+
+        while (true) {
+            int toRank = rank + coefficient * BISHOP_MOVES[i][0];
+            int toFile = file + coefficient * BISHOP_MOVES[i][1];
+
+            if (toRank < 0 || toRank >= 8 || toFile < 0 || toFile >= 8) {
+                break;
+            }
+
+            int toSquare = this->_board.getSquare(toRank, toFile);
+
+            if (this->_board.getPieceFromSquare(toRank, toFile) != Piece::EMPTY) {
+                break;
+            }
+
+            moves.emplace_back(square, toSquare, Piece::BISHOP, side);
+
+            ++coefficient;
+        }
+    }
+
+    return moves;
+}
+
+std::vector<Move> Engine::getBishopCaptureMoves(int square, Colour side) {
+    std::vector<Move> moves;
+
+    int rank = this->_board.getRankFromSquare(square);
+    int file = this->_board.getFileFromSquare(square);
+
+    for (int i = 0; i < 4; ++i) {
+        int coefficient = 1;
+
+        while (true) {
+            int toRank = rank + coefficient * BISHOP_MOVES[i][0];
+            int toFile = file + coefficient * BISHOP_MOVES[i][1];
+
+            if (toRank < 0 || toRank >= 8 || toFile < 0 || toFile >= 8) {
+                break;
+            }
+
+            int toSquare = this->_board.getSquare(toRank, toFile);
+
+            Piece toPiece = this->_board.getPieceFromSquare(toSquare);
+            Colour toColour = this->_board.getColourFromSquare(toSquare);
+
+            if (toPiece == Piece::EMPTY) {
+                ++coefficient;
+
+                continue;
+            }
+
+            if (toColour == side) {
+                break;
+            }
+
+            Move move(square, toSquare, Piece::BISHOP, side);
+
+            move.capturedPiece = toPiece;
+
             moves.push_back(move);
+
+            break;
         }
     }
 
@@ -169,7 +315,6 @@ void Engine::addToMoves(std::vector<Move> &moves, std::vector<Move> &&otherMoves
 }
 
 bool Engine::isMoveLegal(Move &move, Colour side) {
-    // Make the move then check if current side king is in check
     bool isMoveLegal = true;
 
     this->makeMove(move);
@@ -218,7 +363,6 @@ int Engine::search(int alpha, int beta, int depth) {
 
     int bestScore = std::numeric_limits<int>::min();
 
-    // Get all legal moves
     std::vector<Move> moves = this->getLegalMoves();
 
     for (Move &move : moves) {
@@ -255,6 +399,7 @@ int Engine::quiescence(int alpha, int beta) {
         alpha = bestScore;
     }
 
+    // remember to change
     std::vector<Move> captures = this->getCaptureMoves(Colour::WHITE);
 
     for (Move &capture : captures) {
