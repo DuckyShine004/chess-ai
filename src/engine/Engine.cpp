@@ -13,7 +13,7 @@ Engine::Engine() {
     // std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR - - - - -";
     // std::string fen = "r1bqkbnr/pppppppp/n7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 2 2";
     // std::string fen = "rnbqkbnr/pppppppp/8/8/2N5/1P1K4/P1PPPPPP/R1BQ1BNR w KQkq - 0 1";
-    std::string fen = "8/8/8/4P3/8/8/8/8 w KQkq - 0 1";
+    std::string fen = "8/8/8/4K3/8/8/8/8 w KQkq - 0 1";
 
     this->_board = Board(fen);
 }
@@ -75,6 +75,9 @@ std::vector<Move> Engine::getQuietMoves(Colour side) {
         case Piece::QUEEN:
             this->addToMoves(moves, this->getQueenQuietMoves(square, side));
             break;
+        case Piece::KING:
+            this->addToMoves(moves, this->getKingQuietMoves(square, side));
+            break;
         default:
             break;
         }
@@ -110,6 +113,9 @@ std::vector<Move> Engine::getCaptureMoves(Colour side) {
             break;
         case Piece::QUEEN:
             this->addToMoves(moves, this->getQueenCaptureMoves(square, side));
+            break;
+        case Piece::KING:
+            this->addToMoves(moves, this->getKingCaptureMoves(square, side));
             break;
         default:
             break;
@@ -412,6 +418,65 @@ std::vector<Move> Engine::getQueenCaptureMoves(int square, Colour side) {
 
     this->addToMoves(moves, this->getBishopCaptureMoves(square, Piece::QUEEN, side));
     this->addToMoves(moves, this->getRookCaptureMoves(square, Piece::QUEEN, side));
+
+    return moves;
+}
+
+std::vector<Move> Engine::getKingQuietMoves(int square, engine::board::Colour side) {
+    std::vector<Move> moves;
+
+    int rank = this->_board.getRankFromSquare(square);
+    int file = this->_board.getFileFromSquare(square);
+
+    for (int i = 0; i < 8; ++i) {
+        int toRank = rank + KING_MOVES[i][0];
+        int toFile = file + KING_MOVES[i][1];
+
+        if (toRank < 0 || toRank >= 8 || toFile < 0 || toFile >= 8) {
+            continue;
+        }
+
+        int toSquare = this->_board.getSquare(toRank, toFile);
+
+        if (this->_board.getPieceFromSquare(toSquare) != Piece::EMPTY) {
+            continue;
+        }
+
+        moves.emplace_back(square, toSquare, Piece::KING, side);
+    }
+
+    return moves;
+}
+
+std::vector<Move> Engine::getKingCaptureMoves(int square, engine::board::Colour side) {
+    std::vector<Move> moves;
+
+    int rank = this->_board.getRankFromSquare(square);
+    int file = this->_board.getFileFromSquare(square);
+
+    for (int i = 0; i < 8; ++i) {
+        int toRank = rank + KING_MOVES[i][0];
+        int toFile = file + KING_MOVES[i][1];
+
+        if (toRank < 0 || toRank >= 8 || toFile < 0 || toFile >= 8) {
+            continue;
+        }
+
+        int toSquare = this->_board.getSquare(toRank, toFile);
+
+        Piece toPiece = this->_board.getPieceFromSquare(toSquare);
+        Colour toColour = this->_board.getColourFromSquare(toSquare);
+
+        if (toPiece == Piece::EMPTY || toColour == side) {
+            continue;
+        }
+
+        Move move(square, toSquare, Piece::KING, side);
+
+        move.capturedPiece = toPiece;
+
+        moves.push_back(move);
+    }
 
     return moves;
 }

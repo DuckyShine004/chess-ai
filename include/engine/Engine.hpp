@@ -50,6 +50,10 @@ class Engine {
 
     std::vector<engine::move::Move> getQueenCaptureMoves(int square, engine::board::Colour side);
 
+    std::vector<engine::move::Move> getKingQuietMoves(int square, engine::board::Colour side);
+
+    std::vector<engine::move::Move> getKingCaptureMoves(int square, engine::board::Colour side);
+
     void addToMoves(std::vector<engine::move::Move> &moves, std::vector<engine::move::Move> &&otherMoves);
 
     bool isMoveLegal(engine::move::Move &move, engine::board::Colour side);
