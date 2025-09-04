@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <climits>
 
 #include "engine/board/Board.hpp"
 
@@ -8,15 +9,29 @@
 
 namespace engine {
 
+struct Result {
+    int bestScore;
+
+    engine::move::Move bestMove;
+
+    bool isMoveFound;
+
+    Result() {
+        this->bestScore = -INT_MAX;
+
+        isMoveFound = false;
+    }
+};
+
 class Engine {
   public:
     Engine();
 
     engine::board::Board &getBoard();
 
-    int search(int alpha, int beta, int depth);
-
     void run();
+
+    Result searchRoot(int depth);
 
   private:
     engine::board::Board _board;
@@ -61,13 +76,15 @@ class Engine {
 
     void unmakeMove(engine::move::Move &move);
 
+    int search(int alpha, int beta, int depth);
+
     int quiescence(int alpha, int beta);
 
-    int evaluate();
+    int evaluate(engine::board::Colour side);
 
-    int getMaterialScore();
+    int getMaterialScore(engine::board::Colour side);
 
-    int getMobilityScore();
+    int getPositionScore(engine::board::Colour side);
 };
 
 } // namespace engine

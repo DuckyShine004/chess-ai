@@ -26,7 +26,7 @@ Board::Board() {
         this->createPieceInSquare(this->getSquare(6, file), Piece::PAWN, Colour::BLACK);
     }
 
-    this->_sideToMove = Colour::WHITE;
+    this->_side = Colour::WHITE;
     this->_castlingRights = this->_FULL_CASTLE_MASK;
     this->_enPassantSquare = -1;
     this->_halfMove = 0;
@@ -59,7 +59,7 @@ Board::Board(std::string fen) {
         }
     }
 
-    this->_sideToMove = fenStates[1] == "w" ? Colour::WHITE : Colour::BLACK;
+    this->_side = fenStates[1] == "w" ? Colour::WHITE : Colour::BLACK;
 
     this->_castlingRights = 0;
     std::string castlingRights = fenStates[2];
@@ -209,7 +209,24 @@ void Board::createPieceFromFen(int rank, int file, char pieceNotation) {
 }
 
 bool Board::isWhiteTurn() {
-    return this->_sideToMove == Colour::WHITE;
+    return this->_side == Colour::WHITE;
+}
+
+Colour Board::getSide() {
+    return this->_side;
+}
+
+void Board::switchSide() {
+    this->_side = static_cast<Colour>(this->_side ^ 1);
+}
+
+int Board::getMirroredSquare(int square) {
+    int rank = this->getRankFromSquare(square);
+    int file = this->getFileFromSquare(square);
+
+    int mirroredRank = 7 - rank;
+
+    return this->getSquare(mirroredRank, file);
 }
 
 void Board::print() {

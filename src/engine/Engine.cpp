@@ -1,35 +1,31 @@
-#include <limits>
 #include <iostream>
 
 #include "engine/Engine.hpp"
+
+#include "engine/evaluation/Material.hpp"
+#include "engine/evaluation/Position.hpp"
 
 using namespace engine::board;
 
 using namespace engine::move;
 
+using namespace engine::evaluation;
+
 namespace engine {
 
 Engine::Engine() {
-    // std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR - - - - -";
+    std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     // std::string fen = "r1bqkbnr/pppppppp/n7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 2 2";
     // std::string fen = "rnbqkbnr/pppppppp/8/8/2N5/1P1K4/P1PPPPPP/R1BQ1BNR w KQkq - 0 1";
-    std::string fen = "8/8/2b5/8/1N2K3/8/8/8 w - - 0 1";
+    // std::string fen = "8/8/2b5/8/1N2K3/8/8/8 w - - 0 1";
 
     this->_board = Board(fen);
 }
 
 void Engine::run() {
-    std::vector<Move> moves = this->getMoves(Colour::WHITE);
+    Result result = this->searchRoot(1);
 
-    for (Move &move : moves) {
-        if (!isMoveLegal(move)) {
-            continue;
-        }
-
-        makeMove(move);
-        this->_board.print();
-        unmakeMove(move);
-    }
+    std::cout << result.bestScore << '\n';
 }
 
 Board &Engine::getBoard() {
@@ -519,19 +515,63 @@ bool Engine::isMoveLegal(Move &move) {
 void Engine::makeMove(Move &move) {
     this->_board.removeFromSquare(move.from);
     this->_board.createPieceInSquare(move.to, move.piece, move.colour);
+
+    this->_board.switchSide();
 }
 
 void Engine::unmakeMove(Move &move) {
+    this->_board.switchSide();
+
     this->_board.removeFromSquare(move.to);
 
     this->_board.createPieceInSquare(move.from, move.piece, move.colour);
 
-    // If not empty, place back the captured piece in the to square
+    // If there was a captured piece, then move the captured piece back
     if (move.capturedPiece != Piece::EMPTY) {
         Colour otherColour = static_cast<Colour>(move.colour ^ 1);
 
         this->_board.createPieceInSquare(move.to, move.capturedPiece, otherColour);
     }
+}
+
+Result Engine::searchRoot(int depth) {
+    Result result;
+
+    int alpha = -INT_MAX;
+    int beta = INT_MAX;
+
+    std::vector<Move> moves = this->getMoves(this->_board.getSide());
+
+    for (Move &move : moves) {
+        if (!this->isMoveLegal(move)) {
+            continue;
+        }
+
+        this->makeMove(move);
+
+        int score = -this->search(-beta, -alpha, depth - 1);
+
+        this->unmakeMove(move);
+
+        if (score > result.bestScore) {
+            result.bestScore = score;
+
+            result.bestMove = move;
+
+            result.isMoveFound = true;
+
+            if (score > alpha) {
+                alpha = score;
+            }
+        }
+
+        // beta cutoff
+        if (score >= beta) {
+            break;
+        }
+    }
+
+    return result;
 }
 
 // Implement null heuristic TODO
@@ -541,11 +581,15 @@ int Engine::search(int alpha, int beta, int depth) {
         return this->quiescence(alpha, beta);
     }
 
-    int bestScore = std::numeric_limits<int>::min();
+    int bestScore = -INT_MAX;
 
-    std::vector<Move> moves = this->getMoves(Colour::WHITE);
+    std::vector<Move> moves = this->getMoves(this->_board.getSide());
 
     for (Move &move : moves) {
+        if (!this->isMoveLegal(move)) {
+            continue;
+        }
+
         this->makeMove(move);
 
         int score = -this->search(-beta, -alpha, depth - 1);
@@ -569,7 +613,9 @@ int Engine::search(int alpha, int beta, int depth) {
 }
 
 int Engine::quiescence(int alpha, int beta) {
-    int bestScore = this->evaluate();
+    Colour side = this->_board.getSide();
+
+    int bestScore = this->evaluate(side);
 
     if (bestScore >= beta) {
         return bestScore;
@@ -579,10 +625,13 @@ int Engine::quiescence(int alpha, int beta) {
         alpha = bestScore;
     }
 
-    // remember to change
-    std::vector<Move> captures = this->getCaptureMoves(Colour::WHITE);
+    std::vector<Move> captures = this->getCaptureMoves(side);
 
     for (Move &capture : captures) {
+        if (!this->isMoveLegal(capture)) {
+            continue;
+        }
+
         this->makeMove(capture);
 
         int score = -this->quiescence(-beta, -alpha);
@@ -605,23 +654,71 @@ int Engine::quiescence(int alpha, int beta) {
     return bestScore;
 }
 
-int Engine::evaluate() {
-    int materialScore = this->getMaterialScore();
-    int mobilityScore = this->getMobilityScore();
+int Engine::evaluate(Colour side) {
+    Colour otherSide = static_cast<Colour>(side ^ 1);
 
-    int score = materialScore + mobilityScore;
-    int sideToMove = 1; // White = +1, Black=-1
+    int sideCoefficient = side == Colour::WHITE ? 1 : -1;
 
-    return score * sideToMove;
+    int materialScore = this->getMaterialScore(side) - this->getMaterialScore(otherSide);
+    int positionScore = this->getPositionScore(side) - this->getPositionScore(otherSide);
+
+    int score = materialScore + positionScore;
+
+    return sideCoefficient * score;
 }
 
-// Note to self: using Negamax framework
-int Engine::getMaterialScore() {
-    return 1;
+int Engine::getMaterialScore(Colour side) {
+    int score = 0;
+
+    for (int square = 0; square < 64; ++square) {
+        Piece piece = this->_board.getPieceFromSquare(square);
+        Colour colour = this->_board.getColourFromSquare(square);
+
+        if (piece == Piece::EMPTY || colour != side) {
+            continue;
+        }
+
+        score += MATERIAL_TABLE[piece - 1];
+    }
+
+    return score;
 }
 
-int Engine::getMobilityScore() {
-    return 1;
+int Engine::getPositionScore(Colour side) {
+    int score = 0;
+
+    for (int square = 0; square < 64; ++square) {
+        Piece piece = this->_board.getPieceFromSquare(square);
+        Colour colour = this->_board.getColourFromSquare(square);
+
+        if (piece == Piece::EMPTY || colour != side) {
+            continue;
+        }
+
+        int trueSquare = side == Colour::WHITE ? square : this->_board.getMirroredSquare(square);
+
+        switch (piece) {
+        case Piece::PAWN:
+            score += PAWN_POSITION_TABLE[trueSquare];
+            break;
+        case Piece::KNIGHT:
+            score += KNIGHT_POSITION_TABLE[trueSquare];
+            break;
+        case Piece::BISHOP:
+            score += BISHOP_POSITION_TABLE[trueSquare];
+            break;
+        case Piece::ROOK:
+            score += ROOK_POSITION_TABLE[trueSquare];
+            break;
+        case Piece::QUEEN:
+            score += QUEEN_POSITION_TABLE[trueSquare];
+            break;
+        default:
+            break;
+        }
+    }
+
+    return score;
 }
 
 } // namespace engine

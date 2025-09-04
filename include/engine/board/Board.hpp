@@ -25,6 +25,10 @@ class Board {
 
     Colour getColourFromSquare(int square);
 
+    Colour getSide();
+
+    void switchSide();
+
     void createPieceInSquare(int rank, int file, Piece piece, Colour colour);
 
     void createPieceInSquare(int square, Piece piece, Colour colour);
@@ -43,6 +47,8 @@ class Board {
 
     std::string getPositionFromSquare(int square);
 
+    int getMirroredSquare(int square);
+
     void print();
 
   private:
@@ -53,7 +59,8 @@ class Board {
 
     uint8_t _squares[64];
 
-    uint8_t _sideToMove;
+    Colour _side;
+
     uint8_t _castlingRights;
 
     int8_t _enPassantSquare;
