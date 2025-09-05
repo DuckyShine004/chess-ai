@@ -12,11 +12,11 @@ inline uint64_t RAY_NORTH_WEST[64];
 inline uint64_t RAY_SOUTH_EAST[64];
 inline uint64_t RAY_SOUTH_WEST[64];
 
-inline constexpr void initialiseRays();
+inline void initialiseRays();
 
-[[nodiscard]] inline constexpr uint64_t getAttacks(int square, uint64_t occupancy);
+[[nodiscard]] inline uint64_t getAttacks(int square, uint64_t occupancy);
 
-inline constexpr void initialiseRays() {
+inline void initialiseRays() {
     for (int rank = 0; rank < 8; ++rank) {
         for (int file = 0; file < 8; ++file) {
             int square = utility::BoardUtility::getSquare(rank, file);
@@ -44,7 +44,7 @@ inline constexpr void initialiseRays() {
     }
 }
 
-[[nodiscard]] inline constexpr uint64_t getAttacks(int square, uint64_t occupancy) {
+[[nodiscard]] inline uint64_t getAttacks(int square, uint64_t occupancy) {
     uint64_t attacks = 0ULL;
 
     uint64_t rays = RAY_NORTH_EAST[square];

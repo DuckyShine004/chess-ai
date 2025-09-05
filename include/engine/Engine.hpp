@@ -50,7 +50,7 @@ class Engine {
     uint64_t _KNIGHT_ATTACK_TABLE[64];
     uint64_t _KING_ATTACK_TABLE[64];
 
-    void initialise_attack_tables();
+    void initialiseAttackTables();
 
     std::vector<engine::move::Move> getMoves(engine::board::Colour side);
 

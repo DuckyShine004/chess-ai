@@ -20,8 +20,6 @@ pkg_check_modules(SNDFILE REQUIRED sndfile)
 
 add_executable(chess ${CHESS_SOURCES})
 
-target_compile_definitions(chess PRIVATE GLFW_INCLUDE_NONE)
-
 target_include_directories(chess PRIVATE
     ${OPENAL_INCLUDE_DIRS}
     ${SNDFILE_INCLUDE_DIRS}
@@ -34,4 +32,8 @@ target_link_libraries(chess PRIVATE
     fmt::fmt
     ${OPENAL_LDFLAGS}
     ${SNDFILE_LDFLAGS}
+)
+
+target_compile_options(chess PRIVATE
+    -march=native
 )

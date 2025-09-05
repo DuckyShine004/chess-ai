@@ -8,6 +8,8 @@
 
 #include "engine/piece/Pawn.hpp"
 #include "engine/piece/Knight.hpp"
+#include "engine/piece/Bishop.hpp"
+#include "engine/piece/Rook.hpp"
 #include "engine/piece/King.hpp"
 
 #include "utility/BoardUtility.hpp"
@@ -26,7 +28,7 @@ using namespace utility;
 namespace engine {
 
 Engine::Engine() : _zobrist(0ULL) {
-    this->initialise_attack_tables();
+    this->initialiseAttackTables();
     std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     // std::string fen = "r1bqkbnr/pppppppp/n7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 2 2";
     // std::string fen = "rnbqkbnr/pppppppp/8/8/2N5/1P1K4/P1PPPPPP/R1BQ1BNR w KQkq - 0 1";
@@ -41,7 +43,10 @@ Engine::Engine() : _zobrist(0ULL) {
     this->_keyBuffer.push_back(this->_key);
 }
 
-void Engine::initialise_attack_tables() {
+void Engine::initialiseAttackTables() {
+    Bishop::initialiseRays();
+    Rook::initialiseRays();
+
     for (int square = 0; square < 64; ++square) {
         int rank = BoardUtility::getRank(square);
         int file = BoardUtility::getFile(square);
@@ -52,8 +57,6 @@ void Engine::initialise_attack_tables() {
         this->_KNIGHT_ATTACK_TABLE[square] = Knight::getAttacks(square);
 
         this->_KING_ATTACK_TABLE[square] = King::getAttacks(square);
-
-        BitUtility::printBitBoard(this->_KING_ATTACK_TABLE[square]);
     }
 }
 
