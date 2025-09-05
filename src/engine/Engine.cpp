@@ -1,31 +1,75 @@
 #include <iostream>
+#include <algorithm>
 
 #include "engine/Engine.hpp"
 
 #include "engine/evaluation/Material.hpp"
 #include "engine/evaluation/Position.hpp"
 
+#include "engine/piece/Pawn.hpp"
+#include "engine/piece/Knight.hpp"
+#include "engine/piece/King.hpp"
+
+#include "utility/BoardUtility.hpp"
+#include "utility/BitUtility.hpp"
+
 using namespace engine::board;
+
+using namespace engine::piece;
 
 using namespace engine::move;
 
 using namespace engine::evaluation;
 
+using namespace utility;
+
 namespace engine {
 
-Engine::Engine() {
+Engine::Engine() : _zobrist(0ULL) {
+    this->initialise_attack_tables();
     std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     // std::string fen = "r1bqkbnr/pppppppp/n7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 2 2";
     // std::string fen = "rnbqkbnr/pppppppp/8/8/2N5/1P1K4/P1PPPPPP/R1BQ1BNR w KQkq - 0 1";
     // std::string fen = "8/8/2b5/8/1N2K3/8/8/8 w - - 0 1";
 
     this->_board = Board(fen);
+
+    this->_ply = 0;
+
+    this->_key = this->_zobrist.hash(this->_board);
+
+    this->_keyBuffer.push_back(this->_key);
+}
+
+void Engine::initialise_attack_tables() {
+    for (int square = 0; square < 64; ++square) {
+        int rank = BoardUtility::getRank(square);
+        int file = BoardUtility::getFile(square);
+
+        this->_PAWN_ATTACK_TABLE[0][square] = Pawn::getAttacks(square, Colour::WHITE);
+        this->_PAWN_ATTACK_TABLE[1][square] = Pawn::getAttacks(square, Colour::BLACK);
+
+        this->_KNIGHT_ATTACK_TABLE[square] = Knight::getAttacks(square);
+
+        this->_KING_ATTACK_TABLE[square] = King::getAttacks(square);
+
+        BitUtility::printBitBoard(this->_KING_ATTACK_TABLE[square]);
+    }
 }
 
 void Engine::run() {
-    Result result = this->searchRoot(1);
 
-    std::cout << result.bestScore << '\n';
+    // for (int i = 0; i < 50; ++i) {
+    //     Result result = this->searchRoot(3);
+
+    //     if (result.isMoveFound) {
+    //         this->makeMove(result.bestMove);
+
+    //         this->_board.print();
+
+    //         std::cout << "Score: " << result.bestScore << '\n';
+    //     }
+    // }
 }
 
 Board &Engine::getBoard() {
@@ -35,8 +79,8 @@ Board &Engine::getBoard() {
 std::vector<Move> Engine::getMoves(Colour side) {
     std::vector<Move> moves;
 
-    this->addToMoves(moves, this->getQuietMoves(side));
     this->addToMoves(moves, this->getCaptureMoves(side));
+    this->addToMoves(moves, this->getQuietMoves(side));
 
     return moves;
 }
@@ -513,25 +557,60 @@ bool Engine::isMoveLegal(Move &move) {
 }
 
 void Engine::makeMove(Move &move) {
+    this->_keyBuffer.push_back(this->_key);
+
     this->_board.removeFromSquare(move.from);
+    this->_key ^= this->_zobrist.getKey().piece[move.from][BoardUtility::getPieceIndex(move.piece, move.colour)];
+
     this->_board.createPieceInSquare(move.to, move.piece, move.colour);
+    this->_key ^= this->_zobrist.getKey().piece[move.to][BoardUtility::getPieceIndex(move.piece, move.colour)];
+
+    if (move.capturedPiece != Piece::EMPTY) {
+        Colour otherColour = static_cast<Colour>(move.colour ^ 1);
+
+        this->_key ^= this->_zobrist.getKey().piece[move.to][BoardUtility::getPieceIndex(move.capturedPiece, otherColour)];
+    }
+
+    if (move.piece == Piece::PAWN || move.capturedPiece != Piece::EMPTY) {
+        this->_board.resetHalfMove();
+    } else {
+        this->_board.incrementHalfMove();
+    }
+
+    if (move.colour == Colour::BLACK) {
+        this->_board.incrementFullMove();
+    }
 
     this->_board.switchSide();
+    this->_key ^= this->_zobrist.getKey().side;
+
+    ++this->_ply;
 }
 
 void Engine::unmakeMove(Move &move) {
     this->_board.switchSide();
+    this->_key ^= this->_zobrist.getKey().side;
 
     this->_board.removeFromSquare(move.to);
+    this->_key ^= this->_zobrist.getKey().piece[move.to][BoardUtility::getPieceIndex(move.piece, move.colour)];
 
     this->_board.createPieceInSquare(move.from, move.piece, move.colour);
+    this->_key ^= this->_zobrist.getKey().piece[move.from][BoardUtility::getPieceIndex(move.piece, move.colour)];
 
     // If there was a captured piece, then move the captured piece back
     if (move.capturedPiece != Piece::EMPTY) {
         Colour otherColour = static_cast<Colour>(move.colour ^ 1);
 
         this->_board.createPieceInSquare(move.to, move.capturedPiece, otherColour);
+
+        this->_key ^= this->_zobrist.getKey().piece[move.to][BoardUtility::getPieceIndex(move.capturedPiece, otherColour)];
     }
+
+    this->_key = this->_keyBuffer.back();
+
+    this->_keyBuffer.pop_back();
+
+    --this->_ply;
 }
 
 Result Engine::searchRoot(int depth) {
@@ -574,9 +653,12 @@ Result Engine::searchRoot(int depth) {
     return result;
 }
 
-// Implement null heuristic TODO
+// Implement null heuristic and mobility score TODO
 int Engine::search(int alpha, int beta, int depth) {
-    // Perform quiescence search after
+    if (this->isRepetition()) {
+        return DRAW_VALUE;
+    }
+
     if (depth == 0) {
         return this->quiescence(alpha, beta);
     }
@@ -613,6 +695,10 @@ int Engine::search(int alpha, int beta, int depth) {
 }
 
 int Engine::quiescence(int alpha, int beta) {
+    if (this->isRepetition()) {
+        return DRAW_VALUE;
+    }
+
     Colour side = this->_board.getSide();
 
     int bestScore = this->evaluate(side);
@@ -655,70 +741,64 @@ int Engine::quiescence(int alpha, int beta) {
 }
 
 int Engine::evaluate(Colour side) {
-    Colour otherSide = static_cast<Colour>(side ^ 1);
-
-    int sideCoefficient = side == Colour::WHITE ? 1 : -1;
-
-    int materialScore = this->getMaterialScore(side) - this->getMaterialScore(otherSide);
-    int positionScore = this->getPositionScore(side) - this->getPositionScore(otherSide);
-
-    int score = materialScore + positionScore;
-
-    return sideCoefficient * score;
-}
-
-int Engine::getMaterialScore(Colour side) {
     int score = 0;
 
     for (int square = 0; square < 64; ++square) {
         Piece piece = this->_board.getPieceFromSquare(square);
-        Colour colour = this->_board.getColourFromSquare(square);
 
-        if (piece == Piece::EMPTY || colour != side) {
+        if (piece == Piece::EMPTY) {
             continue;
         }
 
-        score += MATERIAL_TABLE[piece - 1];
-    }
-
-    return score;
-}
-
-int Engine::getPositionScore(Colour side) {
-    int score = 0;
-
-    for (int square = 0; square < 64; ++square) {
-        Piece piece = this->_board.getPieceFromSquare(square);
         Colour colour = this->_board.getColourFromSquare(square);
 
-        if (piece == Piece::EMPTY || colour != side) {
-            continue;
-        }
+        int sign = (colour == Colour::WHITE) ? 1 : -1;
 
-        int trueSquare = side == Colour::WHITE ? square : this->_board.getMirroredSquare(square);
+        score += sign * MATERIAL_TABLE[piece - 1];
+
+        int trueSquare = (colour == Colour::WHITE) ? square : this->_board.getMirroredSquare(square);
 
         switch (piece) {
         case Piece::PAWN:
-            score += PAWN_POSITION_TABLE[trueSquare];
+            score += sign * PAWN_POSITION_TABLE[trueSquare];
             break;
         case Piece::KNIGHT:
-            score += KNIGHT_POSITION_TABLE[trueSquare];
+            score += sign * KNIGHT_POSITION_TABLE[trueSquare];
             break;
         case Piece::BISHOP:
-            score += BISHOP_POSITION_TABLE[trueSquare];
+            score += sign * BISHOP_POSITION_TABLE[trueSquare];
             break;
         case Piece::ROOK:
-            score += ROOK_POSITION_TABLE[trueSquare];
+            score += sign * ROOK_POSITION_TABLE[trueSquare];
             break;
         case Piece::QUEEN:
-            score += QUEEN_POSITION_TABLE[trueSquare];
+            score += sign * QUEEN_POSITION_TABLE[trueSquare];
             break;
         default:
             break;
         }
     }
 
-    return score;
+    int mobilityScore = this->getMoves(side).size() - this->getMoves(static_cast<Colour>(side ^ 1)).size();
+
+    score += mobilityScore;
+    return (side == Colour::WHITE) ? score : -score;
+}
+
+bool Engine::isRepetition() {
+    // halfmove and full move are permanent once undo is implemented, uncomment
+    // if (this->_board.getHalfMove() < 4) {
+    //     return false;
+    // }
+
+    // for (int i = 0; i < this->_keyBuffer.size(); ++i) {
+    //     // std::cout << this->_keyBuffer[i] << '\n';
+    //     if (this->_keyBuffer[i] == this->_key) {
+    //         return true;
+    //     }
+    // }
+
+    return false;
 }
 
 } // namespace engine

@@ -59,4 +59,6 @@ inline constexpr int QUEEN_POSITION_TABLE[64] = {
 };
 // clang-format on
 
+inline constexpr int DRAW_VALUE = 0;
+
 } // namespace engine::evaluation

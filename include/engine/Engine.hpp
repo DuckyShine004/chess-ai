@@ -7,6 +7,8 @@
 
 #include "engine/move/Move.hpp"
 
+#include "engine/hash/Zobrist.hpp"
+
 namespace engine {
 
 struct Result {
@@ -34,7 +36,21 @@ class Engine {
     Result searchRoot(int depth);
 
   private:
+    int _ply;
+
+    uint64_t _key;
+
+    std::vector<uint64_t> _keyBuffer;
+
+    engine::hash::Zobrist _zobrist;
+
     engine::board::Board _board;
+
+    uint64_t _PAWN_ATTACK_TABLE[2][64];
+    uint64_t _KNIGHT_ATTACK_TABLE[64];
+    uint64_t _KING_ATTACK_TABLE[64];
+
+    void initialise_attack_tables();
 
     std::vector<engine::move::Move> getMoves(engine::board::Colour side);
 
@@ -82,9 +98,7 @@ class Engine {
 
     int evaluate(engine::board::Colour side);
 
-    int getMaterialScore(engine::board::Colour side);
-
-    int getPositionScore(engine::board::Colour side);
+    bool isRepetition();
 };
 
 } // namespace engine

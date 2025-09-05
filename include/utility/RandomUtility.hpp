@@ -5,6 +5,7 @@
 namespace utility {
 
 class RandomUtility {
+  public:
     static uint64_t getRandomU64();
 };
 

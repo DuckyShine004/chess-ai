@@ -4,7 +4,7 @@
 
 #include "engine/board/Board.hpp"
 
-namespace hash {
+namespace engine::hash {
 
 struct Key {
     uint64_t piece[64][12];
@@ -17,8 +17,10 @@ class Zobrist {
 
     uint64_t hash(engine::board::Board &board);
 
+    Key &getKey();
+
   private:
     Key _key;
 };
 
-} // namespace hash
+} // namespace engine::hash

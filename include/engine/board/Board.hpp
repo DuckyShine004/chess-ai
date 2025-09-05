@@ -49,6 +49,18 @@ class Board {
 
     int getMirroredSquare(int square);
 
+    void incrementHalfMove();
+
+    void decrementHalfMove();
+
+    void resetHalfMove();
+
+    void incrementFullMove();
+
+    void decrementFullMove();
+
+    int getHalfMove();
+
     void print();
 
   private:

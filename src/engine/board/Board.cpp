@@ -229,6 +229,30 @@ int Board::getMirroredSquare(int square) {
     return this->getSquare(mirroredRank, file);
 }
 
+void Board::incrementHalfMove() {
+    ++this->_halfMove;
+}
+
+void Board::decrementHalfMove() {
+    --this->_halfMove;
+}
+
+void Board::resetHalfMove() {
+    this->_halfMove = 0;
+}
+
+void Board::incrementFullMove() {
+    ++this->_fullMove;
+}
+
+void Board::decrementFullMove() {
+    --this->_fullMove;
+}
+
+int Board::getHalfMove() {
+    return this->_halfMove;
+}
+
 void Board::print() {
     std::cout << "  +---+---+---+---+---+---+---+---+\n";
 
@@ -253,6 +277,9 @@ void Board::print() {
     }
 
     std::cout << "    A   B   C   D   E   F   G   H\n\n";
+
+    std::cout << "Half Move Clock: " << this->_halfMove << '\n';
+    std::cout << "Full Move Clock: " << this->_fullMove << '\n';
 }
 
 } // namespace engine::board

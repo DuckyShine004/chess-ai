@@ -2,19 +2,28 @@
 
 #include "engine/board/Board.hpp"
 
+#include "utility/BoardUtility.hpp"
+#include "utility/RandomUtility.hpp"
+
 using namespace engine::board;
 
-namespace hash {
+using namespace utility;
+
+namespace engine::hash {
 
 Zobrist::Zobrist(uint64_t seed) {
     for (int i = 0; i < 64; ++i) {
         for (int j = 0; j < 12; ++j) {
-            this->_key.piece[i][j] = 0;
+            this->_key.piece[i][j] = RandomUtility::getRandomU64();
         }
     }
 
-    this->_key.side = 0;
+    this->_key.side = RandomUtility::getRandomU64();
 };
+
+Key &Zobrist::getKey() {
+    return this->_key;
+}
 
 uint64_t Zobrist::hash(Board &board) {
     uint64_t hash = 0;
@@ -29,7 +38,7 @@ uint64_t Zobrist::hash(Board &board) {
         if (piece != Piece::EMPTY) {
             Colour colour = board.getColourFromSquare(i);
 
-            int j = (piece - 1) + 6 * colour;
+            int j = BoardUtility::getPieceIndex(piece, colour);
 
             hash ^= this->_key.piece[i][j];
         }
@@ -38,4 +47,4 @@ uint64_t Zobrist::hash(Board &board) {
     return hash;
 }
 
-} // namespace hash
+} // namespace engine::hash
