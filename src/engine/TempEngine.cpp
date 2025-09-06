@@ -1,5 +1,4 @@
 #include <cstring>
-#include <climits>
 
 #include "engine/TempEngine.hpp"
 
@@ -52,7 +51,23 @@ void TempEngine::parse(const char *fen) {
 }
 
 void TempEngine::run() {
-    for (int i = 0; i < 10; ++i) {
+    this->printBoard();
+
+    for (int i = 0; i < 50; ++i) {
+        SearchResult result = this->searchRoot(this->_SEARCH_DEPTH);
+
+        if (!result.isMoveFound) {
+            continue;
+        }
+
+        Move &move = result.bestMove;
+
+        this->makeMove(move);
+
+        this->printBoard();
+
+        std::cout << BoardUtility::getPositionFromSquare(move.from) << " -> " << BoardUtility::getPositionFromSquare(move.to);
+        std::cout << ": " << result.bestScore << '\n';
     }
 }
 
@@ -619,7 +634,7 @@ void TempEngine::generateQueenCaptures(std::vector<Move> &captures, Colour side)
     }
 }
 
-void TempEngine::generateKingMoves(std::vector<Move> &captures, Colour side) {
+void TempEngine::generateKingCaptures(std::vector<Move> &captures, Colour side) {
     Colour otherSide = BoardUtility::getOtherSide(side);
 
     uint64_t kings = this->_bitboards[side][Piece::KING];
@@ -705,6 +720,8 @@ void TempEngine::makeMove(Move &move) {
     if (move.capturedPiece != Piece::EMPTY) {
         this->removePiece(move.to, move.capturedPiece, otherSide);
     }
+
+    this->switchSide();
 }
 
 void TempEngine::unmakeMove(Move &move) {
@@ -717,8 +734,46 @@ void TempEngine::unmakeMove(Move &move) {
     if (move.capturedPiece != Piece::EMPTY) {
         this->createPiece(move.to, move.capturedPiece, otherSide);
     }
+
+    this->switchSide();
 }
 
+SearchResult TempEngine::searchRoot(int depth) {
+    SearchResult result;
+
+    int alpha = -INT_MAX;
+    int beta = INT_MAX;
+
+    std::vector<Move> moves = this->generateMoves(this->_side);
+
+    for (Move &move : moves) {
+        this->makeMove(move);
+
+        int score = -this->search(-beta, -alpha, depth - 1);
+
+        this->unmakeMove(move);
+
+        if (score > result.bestScore) {
+            result.bestScore = score;
+
+            result.bestMove = move;
+
+            result.isMoveFound = true;
+
+            if (score > alpha) {
+                alpha = score;
+            }
+        }
+
+        if (score >= beta) {
+            break;
+        }
+    }
+
+    return result;
+}
+
+// TODO Implement null move pruning
 int TempEngine::search(int alpha, int beta, int depth) {
     if (depth == 0) {
         return this->quiescence(alpha, beta);
@@ -744,9 +799,11 @@ int TempEngine::search(int alpha, int beta, int depth) {
         }
 
         if (score >= beta) {
-            return bestScore;
+            break;
         }
     }
+
+    return bestScore;
 }
 
 int TempEngine::quiescence(int alpha, int beta) {
@@ -780,38 +837,16 @@ int TempEngine::quiescence(int alpha, int beta) {
         if (score > alpha) {
             alpha = score;
         }
-
-        return bestScore;
     }
+
+    return bestScore;
 }
 
+// TODO implement mobility score
 int TempEngine::evaluate(Colour side) {
     int score = 0;
 
-    score += this->getMaterialScore();
-    score += this->getPositionScore();
-
-    return (side == Colour::WHITE) ? score : -score;
-}
-
-int TempEngine::getMaterialScore() {
-    int score = 0;
-
     for (uint8_t piece = Piece::PAWN; piece <= Piece::KING; ++piece) {
-        int weight = MATERIAL_TABLE[piece]; // TODO: make the weight rely on other factors as well
-
-        int difference = BitUtility::popCount(this->_bitboards[Colour::WHITE][piece]) - BitUtility::popCount(this->_bitboards[Colour::BLACK][piece]);
-
-        score += weight * difference;
-    }
-
-    return score;
-}
-
-int TempEngine::getPositionScore() {
-    int score = 0;
-
-    for (uint8_t piece = Piece::PAWN; piece <= Piece::QUEEN; ++piece) {
         uint64_t whitePieces = this->_bitboards[Colour::WHITE][piece];
 
         while (whitePieces) {
@@ -827,11 +862,13 @@ int TempEngine::getPositionScore() {
 
             score -= POSITION_TABLES[piece][MIRROR[square]];
         }
+
+        int materialDifference = BitUtility::popCount(this->_bitboards[Colour::WHITE][piece]) - BitUtility::popCount(this->_bitboards[Colour::BLACK][piece]);
+
+        score += MATERIAL_TABLE[piece] * materialDifference;
     }
 
-    // TODO evaluate king pst
-
-    return score;
+    return (side == Colour::WHITE) ? score : -score;
 }
 
 void TempEngine::reset() {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <iostream>
 
 #include "engine/board/Piece.hpp"
@@ -16,6 +17,8 @@ namespace utility::BoardUtility {
 [[nodiscard]] inline constexpr int getPieceIndex(engine::board::Piece piece, engine::board::Colour colour);
 
 [[nodiscard]] inline int getSquareFromPosition(std::string &position);
+
+[[nodiscard]] inline std::string getPositionFromSquare(int square);
 
 [[nodiscard]] inline int getMirroredSquare(int square);
 
@@ -48,6 +51,15 @@ inline void printBoard(uint64_t board[2][6]);
     int rank = position[1] - '1';
 
     return getSquare(rank, file);
+}
+
+[[nodiscard]] inline std::string getPositionFromSquare(int square) {
+    char position[2];
+
+    position[0] = getFile(square) + 'a';
+    position[1] = getRank(square) + '1';
+
+    return position;
 }
 
 [[nodiscard]] inline int getMirroredSquare(int square) {

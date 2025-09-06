@@ -3,12 +3,24 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+#include <climits>
 
 #include "engine/board/Colour.hpp"
 
 #include "engine/move/Move.hpp"
 
 namespace engine {
+
+struct SearchResult {
+    int bestScore;
+
+    engine::move::Move bestMove;
+
+    bool isMoveFound;
+
+    SearchResult() : bestScore(-INT_MAX), isMoveFound(false) {
+    }
+};
 
 class TempEngine {
   public:
@@ -26,6 +38,8 @@ class TempEngine {
     static inline constexpr const char *_INITIAL_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     static inline constexpr uint8_t _INITIAL_CASTLING_RIGHTS = 0xF;
+
+    static inline constexpr int _SEARCH_DEPTH = 4;
 
     static inline uint64_t _PAWN_ATTACKS[2][64];
     static inline uint64_t _KNIGHT_ATTACKS[64];
@@ -108,15 +122,13 @@ class TempEngine {
 
     void unmakeMove(engine::move::Move &move);
 
+    SearchResult searchRoot(int depth);
+
     int search(int alpha, int beta, int depth);
 
     int quiescence(int alpha, int beta);
 
     int evaluate(engine::board::Colour side);
-
-    int getMaterialScore();
-
-    int getPositionScore();
 
     void reset();
 };
