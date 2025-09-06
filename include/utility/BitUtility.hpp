@@ -13,6 +13,8 @@ namespace utility::BitUtility {
 
 [[nodiscard]] inline constexpr int getMSBIndex(uint64_t value);
 
+[[nodiscard]] inline constexpr int popCount(uint64_t value);
+
 inline constexpr void setBit(uint64_t &value, int position);
 
 inline constexpr void setBit(uint64_t &value, int rank, int file);
@@ -35,6 +37,10 @@ void printBitBoard(uint64_t bitboard);
 
 [[nodiscard]] inline constexpr int getMSBIndex(uint64_t value) {
     return 63 - __builtin_clzll(value);
+}
+
+[[nodiscard]] inline constexpr int popCount(uint64_t value) {
+    return __builtin_popcountll(value);
 }
 
 inline constexpr void setBit(uint64_t &value, int position) {

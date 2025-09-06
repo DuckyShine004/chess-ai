@@ -114,6 +114,10 @@ class TempEngine {
 
     int evaluate(engine::board::Colour side);
 
+    int getMaterialScore();
+
+    int getPositionScore();
+
     void reset();
 };
 

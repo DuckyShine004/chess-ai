@@ -6,6 +6,9 @@
 #include "engine/board/Castle.hpp"
 #include "engine/board/Square.hpp"
 
+#include "engine/evaluation/Material.hpp"
+#include "engine/evaluation/Position.hpp"
+
 #include "engine/piece/Pawn.hpp"
 #include "engine/piece/Knight.hpp"
 #include "engine/piece/Bishop.hpp"
@@ -22,6 +25,8 @@ using namespace engine::board;
 using namespace engine::piece;
 
 using namespace engine::move;
+
+using namespace engine::evaluation;
 
 using namespace utility;
 
@@ -47,7 +52,8 @@ void TempEngine::parse(const char *fen) {
 }
 
 void TempEngine::run() {
-    this->generateMoves(this->_side);
+    for (int i = 0; i < 10; ++i) {
+    }
 }
 
 void TempEngine::switchSide() {
@@ -780,7 +786,52 @@ int TempEngine::quiescence(int alpha, int beta) {
 }
 
 int TempEngine::evaluate(Colour side) {
-    return 0;
+    int score = 0;
+
+    score += this->getMaterialScore();
+    score += this->getPositionScore();
+
+    return (side == Colour::WHITE) ? score : -score;
+}
+
+int TempEngine::getMaterialScore() {
+    int score = 0;
+
+    for (uint8_t piece = Piece::PAWN; piece <= Piece::KING; ++piece) {
+        int weight = MATERIAL_TABLE[piece]; // TODO: make the weight rely on other factors as well
+
+        int difference = BitUtility::popCount(this->_bitboards[Colour::WHITE][piece]) - BitUtility::popCount(this->_bitboards[Colour::BLACK][piece]);
+
+        score += weight * difference;
+    }
+
+    return score;
+}
+
+int TempEngine::getPositionScore() {
+    int score = 0;
+
+    for (uint8_t piece = Piece::PAWN; piece <= Piece::QUEEN; ++piece) {
+        uint64_t whitePieces = this->_bitboards[Colour::WHITE][piece];
+
+        while (whitePieces) {
+            int square = BitUtility::popLSB(whitePieces);
+
+            score += POSITION_TABLES[piece][square];
+        }
+
+        uint64_t blackPieces = this->_bitboards[Colour::BLACK][piece];
+
+        while (blackPieces) {
+            int square = BitUtility::popLSB(blackPieces);
+
+            score -= POSITION_TABLES[piece][MIRROR[square]];
+        }
+    }
+
+    // TODO evaluate king pst
+
+    return score;
 }
 
 void TempEngine::reset() {

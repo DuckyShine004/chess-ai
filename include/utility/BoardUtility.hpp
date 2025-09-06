@@ -17,6 +17,8 @@ namespace utility::BoardUtility {
 
 [[nodiscard]] inline int getSquareFromPosition(std::string &position);
 
+[[nodiscard]] inline int getMirroredSquare(int square);
+
 [[nodiscard]] inline constexpr engine::board::Piece getPiece(uint64_t board[2][6], int rank, int file, engine::board::Colour side);
 
 [[nodiscard]] inline constexpr engine::board::Piece getPiece(uint64_t board[2][6], int square, engine::board::Colour side);
@@ -46,6 +48,13 @@ inline void printBoard(uint64_t board[2][6]);
     int rank = position[1] - '1';
 
     return getSquare(rank, file);
+}
+
+[[nodiscard]] inline int getMirroredSquare(int square) {
+    int rank = getRank(square);
+    int file = getFile(square);
+
+    return getSquare(7 - rank, file);
 }
 
 [[nodiscard]] inline constexpr engine::board::Piece getPiece(uint64_t board[2][6], int rank, int file, engine::board::Colour side) {
