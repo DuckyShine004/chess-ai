@@ -49,6 +49,10 @@ void TempEngine::run() {
     this->generateMoves(this->_side);
 }
 
+void TempEngine::switchSide() {
+    this->_side = BoardUtility::getOtherSide(this->_side);
+}
+
 void TempEngine::printBoard() {
     BoardUtility::printBoard(this->_bitboards);
 }
@@ -224,7 +228,11 @@ void TempEngine::generatePawnMoves(std::vector<Move> &moves, Colour side) {
         if (Pawn::canSinglePush(from, side, empty)) {
             int to = Pawn::singlePush(from, side);
 
-            moves.emplace_back(from, to, Piece::PAWN, side);
+            Move move(from, to, Piece::PAWN, side);
+
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
 
             // Pawn promotion TODO
         }
@@ -236,7 +244,9 @@ void TempEngine::generatePawnMoves(std::vector<Move> &moves, Colour side) {
 
             move.enPassantSquare = EN_PASSANT_SQUARES[side][BoardUtility::getFile(from)];
 
-            moves.push_back(move);
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
         }
 
         uint64_t captureMoves = this->_PAWN_ATTACKS[side][from] & this->_occupancies[otherSide];
@@ -248,7 +258,9 @@ void TempEngine::generatePawnMoves(std::vector<Move> &moves, Colour side) {
 
             move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-            moves.push_back(move);
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
         }
 
         // Check if we can capture enpassant square TODO
@@ -270,7 +282,11 @@ void TempEngine::generateKnightMoves(std::vector<Move> &moves, Colour side) {
         while (quietMoves) {
             int to = BitUtility::popLSB(quietMoves);
 
-            moves.emplace_back(from, to, Piece::KNIGHT, side);
+            Move move(from, to, Piece::KNIGHT, side);
+
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
         }
 
         uint64_t captureMoves = this->_KNIGHT_ATTACKS[from] & this->_occupancies[otherSide];
@@ -280,9 +296,11 @@ void TempEngine::generateKnightMoves(std::vector<Move> &moves, Colour side) {
 
             Move move(from, to, Piece::KNIGHT, side);
 
-            move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
+            if (this->isMoveLegal(move, side)) {
+                move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-            moves.push_back(move);
+                moves.push_back(std::move(move));
+            }
         }
     }
 }
@@ -304,7 +322,11 @@ void TempEngine::generateBishopMoves(std::vector<Move> &moves, Colour side) {
         while (quietMoves) {
             int to = BitUtility::popLSB(quietMoves);
 
-            moves.emplace_back(from, to, Piece::BISHOP, side);
+            Move move(from, to, Piece::BISHOP, side);
+
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
         }
 
         uint64_t captureMoves = attacks & this->_occupancies[otherSide];
@@ -316,7 +338,9 @@ void TempEngine::generateBishopMoves(std::vector<Move> &moves, Colour side) {
 
             move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-            moves.push_back(move);
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
         }
     }
 }
@@ -338,7 +362,11 @@ void TempEngine::generateRookMoves(std::vector<Move> &moves, Colour side) {
         while (quietMoves) {
             int to = BitUtility::popLSB(quietMoves);
 
-            moves.emplace_back(from, to, Piece::ROOK, side);
+            Move move(from, to, Piece::ROOK, side);
+
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
         }
 
         uint64_t captureMoves = attacks & this->_occupancies[otherSide];
@@ -350,7 +378,9 @@ void TempEngine::generateRookMoves(std::vector<Move> &moves, Colour side) {
 
             move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-            moves.push_back(move);
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
         }
     }
 }
@@ -372,7 +402,11 @@ void TempEngine::generateQueenMoves(std::vector<Move> &moves, Colour side) {
         while (quietMoves) {
             int to = BitUtility::popLSB(quietMoves);
 
-            moves.emplace_back(from, to, Piece::QUEEN, side);
+            Move move(from, to, Piece::QUEEN, side);
+
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
         }
 
         uint64_t captureMoves = attacks & this->_occupancies[otherSide];
@@ -384,7 +418,9 @@ void TempEngine::generateQueenMoves(std::vector<Move> &moves, Colour side) {
 
             move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-            moves.push_back(move);
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
         }
     }
 }
@@ -404,7 +440,11 @@ void TempEngine::generateKingMoves(std::vector<Move> &moves, Colour side) {
         while (quietMoves) {
             int to = BitUtility::popLSB(quietMoves);
 
-            moves.emplace_back(from, to, Piece::KING, side);
+            Move move(from, to, Piece::KING, side);
+
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
         }
 
         uint64_t captureMoves = this->_KING_ATTACKS[from] & this->_occupancies[otherSide];
@@ -416,9 +456,55 @@ void TempEngine::generateKingMoves(std::vector<Move> &moves, Colour side) {
 
             move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-            moves.push_back(move);
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
         }
     }
+}
+
+bool TempEngine::isMoveLegal(Move &move, Colour side) {
+    this->makeMove(move);
+
+    bool isInCheck = this->isInCheck(move.from, side);
+
+    this->unmakeMove(move);
+
+    return isInCheck;
+}
+
+bool TempEngine::isInCheck(int kingSquare, Colour side) {
+    return this->isSquareAttacked(kingSquare, side);
+}
+
+bool TempEngine::isSquareAttacked(int square, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
+
+    if (this->_PAWN_ATTACKS[side][square] & this->_bitboards[otherSide][Piece::PAWN]) {
+        return true;
+    }
+
+    if (this->_KNIGHT_ATTACKS[square] & this->_bitboards[otherSide][Piece::KNIGHT]) {
+        return true;
+    }
+
+    if (this->_KING_ATTACKS[square] & this->_bitboards[otherSide][Piece::KING]) {
+        return true;
+    }
+
+    uint64_t bishopAttacks = Bishop::getAttacks(square, this->_occupancyBoth);
+
+    if (bishopAttacks & (this->_bitboards[otherSide][Piece::BISHOP] | this->_bitboards[otherSide][Piece::QUEEN])) {
+        return true;
+    }
+
+    uint64_t rookAttacks = Rook::getAttacks(square, this->_occupancyBoth);
+
+    if (rookAttacks & (this->_bitboards[otherSide][Piece::ROOK] | this->_bitboards[otherSide][Piece::QUEEN])) {
+        return true;
+    }
+
+    return false;
 }
 
 void TempEngine::makeMove(Move &move) {

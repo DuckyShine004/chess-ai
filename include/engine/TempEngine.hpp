@@ -18,6 +18,8 @@ class TempEngine {
 
     void run();
 
+    void switchSide();
+
     void printBoard();
 
   private:
@@ -79,6 +81,12 @@ class TempEngine {
     void generateQueenMoves(std::vector<engine::move::Move> &moves, engine::board::Colour side);
 
     void generateKingMoves(std::vector<engine::move::Move> &moves, engine::board::Colour side);
+
+    bool isMoveLegal(engine::move::Move &move, engine::board::Colour side);
+
+    bool isInCheck(int kingSquare, engine::board::Colour side);
+
+    bool isSquareAttacked(int square, engine::board::Colour side);
 
     void makeMove(engine::move::Move &move);
 
