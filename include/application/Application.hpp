@@ -1,6 +1,6 @@
 #pragma once
 
-#include "engine/Engine.hpp"
+#include "engine/TempEngine.hpp"
 
 namespace application {
 
@@ -11,7 +11,7 @@ class Application {
     void run();
 
   private:
-    engine::Engine _engine;
+    engine::TempEngine _engine;
 };
 
 } // namespace application

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <iostream>
 
 #include "utility/BoardUtility.hpp"
 
@@ -15,6 +16,12 @@ namespace utility::BitUtility {
 inline constexpr void setBit(uint64_t &value, int position);
 
 inline constexpr void setBit(uint64_t &value, int rank, int file);
+
+inline constexpr void clearBit(uint64_t &value, int position);
+
+inline constexpr void clearBit(uint64_t &value, int rank, int file);
+
+[[nodiscard]] inline constexpr int popLSB(uint64_t &value);
 
 void printBitBoard(uint64_t bitboard);
 
@@ -36,6 +43,22 @@ inline constexpr void setBit(uint64_t &value, int position) {
 
 inline constexpr void setBit(uint64_t &value, int rank, int file) {
     setBit(value, BoardUtility::getSquare(rank, file));
+}
+
+inline constexpr void clearBit(uint64_t &value, int position) {
+    value &= ~(1ULL << position);
+}
+
+inline constexpr void clearBit(uint64_t &value, int rank, int file) {
+    clearBit(value, BoardUtility::getSquare(rank, file));
+}
+
+[[nodiscard]] inline constexpr int popLSB(uint64_t &value) {
+    int lsbIndex = getLSBIndex(value);
+
+    value &= (value - 1);
+
+    return lsbIndex;
 }
 
 void printBitBoard(uint64_t bitboard) {

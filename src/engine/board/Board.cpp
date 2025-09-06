@@ -267,7 +267,7 @@ void Board::print() {
             } else {
                 Colour colour = this->getColourFromSquare(rank, file);
 
-                std::string unicodePiece = UNICODE_PIECES[(piece - 1) + 6 * colour];
+                std::string unicodePiece = UNICODE_PIECES[colour][(piece - 1)];
 
                 std::cout << ' ' << unicodePiece << " |";
             }

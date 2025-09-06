@@ -1,26 +1,26 @@
-#pragma once
+// #pragma once
 
-#include <cstdint>
+// #include <cstdint>
 
-#include "engine/board/Board.hpp"
+// #include "engine/board/Board.hpp"
 
-namespace engine::hash {
+// namespace engine::hash {
 
-struct Key {
-    uint64_t piece[64][12];
-    uint64_t side;
-};
+// struct Key {
+//     uint64_t piece[64][12];
+//     uint64_t side;
+// };
 
-class Zobrist {
-  public:
-    Zobrist(uint64_t seed);
+// class Zobrist {
+//   public:
+//     Zobrist(uint64_t seed);
 
-    uint64_t hash(engine::board::Board &board);
+//     uint64_t hash(engine::board::Board &board);
 
-    Key &getKey();
+//     Key &getKey();
 
-  private:
-    Key _key;
-};
+//   private:
+//     Key _key;
+// };
 
-} // namespace engine::hash
+// } // namespace engine::hash

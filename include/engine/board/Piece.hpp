@@ -5,29 +5,33 @@
 namespace engine::board {
 
 enum Piece : uint8_t {
-    EMPTY = 0,
-    PAWN = 1,
-    KNIGHT = 2,
-    BISHOP = 3,
-    ROOK = 4,
-    QUEEN = 5,
-    KING = 6,
+    PAWN = 0,
+    KNIGHT = 1,
+    BISHOP = 2,
+    ROOK = 3,
+    QUEEN = 4,
+    KING = 5,
+    EMPTY = 6,
 };
 
 // clang-format off
-inline constexpr const char* UNICODE_PIECES[12] = {
-    "♙",
-    "♘",
-    "♗",
-    "♖",
-    "♕",
-    "♔",
-    "♟",
-    "♞",
-    "♝",
-    "♜",
-    "♛",
-    "♚",
+inline constexpr const char* UNICODE_PIECES[2][12] = {
+    {
+        "♟",
+        "♞",
+        "♝",
+        "♜",
+        "♛",
+        "♚"
+    },
+    {
+        "♙",
+        "♘",
+        "♗",
+        "♖",
+        "♕",
+        "♔"
+    }
 };
 
 inline constexpr Piece BACKRANK_PIECES[8] = {
