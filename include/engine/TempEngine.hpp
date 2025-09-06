@@ -68,7 +68,7 @@ class TempEngine {
 
     void removePiece(int square, engine::board::Piece piece, engine::board::Colour side);
 
-    void generateMoves(engine::board::Colour side);
+    std::vector<engine::move::Move> generateMoves(engine::board::Colour side);
 
     void generatePawnMoves(std::vector<engine::move::Move> &moves, engine::board::Colour side);
 
@@ -82,15 +82,37 @@ class TempEngine {
 
     void generateKingMoves(std::vector<engine::move::Move> &moves, engine::board::Colour side);
 
+    std::vector<engine::move::Move> generateCaptures(engine::board::Colour side);
+
+    void generatePawnCaptures(std::vector<engine::move::Move> &captures, engine::board::Colour side);
+
+    void generateKnightCaptures(std::vector<engine::move::Move> &captures, engine::board::Colour side);
+
+    void generateBishopCaptures(std::vector<engine::move::Move> &captures, engine::board::Colour side);
+
+    void generateRookCaptures(std::vector<engine::move::Move> &captures, engine::board::Colour side);
+
+    void generateQueenCaptures(std::vector<engine::move::Move> &captures, engine::board::Colour side);
+
+    void generateKingCaptures(std::vector<engine::move::Move> &captures, engine::board::Colour side);
+
     bool isMoveLegal(engine::move::Move &move, engine::board::Colour side);
 
-    bool isInCheck(int kingSquare, engine::board::Colour side);
+    bool isInCheck(engine::board::Colour side);
 
     bool isSquareAttacked(int square, engine::board::Colour side);
+
+    int getKingSquare(engine::board::Colour side);
 
     void makeMove(engine::move::Move &move);
 
     void unmakeMove(engine::move::Move &move);
+
+    int search(int alpha, int beta, int depth);
+
+    int quiescence(int alpha, int beta);
+
+    int evaluate(engine::board::Colour side);
 
     void reset();
 };
