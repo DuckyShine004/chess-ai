@@ -196,6 +196,11 @@ void TempEngine::generateMoves(Colour side) {
     std::vector<Move> moves;
 
     this->generatePawnMoves(moves, side);
+    this->generateKnightMoves(moves, side);
+    this->generateBishopMoves(moves, side);
+    this->generateRookMoves(moves, side);
+    this->generateQueenMoves(moves, side);
+    this->generateKingMoves(moves, side);
 
     for (Move &move : moves) {
         makeMove(move);
@@ -283,12 +288,105 @@ void TempEngine::generateKnightMoves(std::vector<Move> &moves, Colour side) {
 }
 
 void TempEngine::generateBishopMoves(std::vector<Move> &moves, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
+
+    uint64_t bishops = this->_bitboards[side][Piece::BISHOP];
+
+    uint64_t empty = ~this->_occupancyBoth;
+
+    while (bishops) {
+        int from = BitUtility::popLSB(bishops);
+
+        uint64_t attacks = Bishop::getAttacks(from, this->_occupancyBoth);
+
+        uint64_t quietMoves = attacks & empty;
+
+        while (quietMoves) {
+            int to = BitUtility::popLSB(quietMoves);
+
+            moves.emplace_back(from, to, Piece::BISHOP, side);
+        }
+
+        uint64_t captureMoves = attacks & this->_occupancies[otherSide];
+
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
+
+            Move move(from, to, Piece::BISHOP, side);
+
+            move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
+
+            moves.push_back(move);
+        }
+    }
 }
 
 void TempEngine::generateRookMoves(std::vector<Move> &moves, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
+
+    uint64_t rooks = this->_bitboards[side][Piece::ROOK];
+
+    uint64_t empty = ~this->_occupancyBoth;
+
+    while (rooks) {
+        int from = BitUtility::popLSB(rooks);
+
+        uint64_t attacks = Rook::getAttacks(from, this->_occupancyBoth);
+
+        uint64_t quietMoves = attacks & empty;
+
+        while (quietMoves) {
+            int to = BitUtility::popLSB(quietMoves);
+
+            moves.emplace_back(from, to, Piece::ROOK, side);
+        }
+
+        uint64_t captureMoves = attacks & this->_occupancies[otherSide];
+
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
+
+            Move move(from, to, Piece::ROOK, side);
+
+            move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
+
+            moves.push_back(move);
+        }
+    }
 }
 
 void TempEngine::generateQueenMoves(std::vector<Move> &moves, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
+
+    uint64_t queens = this->_bitboards[side][Piece::QUEEN];
+
+    uint64_t empty = ~this->_occupancyBoth;
+
+    while (queens) {
+        int from = BitUtility::popLSB(queens);
+
+        uint64_t attacks = Queen::getAttacks(from, this->_occupancyBoth);
+
+        uint64_t quietMoves = attacks & empty;
+
+        while (quietMoves) {
+            int to = BitUtility::popLSB(quietMoves);
+
+            moves.emplace_back(from, to, Piece::QUEEN, side);
+        }
+
+        uint64_t captureMoves = attacks & this->_occupancies[otherSide];
+
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
+
+            Move move(from, to, Piece::QUEEN, side);
+
+            move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
+
+            moves.push_back(move);
+        }
+    }
 }
 
 void TempEngine::generateKingMoves(std::vector<Move> &moves, Colour side) {

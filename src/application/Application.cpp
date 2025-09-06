@@ -6,7 +6,7 @@ Application::Application() {
 }
 
 void Application::run() {
-    this->_engine.parse("rnbqkbnr/ppppp1pp/3P4/8/8/5p2/PPP1PPPP/RNBQKBNR w KQkq - 0 1");
+    this->_engine.parse("rnbqkbnr/pppppppp/2KP4/5N2/8/4B3/PPP1PPPP/RNBQ3R w KQkq - 0 1");
 
     this->_engine.printBoard();
 
