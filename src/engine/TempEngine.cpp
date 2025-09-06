@@ -4,11 +4,20 @@
 
 #include "engine/board/Castle.hpp"
 
+#include "engine/piece/Pawn.hpp"
+#include "engine/piece/Knight.hpp"
+#include "engine/piece/Bishop.hpp"
+#include "engine/piece/Rook.hpp"
+#include "engine/piece/Queen.hpp"
+#include "engine/piece/King.hpp"
+
 #include "utility/BitUtility.hpp"
 #include "utility/BoardUtility.hpp"
 #include "utility/StringUtility.hpp"
 
 using namespace engine::board;
+
+using namespace engine::piece;
 
 using namespace engine::move;
 
@@ -17,6 +26,8 @@ using namespace utility;
 namespace engine {
 
 TempEngine::TempEngine() {
+    this->initialise();
+
     this->parse(this->_INITIAL_FEN);
 }
 
@@ -33,8 +44,27 @@ void TempEngine::parse(const char *fen) {
     this->parseFenFullMove(states[5]);
 }
 
+void TempEngine::run() {
+    this->generateMoves(this->_side);
+}
+
 void TempEngine::printBoard() {
     BoardUtility::printBoard(this->_bitboards);
+}
+
+void TempEngine::initialise() {
+    Bishop::initialiseRays();
+
+    Rook::initialiseRays();
+
+    for (int square = 0; square < 64; ++square) {
+        this->_PAWN_ATTACKS[0][square] = Pawn::getAttacks(square, Colour::WHITE);
+        this->_PAWN_ATTACKS[1][square] = Pawn::getAttacks(square, Colour::BLACK);
+
+        this->_KNIGHT_ATTACKS[square] = Knight::getAttacks(square);
+
+        this->_KING_ATTACKS[square] = King::getAttacks(square);
+    }
 }
 
 void TempEngine::parseFenPosition(std::string &position) {
@@ -136,11 +166,11 @@ void TempEngine::createFenPiece(int rank, int file, char letter) {
     this->createPiece(rank, file, piece, side);
 }
 
-void TempEngine::createPiece(int rank, int file, engine::board::Piece piece, engine::board::Colour side) {
+void TempEngine::createPiece(int rank, int file, Piece piece, Colour side) {
     this->createPiece(BoardUtility::getSquare(rank, file), piece, side);
 }
 
-void TempEngine::createPiece(int square, engine::board::Piece piece, engine::board::Colour side) {
+void TempEngine::createPiece(int square, Piece piece, Colour side) {
     BitUtility::setBit(this->_bitboards[side][piece], square);
 
     BitUtility::setBit(this->_occupancies[side], square);
@@ -148,13 +178,68 @@ void TempEngine::createPiece(int square, engine::board::Piece piece, engine::boa
     this->_occupancyBoth = this->_occupancies[0] | this->_occupancies[1];
 }
 
-void TempEngine::generateMoves() {
+void TempEngine::removePiece(int rank, int file, Piece piece, Colour side) {
+    this->removePiece(BoardUtility::getSquare(rank, file), piece, side);
 }
 
-void TempEngine::generatePawnMoves(std::vector<Move> &moves) {
+void TempEngine::removePiece(int square, Piece piece, Colour side) {
+    BitUtility::clearBit(this->_bitboards[side][piece], square);
+
+    BitUtility::clearBit(this->_occupancies[side], square);
+
+    this->_occupancyBoth = this->_occupancies[0] | this->_occupancies[1];
 }
 
-void TempEngine::generateKnightMoves(std::vector<Move> &moves) {
+void TempEngine::generateMoves(Colour side) {
+    std::vector<Move> moves;
+
+    generateKnightMoves(moves, side);
+
+    for (Move &move : moves) {
+        makeMove(move);
+        printBoard();
+        unmakeMove(move);
+    }
+
+    this->printBoard();
+}
+
+void TempEngine::generatePawnMoves(std::vector<Move> &moves, Colour side) {
+}
+
+void TempEngine::generateKnightMoves(std::vector<Move> &moves, Colour side) {
+    Colour otherSide = static_cast<Colour>(side ^ 1);
+
+    uint64_t knights = this->_bitboards[side][Piece::KNIGHT];
+
+    uint64_t empty = ~this->_occupancyBoth;
+
+    while (knights) {
+        int from = BitUtility::popLSB(knights);
+
+        uint64_t quietMoves = this->_KNIGHT_ATTACKS[from] & empty;
+
+        while (quietMoves) {
+            int to = BitUtility::popLSB(quietMoves);
+
+            moves.emplace_back(from, to, Piece::KNIGHT, side);
+        }
+
+        uint64_t captureMoves = this->_KNIGHT_ATTACKS[from] & this->_occupancies[otherSide];
+
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
+
+            Move move(from, to, Piece::KNIGHT, side);
+
+            move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
+
+            moves.push_back(move);
+        }
+
+        // uint64_t attacks = Knight::getAttacks(from);
+        // uint64_t quietMoves = attack
+    }
 }
 
 void TempEngine::generateBishopMoves(std::vector<Move> &moves) {
@@ -167,6 +252,24 @@ void TempEngine::generateQueenMoves(std::vector<Move> &moves) {
 }
 
 void TempEngine::generateKingMoves(std::vector<Move> &moves) {
+}
+
+void TempEngine::makeMove(Move &move) {
+    this->removePiece(move.from, move.piece, move.colour);
+
+    this->createPiece(move.to, move.piece, move.colour);
+}
+
+void TempEngine::unmakeMove(Move &move) {
+    Colour otherSide = static_cast<Colour>(move.colour ^ 1);
+
+    this->removePiece(move.to, move.piece, move.colour);
+
+    this->createPiece(move.from, move.piece, move.colour);
+
+    if (move.capturedPiece != Piece::EMPTY) {
+        this->createPiece(move.to, move.capturedPiece, otherSide);
+    }
 }
 
 void TempEngine::reset() {

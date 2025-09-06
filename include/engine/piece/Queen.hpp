@@ -5,9 +5,9 @@
 
 namespace engine::piece::Queen {
 
-[[nodiscard]] inline constexpr uint64_t getAttacks(int square, uint64_t occupancy);
+[[nodiscard]] inline uint64_t getAttacks(int square, uint64_t occupancy);
 
-[[nodiscard]] inline constexpr uint64_t getAttacks(int square, uint64_t occupancy) {
+[[nodiscard]] inline uint64_t getAttacks(int square, uint64_t occupancy) {
     return Bishop::getAttacks(square, occupancy) | Rook::getAttacks(square, occupancy);
 }
 
