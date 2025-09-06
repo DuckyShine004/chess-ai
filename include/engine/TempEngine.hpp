@@ -72,13 +72,13 @@ class TempEngine {
 
     void generateKnightMoves(std::vector<engine::move::Move> &moves, engine::board::Colour side);
 
-    void generateBishopMoves(std::vector<engine::move::Move> &moves);
+    void generateBishopMoves(std::vector<engine::move::Move> &moves, engine::board::Colour side);
 
-    void generateRookMoves(std::vector<engine::move::Move> &moves);
+    void generateRookMoves(std::vector<engine::move::Move> &moves, engine::board::Colour side);
 
-    void generateQueenMoves(std::vector<engine::move::Move> &moves);
+    void generateQueenMoves(std::vector<engine::move::Move> &moves, engine::board::Colour side);
 
-    void generateKingMoves(std::vector<engine::move::Move> &moves);
+    void generateKingMoves(std::vector<engine::move::Move> &moves, engine::board::Colour side);
 
     void makeMove(engine::move::Move &move);
 

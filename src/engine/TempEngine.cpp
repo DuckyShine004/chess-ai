@@ -3,6 +3,7 @@
 #include "engine/TempEngine.hpp"
 
 #include "engine/board/Castle.hpp"
+#include "engine/board/Square.hpp"
 
 #include "engine/piece/Pawn.hpp"
 #include "engine/piece/Knight.hpp"
@@ -190,10 +191,11 @@ void TempEngine::removePiece(int square, Piece piece, Colour side) {
     this->_occupancyBoth = this->_occupancies[0] | this->_occupancies[1];
 }
 
+// Sort moves by move type TODO
 void TempEngine::generateMoves(Colour side) {
     std::vector<Move> moves;
 
-    generateKnightMoves(moves, side);
+    this->generatePawnMoves(moves, side);
 
     for (Move &move : moves) {
         makeMove(move);
@@ -205,10 +207,51 @@ void TempEngine::generateMoves(Colour side) {
 }
 
 void TempEngine::generatePawnMoves(std::vector<Move> &moves, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
+
+    uint64_t pawns = this->_bitboards[side][Piece::PAWN];
+
+    uint64_t empty = ~this->_occupancyBoth;
+
+    while (pawns) {
+        int from = BitUtility::popLSB(pawns);
+
+        if (Pawn::canSinglePush(from, side, empty)) {
+            int to = Pawn::singlePush(from, side);
+
+            moves.emplace_back(from, to, Piece::PAWN, side);
+
+            // Pawn promotion TODO
+        }
+
+        if (Pawn::canDoublePush(from, side, empty)) {
+            int to = Pawn::doublePush(from, side);
+
+            Move move(from, to, Piece::PAWN, side);
+
+            move.enPassantSquare = EN_PASSANT_SQUARES[side][BoardUtility::getFile(from)];
+
+            moves.push_back(move);
+        }
+
+        uint64_t captureMoves = this->_PAWN_ATTACKS[side][from] & this->_occupancies[otherSide];
+
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
+
+            Move move(from, to, Piece::PAWN, side);
+
+            move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
+
+            moves.push_back(move);
+        }
+
+        // Check if we can capture enpassant square TODO
+    }
 }
 
 void TempEngine::generateKnightMoves(std::vector<Move> &moves, Colour side) {
-    Colour otherSide = static_cast<Colour>(side ^ 1);
+    Colour otherSide = BoardUtility::getOtherSide(side);
 
     uint64_t knights = this->_bitboards[side][Piece::KNIGHT];
 
@@ -236,32 +279,64 @@ void TempEngine::generateKnightMoves(std::vector<Move> &moves, Colour side) {
 
             moves.push_back(move);
         }
-
-        // uint64_t attacks = Knight::getAttacks(from);
-        // uint64_t quietMoves = attack
     }
 }
 
-void TempEngine::generateBishopMoves(std::vector<Move> &moves) {
+void TempEngine::generateBishopMoves(std::vector<Move> &moves, Colour side) {
 }
 
-void TempEngine::generateRookMoves(std::vector<Move> &moves) {
+void TempEngine::generateRookMoves(std::vector<Move> &moves, Colour side) {
 }
 
-void TempEngine::generateQueenMoves(std::vector<Move> &moves) {
+void TempEngine::generateQueenMoves(std::vector<Move> &moves, Colour side) {
 }
 
-void TempEngine::generateKingMoves(std::vector<Move> &moves) {
+void TempEngine::generateKingMoves(std::vector<Move> &moves, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
+
+    uint64_t kings = this->_bitboards[side][Piece::KING];
+
+    uint64_t empty = ~this->_occupancyBoth;
+
+    while (kings) {
+        int from = BitUtility::popLSB(kings);
+
+        uint64_t quietMoves = this->_KING_ATTACKS[from] & empty;
+
+        while (quietMoves) {
+            int to = BitUtility::popLSB(quietMoves);
+
+            moves.emplace_back(from, to, Piece::KING, side);
+        }
+
+        uint64_t captureMoves = this->_KING_ATTACKS[from] & this->_occupancies[otherSide];
+
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
+
+            Move move(from, to, Piece::KING, side);
+
+            move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
+
+            moves.push_back(move);
+        }
+    }
 }
 
 void TempEngine::makeMove(Move &move) {
+    Colour otherSide = BoardUtility::getOtherSide(move.colour);
+
     this->removePiece(move.from, move.piece, move.colour);
 
     this->createPiece(move.to, move.piece, move.colour);
+
+    if (move.capturedPiece != Piece::EMPTY) {
+        this->removePiece(move.to, move.capturedPiece, otherSide);
+    }
 }
 
 void TempEngine::unmakeMove(Move &move) {
-    Colour otherSide = static_cast<Colour>(move.colour ^ 1);
+    Colour otherSide = BoardUtility::getOtherSide(move.colour);
 
     this->removePiece(move.to, move.piece, move.colour);
 
@@ -274,6 +349,7 @@ void TempEngine::unmakeMove(Move &move) {
 
 void TempEngine::reset() {
     memset(this->_bitboards, 0ULL, sizeof(this->_bitboards));
+
     memset(this->_occupancies, 0ULL, sizeof(this->_occupancies));
 
     this->_occupancyBoth = 0ULL;

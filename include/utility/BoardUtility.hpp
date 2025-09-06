@@ -21,6 +21,8 @@ namespace utility::BoardUtility {
 
 [[nodiscard]] inline constexpr engine::board::Piece getPiece(uint64_t board[2][6], int square, engine::board::Colour side);
 
+[[nodiscard]] inline constexpr engine::board::Colour getOtherSide(engine::board::Colour side);
+
 inline void printBoard(uint64_t board[2][6]);
 
 [[nodiscard]] inline constexpr int getSquare(int rank, int file) {
@@ -58,6 +60,10 @@ inline void printBoard(uint64_t board[2][6]);
     }
 
     return engine::board::Piece::EMPTY;
+}
+
+[[nodiscard]] inline constexpr engine::board::Colour getOtherSide(engine::board::Colour side) {
+    return static_cast<engine::board::Colour>(side ^ 1);
 }
 
 inline void printBoard(uint64_t board[2][6]) {
