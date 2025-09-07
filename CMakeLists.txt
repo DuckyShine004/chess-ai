@@ -7,6 +7,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Add LTO for optimisation
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+
 file(GLOB_RECURSE CHESS_SOURCES
     "${CMAKE_SOURCE_DIR}/src/*.cpp"
     "${CMAKE_SOURCE_DIR}/src/*.c"
@@ -35,5 +38,14 @@ target_link_libraries(chess PRIVATE
 )
 
 target_compile_options(chess PRIVATE
+    -O3
     -march=native
+    -mbmi2
+    -fomit-frame-pointer
+)
+
+target_link_options(chess PRIVATE
+    -fuse-ld=lld
+    -Wl,--as-needed
+    -Wl,--gc-sections
 )

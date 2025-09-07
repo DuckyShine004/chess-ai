@@ -1,104 +1,143 @@
-// #pragma once
+#pragma once
 
-// #include <vector>
-// #include <climits>
+#include <vector>
+#include <string>
+#include <cstdint>
+#include <climits>
 
-// #include "engine/board/Board.hpp"
+#include "engine/board/Colour.hpp"
 
-// #include "engine/move/Move.hpp"
+#include "engine/move/Move.hpp"
 
-// #include "engine/hash/Zobrist.hpp"
+namespace engine {
 
-// namespace engine {
+struct SearchResult {
+    int bestScore;
 
-// struct Result {
-//     int bestScore;
+    engine::move::Move bestMove;
 
-//     engine::move::Move bestMove;
+    bool isMoveFound;
 
-//     bool isMoveFound;
+    SearchResult() : bestScore(-INT_MAX), isMoveFound(false) {
+    }
+};
 
-//     Result() {
-//         this->bestScore = -INT_MAX;
+class Engine {
+  public:
+    Engine();
 
-//         isMoveFound = false;
-//     }
-// };
+    void parse(const char *fen);
 
-// class Engine {
-//   public:
-//     Engine();
+    void run();
 
-//     engine::board::Board &getBoard();
+    void switchSide();
 
-//     void run();
+    int getPly();
 
-//     Result searchRoot(int depth);
+    void runPerft(int depth);
 
-//   private:
-//     int _ply;
+    void printBoard();
 
-//     uint64_t _key;
+  private:
+    static inline constexpr const char *_INITIAL_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-//     std::vector<uint64_t> _keyBuffer;
+    static inline constexpr uint8_t _INITIAL_CASTLING_RIGHTS = 0xF;
 
-//     engine::hash::Zobrist _zobrist;
+    static inline constexpr int _SEARCH_DEPTH = 6;
 
-//     engine::board::Board _board;
+    static inline uint64_t _PAWN_ATTACKS[2][64];
+    static inline uint64_t _KNIGHT_ATTACKS[64];
+    static inline uint64_t _KING_ATTACKS[64];
 
-//     uint64_t _PAWN_ATTACK_TABLE[2][64];
-//     uint64_t _KNIGHT_ATTACK_TABLE[64];
-//     uint64_t _KING_ATTACK_TABLE[64];
+    uint64_t _bitboards[2][6];
+    uint64_t _occupancies[2];
+    uint64_t _occupancyBoth;
 
-//     void initialiseAttackTables();
+    uint8_t _castlingRights;
 
-//     std::vector<engine::move::Move> getMoves(engine::board::Colour side);
+    uint16_t _halfMove;
+    uint16_t _fullMove;
 
-//     std::vector<engine::move::Move> getLegalMoves(engine::board::Colour side);
+    engine::board::Colour _side;
 
-//     std::vector<engine::move::Move> getQuietMoves(engine::board::Colour side);
+    int _enPassantSquare;
+    int _ply;
 
-//     std::vector<engine::move::Move> getCaptureMoves(engine::board::Colour side);
+    void initialise();
 
-//     std::vector<engine::move::Move> getPawnQuietMoves(int square, engine::board::Colour side);
+    void parseFenPosition(std::string &position);
 
-//     std::vector<engine::move::Move> getPawnCaptureMoves(int square, engine::board::Colour side);
+    void parseFenSide(std::string &side);
 
-//     std::vector<engine::move::Move> getKnightQuietMoves(int square, engine::board::Colour side);
+    void parseFenCastlingRights(std::string &castlingRights);
 
-//     std::vector<engine::move::Move> getKnightCaptureMoves(int square, engine::board::Colour side);
+    void parseFenEnPassantSquare(std::string &enPassantSquare);
 
-//     std::vector<engine::move::Move> getBishopQuietMoves(int square, engine::board::Piece sliderPiece, engine::board::Colour side);
+    void parseFenHalfMove(std::string &halfMove);
 
-//     std::vector<engine::move::Move> getBishopCaptureMoves(int square, engine::board::Piece sliderPiece, engine::board::Colour side);
+    void parseFenFullMove(std::string &fullMove);
 
-//     std::vector<engine::move::Move> getRookQuietMoves(int square, engine::board::Piece sliderPiece, engine::board::Colour side);
+    void createFenPiece(int rank, int file, char letter);
 
-//     std::vector<engine::move::Move> getRookCaptureMoves(int square, engine::board::Piece slidePiece, engine::board::Colour side);
+    void createPiece(int rank, int file, engine::board::Piece piece, engine::board::Colour side);
 
-//     std::vector<engine::move::Move> getQueenQuietMoves(int square, engine::board::Colour side);
+    void createPiece(int square, engine::board::Piece piece, engine::board::Colour side);
 
-//     std::vector<engine::move::Move> getQueenCaptureMoves(int square, engine::board::Colour side);
+    void removePiece(int rank, int file, engine::board::Piece piece, engine::board::Colour side);
 
-//     std::vector<engine::move::Move> getKingQuietMoves(int square, engine::board::Colour side);
+    void removePiece(int square, engine::board::Piece piece, engine::board::Colour side);
 
-//     std::vector<engine::move::Move> getKingCaptureMoves(int square, engine::board::Colour side);
+    std::vector<engine::move::Move> generateMoves(engine::board::Colour side);
 
-//     void addToMoves(std::vector<engine::move::Move> &moves, std::vector<engine::move::Move> &&otherMoves);
+    void generatePawnMoves(std::vector<engine::move::Move> &moves, engine::board::Colour side);
 
-//     bool isMoveLegal(engine::move::Move &move);
+    void generateKnightMoves(std::vector<engine::move::Move> &moves, engine::board::Colour side);
 
-//     void makeMove(engine::move::Move &move);
+    void generateBishopMoves(std::vector<engine::move::Move> &moves, engine::board::Colour side);
 
-//     void unmakeMove(engine::move::Move &move);
+    void generateRookMoves(std::vector<engine::move::Move> &moves, engine::board::Colour side);
 
-//     int search(int alpha, int beta, int depth);
+    void generateQueenMoves(std::vector<engine::move::Move> &moves, engine::board::Colour side);
 
-//     int quiescence(int alpha, int beta);
+    void generateKingMoves(std::vector<engine::move::Move> &moves, engine::board::Colour side);
 
-//     int evaluate(engine::board::Colour side);
+    std::vector<engine::move::Move> generateCaptures(engine::board::Colour side);
 
-//     bool isRepetition();
-// };
+    void generatePawnCaptures(std::vector<engine::move::Move> &captures, engine::board::Colour side);
 
-// } // namespace engine
+    void generateKnightCaptures(std::vector<engine::move::Move> &captures, engine::board::Colour side);
+
+    void generateBishopCaptures(std::vector<engine::move::Move> &captures, engine::board::Colour side);
+
+    void generateRookCaptures(std::vector<engine::move::Move> &captures, engine::board::Colour side);
+
+    void generateQueenCaptures(std::vector<engine::move::Move> &captures, engine::board::Colour side);
+
+    void generateKingCaptures(std::vector<engine::move::Move> &captures, engine::board::Colour side);
+
+    bool isMoveLegal(engine::move::Move &move, engine::board::Colour side);
+
+    bool isInCheck(engine::board::Colour side);
+
+    bool isSquareAttacked(int square, engine::board::Colour side);
+
+    int getKingSquare(engine::board::Colour side);
+
+    void makeMove(engine::move::Move &move);
+
+    void unmakeMove(engine::move::Move &move);
+
+    SearchResult searchRoot(int depth);
+
+    int search(int alpha, int beta, int depth);
+
+    int quiescence(int alpha, int beta);
+
+    int evaluate(engine::board::Colour side);
+
+    int perft(int depth);
+
+    void reset();
+};
+
+} // namespace engine

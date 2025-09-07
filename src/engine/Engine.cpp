@@ -1,807 +1,933 @@
-// #include <iostream>
-// #include <algorithm>
+#include <chrono>
+#include <cstring>
 
-// #include "engine/Engine.hpp"
+#include "engine/Engine.hpp"
 
-// #include "engine/evaluation/Material.hpp"
-// #include "engine/evaluation/Position.hpp"
+#include "engine/board/Castle.hpp"
+#include "engine/board/Square.hpp"
 
-// #include "engine/piece/Pawn.hpp"
-// #include "engine/piece/Knight.hpp"
-// #include "engine/piece/Bishop.hpp"
-// #include "engine/piece/Rook.hpp"
-// #include "engine/piece/King.hpp"
+#include "engine/evaluation/Material.hpp"
+#include "engine/evaluation/Position.hpp"
 
-// #include "utility/BoardUtility.hpp"
-// #include "utility/BitUtility.hpp"
+#include "engine/piece/Pawn.hpp"
+#include "engine/piece/Knight.hpp"
+#include "engine/piece/Bishop.hpp"
+#include "engine/piece/Rook.hpp"
+#include "engine/piece/Queen.hpp"
+#include "engine/piece/King.hpp"
 
-// using namespace engine::board;
+#include "utility/BitUtility.hpp"
+#include "utility/BoardUtility.hpp"
+#include "utility/StringUtility.hpp"
 
-// using namespace engine::piece;
+using namespace engine::board;
 
-// using namespace engine::move;
+using namespace engine::piece;
 
-// using namespace engine::evaluation;
+using namespace engine::move;
 
-// using namespace utility;
+using namespace engine::evaluation;
 
-// namespace engine {
+using namespace utility;
 
-// Engine::Engine() : _zobrist(0ULL) {
-//     this->initialiseAttackTables();
-//     std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-//     // std::string fen = "r1bqkbnr/pppppppp/n7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 2 2";
-//     // std::string fen = "rnbqkbnr/pppppppp/8/8/2N5/1P1K4/P1PPPPPP/R1BQ1BNR w KQkq - 0 1";
-//     // std::string fen = "8/8/2b5/8/1N2K3/8/8/8 w - - 0 1";
+namespace engine {
 
-//     this->_board = Board(fen);
+Engine::Engine() : _ply(0) {
+    this->initialise();
 
-//     this->_ply = 0;
+    this->parse(this->_INITIAL_FEN);
+}
 
-//     this->_key = this->_zobrist.hash(this->_board);
+void Engine::parse(const char *fen) {
+    this->reset();
 
-//     this->_keyBuffer.push_back(this->_key);
-// }
+    std::vector<std::string> states = StringUtility::splitStringByWhiteSpace(fen);
 
-// void Engine::initialiseAttackTables() {
-//     Bishop::initialiseRays();
-//     Rook::initialiseRays();
+    this->parseFenPosition(states[0]);
+    this->parseFenSide(states[1]);
+    this->parseFenCastlingRights(states[2]);
+    this->parseFenEnPassantSquare(states[3]);
+    this->parseFenHalfMove(states[4]);
+    this->parseFenFullMove(states[5]);
+}
 
-//     for (int square = 0; square < 64; ++square) {
-//         int rank = BoardUtility::getRank(square);
-//         int file = BoardUtility::getFile(square);
+void Engine::run() {
+    this->printBoard();
 
-//         this->_PAWN_ATTACK_TABLE[0][square] = Pawn::getAttacks(square, Colour::WHITE);
-//         this->_PAWN_ATTACK_TABLE[1][square] = Pawn::getAttacks(square, Colour::BLACK);
+    for (int i = 0; i < 50; ++i) {
+        SearchResult result = this->searchRoot(this->_SEARCH_DEPTH);
 
-//         this->_KNIGHT_ATTACK_TABLE[square] = Knight::getAttacks(square);
+        if (!result.isMoveFound) {
+            continue;
+        }
 
-//         this->_KING_ATTACK_TABLE[square] = King::getAttacks(square);
-//     }
-// }
+        Move &move = result.bestMove;
 
-// void Engine::run() {
+        this->makeMove(move);
 
-//     // for (int i = 0; i < 50; ++i) {
-//     //     Result result = this->searchRoot(3);
+        this->printBoard();
 
-//     //     if (result.isMoveFound) {
-//     //         this->makeMove(result.bestMove);
-
-//     //         this->_board.print();
+        std::cout << BoardUtility::getPositionFromSquare(move.from) << " -> " << BoardUtility::getPositionFromSquare(move.to);
+        std::cout << ": " << result.bestScore << '\n';
+    }
+}
 
-//     //         std::cout << "Score: " << result.bestScore << '\n';
-//     //     }
-//     // }
-// }
+void Engine::switchSide() {
+    this->_side = BoardUtility::getOtherSide(this->_side);
+}
 
-// Board &Engine::getBoard() {
-//     return this->_board;
-// }
+int Engine::getPly() {
+    return this->_ply;
+}
 
-// std::vector<Move> Engine::getMoves(Colour side) {
-//     std::vector<Move> moves;
+void Engine::runPerft(int depth) {
+    auto start = std::chrono::high_resolution_clock::now();
 
-//     this->addToMoves(moves, this->getCaptureMoves(side));
-//     this->addToMoves(moves, this->getQuietMoves(side));
+    int nodes = this->perft(depth);
 
-//     return moves;
-// }
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    std::cout << "Time: " << elapsed.count() << " ms | Nodes: " << nodes << '\n';
+}
+
+void Engine::printBoard() {
+    BoardUtility::printBoard(this->_bitboards);
+}
+
+void Engine::initialise() {
+    Bishop::initialiseRays();
+
+    Rook::initialiseRays();
+
+    for (int square = 0; square < 64; ++square) {
+        this->_PAWN_ATTACKS[0][square] = Pawn::getAttacks(square, Colour::WHITE);
+        this->_PAWN_ATTACKS[1][square] = Pawn::getAttacks(square, Colour::BLACK);
+
+        this->_KNIGHT_ATTACKS[square] = Knight::getAttacks(square);
+
+        this->_KING_ATTACKS[square] = King::getAttacks(square);
+    }
+}
+
+void Engine::parseFenPosition(std::string &position) {
+    int rank = 7;
+    int file = 0;
+
+    for (const char letter : position) {
+        if (letter == '/') {
+            file = 0;
+            --rank;
+        } else {
+            if (StringUtility::isLetter(letter)) {
+                this->createFenPiece(rank, file, letter);
+                ++file;
+            } else {
+                file += letter - '0';
+            }
+        }
+    }
+}
+
+void Engine::parseFenSide(std::string &side) {
+    this->_side = (side == "w") ? Colour::WHITE : Colour::BLACK;
+}
+
+void Engine::parseFenCastlingRights(std::string &castlingRights) {
+    this->_castlingRights = 0;
+
+    if (castlingRights == "-") {
+        return;
+    }
+
+    for (char c : castlingRights) {
+        switch (c) {
+        case 'K':
+            this->_castlingRights |= Castle::WHITE_KING;
+            break;
+        case 'Q':
+            this->_castlingRights |= Castle::WHITE_QUEEN;
+            break;
+        case 'k':
+            this->_castlingRights |= Castle::BLACK_KING;
+            break;
+        case 'q':
+            this->_castlingRights |= Castle::BLACK_QUEEN;
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+void Engine::parseFenEnPassantSquare(std::string &enPassantSquare) {
+    this->_enPassantSquare = (enPassantSquare == "-") ? -1 : BoardUtility::getSquareFromPosition(enPassantSquare);
+}
+
+void Engine::parseFenHalfMove(std::string &halfMove) {
+    this->_halfMove = (halfMove == "-") ? 1 : std::stoi(halfMove);
+}
+
+void Engine::parseFenFullMove(std::string &fullMove) {
+    this->_fullMove = (fullMove == "-") ? 1 : std::stoi(fullMove);
+}
+
+void Engine::createFenPiece(int rank, int file, char letter) {
+    Colour side = isupper(letter) ? Colour::WHITE : Colour::BLACK;
+    Piece piece = Piece::EMPTY;
+
+    letter = tolower(letter);
+
+    switch (letter) {
+    case 'p':
+        piece = Piece::PAWN;
+        break;
+    case 'n':
+        piece = Piece::KNIGHT;
+        break;
+    case 'b':
+        piece = Piece::BISHOP;
+        break;
+    case 'r':
+        piece = Piece::ROOK;
+        break;
+    case 'q':
+        piece = Piece::QUEEN;
+        break;
+    case 'k':
+        piece = Piece::KING;
+        break;
+    default:
+        piece = Piece::EMPTY;
+        break;
+    }
+
+    if (piece == Piece::EMPTY) {
+        return;
+    }
+
+    this->createPiece(rank, file, piece, side);
+}
+
+void Engine::createPiece(int rank, int file, Piece piece, Colour side) {
+    this->createPiece(BoardUtility::getSquare(rank, file), piece, side);
+}
+
+void Engine::createPiece(int square, Piece piece, Colour side) {
+    this->_bitboards[side][piece] |= BITBOARD_SQUARES[square];
+
+    this->_occupancies[side] |= BITBOARD_SQUARES[square];
+
+    this->_occupancyBoth = this->_occupancies[0] | this->_occupancies[1];
+}
+
+void Engine::removePiece(int rank, int file, Piece piece, Colour side) {
+    this->removePiece(BoardUtility::getSquare(rank, file), piece, side);
+}
+
+void Engine::removePiece(int square, Piece piece, Colour side) {
+    this->_bitboards[side][piece] &= ~BITBOARD_SQUARES[square];
+
+    this->_occupancies[side] &= ~BITBOARD_SQUARES[square];
 
-// std::vector<Move> Engine::getLegalMoves(Colour side) {
-//     std::vector<Move> moves = this->getMoves(side);
+    this->_occupancyBoth = this->_occupancies[0] | this->_occupancies[1];
+}
 
-//     return moves;
-// }
+// TODO Sort moves by move type
+std::vector<Move> Engine::generateMoves(Colour side) {
+    std::vector<Move> moves;
 
-// std::vector<Move> Engine::getQuietMoves(Colour side) {
-//     std::vector<Move> moves;
+    this->generatePawnMoves(moves, side);
+    this->generateKnightMoves(moves, side);
+    this->generateBishopMoves(moves, side);
+    this->generateRookMoves(moves, side);
+    this->generateQueenMoves(moves, side);
+    this->generateKingMoves(moves, side);
 
-//     for (int square = 0; square < 64; ++square) {
-//         Colour colour = this->_board.getColourFromSquare(square);
-
-//         if (colour != side) {
-//             continue;
-//         }
-
-//         Piece piece = this->_board.getPieceFromSquare(square);
-
-//         switch (piece) {
-//         case Piece::PAWN:
-//             this->addToMoves(moves, this->getPawnQuietMoves(square, side));
-//             break;
-//         case Piece::KNIGHT:
-//             this->addToMoves(moves, this->getKnightQuietMoves(square, side));
-//             break;
-//         case Piece::BISHOP:
-//             this->addToMoves(moves, this->getBishopQuietMoves(square, Piece::BISHOP, side));
-//             break;
-//         case Piece::ROOK:
-//             this->addToMoves(moves, this->getRookQuietMoves(square, Piece::ROOK, side));
-//             break;
-//         case Piece::QUEEN:
-//             this->addToMoves(moves, this->getQueenQuietMoves(square, side));
-//             break;
-//         case Piece::KING:
-//             this->addToMoves(moves, this->getKingQuietMoves(square, side));
-//             break;
-//         default:
-//             break;
-//         }
-//     }
-
-//     return moves;
-// }
-
-// std::vector<Move> Engine::getCaptureMoves(Colour side) {
-//     std::vector<Move> moves;
-
-//     for (int square = 0; square < 64; ++square) {
-//         Colour colour = this->_board.getColourFromSquare(square);
-
-//         if (colour != side) {
-//             continue;
-//         }
-
-//         Piece piece = this->_board.getPieceFromSquare(square);
-
-//         switch (piece) {
-//         case Piece::PAWN:
-//             this->addToMoves(moves, this->getPawnCaptureMoves(square, side));
-//             break;
-//         case Piece::KNIGHT:
-//             this->addToMoves(moves, this->getKnightCaptureMoves(square, side));
-//             break;
-//         case Piece::BISHOP:
-//             this->addToMoves(moves, this->getBishopCaptureMoves(square, Piece::BISHOP, side));
-//             break;
-//         case Piece::ROOK:
-//             this->addToMoves(moves, this->getRookCaptureMoves(square, Piece::ROOK, side));
-//             break;
-//         case Piece::QUEEN:
-//             this->addToMoves(moves, this->getQueenCaptureMoves(square, side));
-//             break;
-//         case Piece::KING:
-//             this->addToMoves(moves, this->getKingCaptureMoves(square, side));
-//             break;
-//         default:
-//             break;
-//         }
-//     }
-
-//     return moves;
-// }
-
-// std::vector<Move> Engine::getPawnQuietMoves(int square, Colour side) {
-//     std::vector<Move> moves;
-
-//     int rank = this->_board.getRankFromSquare(square);
-//     int file = this->_board.getFileFromSquare(square);
-
-//     for (int i = 0; i < 2; ++i) {
-//         int toRank = rank + PAWN_MOVES[side][i];
-//         int toFile = file;
-
-//         if (toRank < 0 || toRank >= 8) {
-//             break;
-//         }
-
-//         int toSquare = this->_board.getSquare(toRank, toFile);
-
-//         if (this->_board.getPieceFromSquare(toSquare) != Piece::EMPTY) {
-//             break;
-//         }
-
-//         if (i == 0) {
-//             moves.emplace_back(square, toSquare, Piece::PAWN, side);
-//         } else {
-//             if (rank == SECOND_RANK[side]) {
-//                 moves.emplace_back(square, toSquare, Piece::PAWN, side);
-//             }
-//         }
-//     }
-
-//     return moves;
-// }
-
-// std::vector<Move> Engine::getPawnCaptureMoves(int square, Colour side) {
-//     std::vector<Move> moves;
+    return moves;
+}
 
-//     int rank = this->_board.getRankFromSquare(square);
-//     int file = this->_board.getFileFromSquare(square);
-
-//     for (int i = 0; i < 2; ++i) {
-//         int toRank = rank + PAWN_ATTACKS[side][i][0];
-//         int toFile = file + PAWN_ATTACKS[side][i][1];
-
-//         if (toRank < 0 || toRank >= 8 || toFile < 0 || toFile >= 8) {
-//             break;
-//         }
+void Engine::generatePawnMoves(std::vector<Move> &moves, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
 
-//         int toSquare = this->_board.getSquare(toRank, toFile);
-
-//         Piece toPiece = this->_board.getPieceFromSquare(toSquare);
-//         Colour toColour = this->_board.getColourFromSquare(toSquare);
+    uint64_t pawns = this->_bitboards[side][Piece::PAWN];
 
-//         if (toPiece == Piece::EMPTY || toColour == side) {
-//             continue;
-//         }
+    uint64_t empty = ~this->_occupancyBoth;
 
-//         Move move(square, toSquare, Piece::PAWN, side);
+    while (pawns) {
+        int from = BitUtility::popLSB(pawns);
 
-//         move.capturedPiece = toPiece;
+        if (Pawn::canSinglePush(from, side, empty)) {
+            int to = Pawn::singlePush(from, side);
 
-//         moves.push_back(move);
-//     }
+            Move move(from, to, Piece::PAWN, side);
 
-//     return moves;
-// }
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
 
-// // Pre compute table if needed
-// std::vector<Move> Engine::getKnightQuietMoves(int square, Colour side) {
-//     std::vector<Move> moves;
+            // TODO Pawn promotion
+        }
 
-//     int rank = this->_board.getRankFromSquare(square);
-//     int file = this->_board.getFileFromSquare(square);
+        if (Pawn::canDoublePush(from, side, empty)) {
+            int to = Pawn::doublePush(from, side);
 
-//     for (int i = 0; i < 8; ++i) {
-//         int toRank = rank + KNIGHT_MOVES[i][0];
-//         int toFile = file + KNIGHT_MOVES[i][1];
+            Move move(from, to, Piece::PAWN, side);
 
-//         if (toRank < 0 || toRank >= 8 || toFile < 0 || toFile >= 8) {
-//             continue;
-//         }
+            move.enPassantSquare = EN_PASSANT_SQUARES[side][BoardUtility::getFile(from)];
 
-//         int toSquare = this->_board.getSquare(toRank, toFile);
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
+        }
 
-//         if (this->_board.getPieceFromSquare(toSquare) != Piece::EMPTY) {
-//             continue;
-//         }
+        uint64_t captureMoves = this->_PAWN_ATTACKS[side][from] & this->_occupancies[otherSide];
 
-//         moves.emplace_back(square, toSquare, Piece::KNIGHT, side);
-//     }
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
 
-//     return moves;
-// }
+            Move move(from, to, Piece::PAWN, side);
 
-// std::vector<Move> Engine::getKnightCaptureMoves(int square, Colour side) {
-//     std::vector<Move> moves;
+            move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-//     int rank = this->_board.getRankFromSquare(square);
-//     int file = this->_board.getFileFromSquare(square);
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
+        }
 
-//     for (int i = 0; i < 8; ++i) {
-//         int toRank = rank + KNIGHT_MOVES[i][0];
-//         int toFile = file + KNIGHT_MOVES[i][1];
+        // TODO Check if we can capture enpassant square
 
-//         if (toRank < 0 || toRank >= 8 || toFile < 0 || toFile >= 8) {
-//             continue;
-//         }
+        // TODO Handle capture into pawn promotion
+    }
+}
 
-//         int toSquare = this->_board.getSquare(toRank, toFile);
+void Engine::generateKnightMoves(std::vector<Move> &moves, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
 
-//         Piece toPiece = this->_board.getPieceFromSquare(toSquare);
-//         Colour toColour = this->_board.getColourFromSquare(toSquare);
+    uint64_t knights = this->_bitboards[side][Piece::KNIGHT];
 
-//         if (toPiece == Piece::EMPTY || toColour == side) {
-//             continue;
-//         }
+    uint64_t empty = ~this->_occupancyBoth;
 
-//         Move move(square, toSquare, Piece::KNIGHT, side);
+    while (knights) {
+        int from = BitUtility::popLSB(knights);
 
-//         move.capturedPiece = toPiece;
+        uint64_t quietMoves = this->_KNIGHT_ATTACKS[from] & empty;
 
-//         moves.push_back(move);
-//     }
+        while (quietMoves) {
+            int to = BitUtility::popLSB(quietMoves);
 
-//     return moves;
-// }
+            Move move(from, to, Piece::KNIGHT, side);
 
-// std::vector<Move> Engine::getBishopQuietMoves(int square, Piece sliderPiece, Colour side) {
-//     std::vector<Move> moves;
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
+        }
 
-//     int rank = this->_board.getRankFromSquare(square);
-//     int file = this->_board.getFileFromSquare(square);
+        uint64_t captureMoves = this->_KNIGHT_ATTACKS[from] & this->_occupancies[otherSide];
 
-//     for (int i = 0; i < 4; ++i) {
-//         int coefficient = 1;
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
 
-//         while (true) {
-//             int toRank = rank + coefficient * BISHOP_MOVES[i][0];
-//             int toFile = file + coefficient * BISHOP_MOVES[i][1];
+            Move move(from, to, Piece::KNIGHT, side);
 
-//             if (toRank < 0 || toRank >= 8 || toFile < 0 || toFile >= 8) {
-//                 break;
-//             }
+            if (this->isMoveLegal(move, side)) {
+                move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-//             int toSquare = this->_board.getSquare(toRank, toFile);
+                moves.push_back(std::move(move));
+            }
+        }
+    }
+}
 
-//             if (this->_board.getPieceFromSquare(toRank, toFile) != Piece::EMPTY) {
-//                 break;
-//             }
+void Engine::generateBishopMoves(std::vector<Move> &moves, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
 
-//             moves.emplace_back(square, toSquare, sliderPiece, side);
+    uint64_t bishops = this->_bitboards[side][Piece::BISHOP];
 
-//             ++coefficient;
-//         }
-//     }
+    uint64_t empty = ~this->_occupancyBoth;
 
-//     return moves;
-// }
+    while (bishops) {
+        int from = BitUtility::popLSB(bishops);
 
-// std::vector<Move> Engine::getBishopCaptureMoves(int square, Piece sliderPiece, Colour side) {
-//     std::vector<Move> moves;
+        uint64_t attacks = Bishop::getAttacks(from, this->_occupancyBoth);
 
-//     int rank = this->_board.getRankFromSquare(square);
-//     int file = this->_board.getFileFromSquare(square);
+        uint64_t quietMoves = attacks & empty;
 
-//     for (int i = 0; i < 4; ++i) {
-//         int coefficient = 1;
+        while (quietMoves) {
+            int to = BitUtility::popLSB(quietMoves);
 
-//         while (true) {
-//             int toRank = rank + coefficient * BISHOP_MOVES[i][0];
-//             int toFile = file + coefficient * BISHOP_MOVES[i][1];
+            Move move(from, to, Piece::BISHOP, side);
 
-//             if (toRank < 0 || toRank >= 8 || toFile < 0 || toFile >= 8) {
-//                 break;
-//             }
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
+        }
 
-//             int toSquare = this->_board.getSquare(toRank, toFile);
+        uint64_t captureMoves = attacks & this->_occupancies[otherSide];
 
-//             Piece toPiece = this->_board.getPieceFromSquare(toSquare);
-//             Colour toColour = this->_board.getColourFromSquare(toSquare);
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
 
-//             if (toPiece == Piece::EMPTY) {
-//                 ++coefficient;
+            Move move(from, to, Piece::BISHOP, side);
 
-//                 continue;
-//             }
+            move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-//             if (toColour == side) {
-//                 break;
-//             }
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
+        }
+    }
+}
 
-//             Move move(square, toSquare, sliderPiece, side);
+void Engine::generateRookMoves(std::vector<Move> &moves, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
 
-//             move.capturedPiece = toPiece;
+    uint64_t rooks = this->_bitboards[side][Piece::ROOK];
 
-//             moves.push_back(move);
+    uint64_t empty = ~this->_occupancyBoth;
 
-//             break;
-//         }
-//     }
+    while (rooks) {
+        int from = BitUtility::popLSB(rooks);
 
-//     return moves;
-// }
+        uint64_t attacks = Rook::getAttacks(from, this->_occupancyBoth);
 
-// std::vector<Move> Engine::getRookQuietMoves(int square, Piece sliderPiece, Colour side) {
-//     std::vector<Move> moves;
+        uint64_t quietMoves = attacks & empty;
 
-//     int rank = this->_board.getRankFromSquare(square);
-//     int file = this->_board.getFileFromSquare(square);
+        while (quietMoves) {
+            int to = BitUtility::popLSB(quietMoves);
 
-//     for (int i = 0; i < 4; ++i) {
-//         int coefficient = 1;
+            Move move(from, to, Piece::ROOK, side);
 
-//         while (true) {
-//             int toRank = rank + coefficient * ROOK_MOVES[i][0];
-//             int toFile = file + coefficient * ROOK_MOVES[i][1];
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
+        }
 
-//             if (toRank < 0 || toRank >= 8 || toFile < 0 || toFile >= 8) {
-//                 break;
-//             }
+        uint64_t captureMoves = attacks & this->_occupancies[otherSide];
 
-//             int toSquare = this->_board.getSquare(toRank, toFile);
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
 
-//             if (this->_board.getPieceFromSquare(toRank, toFile) != Piece::EMPTY) {
-//                 break;
-//             }
+            Move move(from, to, Piece::ROOK, side);
 
-//             moves.emplace_back(square, toSquare, sliderPiece, side);
+            move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-//             ++coefficient;
-//         }
-//     }
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
+        }
+    }
+}
 
-//     return moves;
-// }
+void Engine::generateQueenMoves(std::vector<Move> &moves, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
 
-// std::vector<Move> Engine::getRookCaptureMoves(int square, Piece sliderPiece, Colour side) {
-//     std::vector<Move> moves;
+    uint64_t queens = this->_bitboards[side][Piece::QUEEN];
 
-//     int rank = this->_board.getRankFromSquare(square);
-//     int file = this->_board.getFileFromSquare(square);
+    uint64_t empty = ~this->_occupancyBoth;
 
-//     for (int i = 0; i < 4; ++i) {
-//         int coefficient = 1;
+    while (queens) {
+        int from = BitUtility::popLSB(queens);
 
-//         while (true) {
-//             int toRank = rank + coefficient * ROOK_MOVES[i][0];
-//             int toFile = file + coefficient * ROOK_MOVES[i][1];
+        uint64_t attacks = Queen::getAttacks(from, this->_occupancyBoth);
 
-//             if (toRank < 0 || toRank >= 8 || toFile < 0 || toFile >= 8) {
-//                 break;
-//             }
+        uint64_t quietMoves = attacks & empty;
 
-//             int toSquare = this->_board.getSquare(toRank, toFile);
+        while (quietMoves) {
+            int to = BitUtility::popLSB(quietMoves);
 
-//             Piece toPiece = this->_board.getPieceFromSquare(toSquare);
-//             Colour toColour = this->_board.getColourFromSquare(toSquare);
+            Move move(from, to, Piece::QUEEN, side);
 
-//             if (toPiece == Piece::EMPTY) {
-//                 ++coefficient;
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
+        }
 
-//                 continue;
-//             }
+        uint64_t captureMoves = attacks & this->_occupancies[otherSide];
 
-//             if (toColour == side) {
-//                 break;
-//             }
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
 
-//             Move move(square, toSquare, sliderPiece, side);
+            Move move(from, to, Piece::QUEEN, side);
 
-//             move.capturedPiece = toPiece;
+            move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-//             moves.push_back(move);
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
+        }
+    }
+}
 
-//             break;
-//         }
-//     }
+void Engine::generateKingMoves(std::vector<Move> &moves, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
 
-//     return moves;
-// }
+    uint64_t kings = this->_bitboards[side][Piece::KING];
 
-// std::vector<Move> Engine::getQueenQuietMoves(int square, Colour side) {
-//     std::vector<Move> moves;
+    uint64_t empty = ~this->_occupancyBoth;
 
-//     this->addToMoves(moves, this->getBishopQuietMoves(square, Piece::QUEEN, side));
-//     this->addToMoves(moves, this->getRookQuietMoves(square, Piece::QUEEN, side));
+    while (kings) {
+        int from = BitUtility::popLSB(kings);
 
-//     return moves;
-// }
+        uint64_t quietMoves = this->_KING_ATTACKS[from] & empty;
 
-// std::vector<Move> Engine::getQueenCaptureMoves(int square, Colour side) {
-//     std::vector<Move> moves;
+        while (quietMoves) {
+            int to = BitUtility::popLSB(quietMoves);
 
-//     this->addToMoves(moves, this->getBishopCaptureMoves(square, Piece::QUEEN, side));
-//     this->addToMoves(moves, this->getRookCaptureMoves(square, Piece::QUEEN, side));
+            Move move(from, to, Piece::KING, side);
 
-//     return moves;
-// }
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
+        }
 
-// std::vector<Move> Engine::getKingQuietMoves(int square, engine::board::Colour side) {
-//     std::vector<Move> moves;
+        uint64_t captureMoves = this->_KING_ATTACKS[from] & this->_occupancies[otherSide];
 
-//     int rank = this->_board.getRankFromSquare(square);
-//     int file = this->_board.getFileFromSquare(square);
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
 
-//     for (int i = 0; i < 8; ++i) {
-//         int toRank = rank + KING_MOVES[i][0];
-//         int toFile = file + KING_MOVES[i][1];
+            Move move(from, to, Piece::KING, side);
 
-//         if (toRank < 0 || toRank >= 8 || toFile < 0 || toFile >= 8) {
-//             continue;
-//         }
+            move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-//         int toSquare = this->_board.getSquare(toRank, toFile);
+            if (this->isMoveLegal(move, side)) {
+                moves.push_back(std::move(move));
+            }
+        }
+    }
+}
 
-//         if (this->_board.getPieceFromSquare(toSquare) != Piece::EMPTY) {
-//             continue;
-//         }
+std::vector<Move> Engine::generateCaptures(Colour side) {
+    std::vector<Move> captures;
 
-//         moves.emplace_back(square, toSquare, Piece::KING, side);
-//     }
+    this->generatePawnCaptures(captures, side);
+    this->generateKnightCaptures(captures, side);
+    this->generateBishopCaptures(captures, side);
+    this->generateRookCaptures(captures, side);
+    this->generateQueenCaptures(captures, side);
+    this->generateKingCaptures(captures, side);
 
-//     return moves;
-// }
+    return captures;
+}
 
-// std::vector<Move> Engine::getKingCaptureMoves(int square, engine::board::Colour side) {
-//     std::vector<Move> moves;
+void Engine::generatePawnCaptures(std::vector<Move> &captures, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
 
-//     int rank = this->_board.getRankFromSquare(square);
-//     int file = this->_board.getFileFromSquare(square);
+    uint64_t pawns = this->_bitboards[side][Piece::PAWN];
 
-//     for (int i = 0; i < 8; ++i) {
-//         int toRank = rank + KING_MOVES[i][0];
-//         int toFile = file + KING_MOVES[i][1];
+    uint64_t empty = ~this->_occupancyBoth;
 
-//         if (toRank < 0 || toRank >= 8 || toFile < 0 || toFile >= 8) {
-//             continue;
-//         }
+    while (pawns) {
+        int from = BitUtility::popLSB(pawns);
 
-//         int toSquare = this->_board.getSquare(toRank, toFile);
+        uint64_t captureMoves = this->_PAWN_ATTACKS[side][from] & this->_occupancies[otherSide];
 
-//         Piece toPiece = this->_board.getPieceFromSquare(toSquare);
-//         Colour toColour = this->_board.getColourFromSquare(toSquare);
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
 
-//         if (toPiece == Piece::EMPTY || toColour == side) {
-//             continue;
-//         }
+            Move move(from, to, Piece::PAWN, side);
 
-//         Move move(square, toSquare, Piece::KING, side);
+            move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-//         move.capturedPiece = toPiece;
+            if (this->isMoveLegal(move, side)) {
+                captures.push_back(std::move(move));
+            }
+        }
 
-//         moves.push_back(move);
-//     }
+        // TODO Check if we can capture enpassant square
 
-//     return moves;
-// }
+        // TODO Handle pawn capture into promotion
+    }
+}
 
-// void Engine::addToMoves(std::vector<Move> &moves, std::vector<Move> &&otherMoves) {
-//     if (moves.empty()) {
-//         moves = std::move(otherMoves);
-//     } else {
-//         moves.reserve(moves.size() + otherMoves.size());
-//         moves.insert(moves.end(), std::make_move_iterator(otherMoves.begin()), std::make_move_iterator(otherMoves.end()));
-//     }
-// }
+void Engine::generateKnightCaptures(std::vector<Move> &captures, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
 
-// bool Engine::isMoveLegal(Move &move) {
-//     bool isMoveLegal = true;
+    uint64_t knights = this->_bitboards[side][Piece::KNIGHT];
 
-//     this->makeMove(move);
+    uint64_t empty = ~this->_occupancyBoth;
 
-//     Colour otherSide = static_cast<Colour>(move.colour ^ 1);
+    while (knights) {
+        int from = BitUtility::popLSB(knights);
 
-//     std::vector<Move> enemyMoves = this->getCaptureMoves(otherSide);
+        uint64_t captureMoves = this->_KNIGHT_ATTACKS[from] & this->_occupancies[otherSide];
 
-//     for (Move &move : enemyMoves) {
-//         if (move.capturedPiece == Piece::KING) {
-//             isMoveLegal = false;
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
 
-//             break;
-//         }
-//     }
+            Move move(from, to, Piece::KNIGHT, side);
 
-//     this->unmakeMove(move);
+            if (this->isMoveLegal(move, side)) {
+                move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-//     return isMoveLegal;
-// }
+                captures.push_back(std::move(move));
+            }
+        }
+    }
+}
 
-// void Engine::makeMove(Move &move) {
-//     this->_keyBuffer.push_back(this->_key);
+void Engine::generateBishopCaptures(std::vector<Move> &captures, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
 
-//     this->_board.removeFromSquare(move.from);
-//     this->_key ^= this->_zobrist.getKey().piece[move.from][BoardUtility::getPieceIndex(move.piece, move.colour)];
+    uint64_t bishops = this->_bitboards[side][Piece::BISHOP];
 
-//     this->_board.createPieceInSquare(move.to, move.piece, move.colour);
-//     this->_key ^= this->_zobrist.getKey().piece[move.to][BoardUtility::getPieceIndex(move.piece, move.colour)];
+    uint64_t empty = ~this->_occupancyBoth;
 
-//     if (move.capturedPiece != Piece::EMPTY) {
-//         Colour otherColour = static_cast<Colour>(move.colour ^ 1);
+    while (bishops) {
+        int from = BitUtility::popLSB(bishops);
 
-//         this->_key ^= this->_zobrist.getKey().piece[move.to][BoardUtility::getPieceIndex(move.capturedPiece, otherColour)];
-//     }
+        uint64_t attacks = Bishop::getAttacks(from, this->_occupancyBoth);
 
-//     if (move.piece == Piece::PAWN || move.capturedPiece != Piece::EMPTY) {
-//         this->_board.resetHalfMove();
-//     } else {
-//         this->_board.incrementHalfMove();
-//     }
+        uint64_t captureMoves = attacks & this->_occupancies[otherSide];
 
-//     if (move.colour == Colour::BLACK) {
-//         this->_board.incrementFullMove();
-//     }
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
 
-//     this->_board.switchSide();
-//     this->_key ^= this->_zobrist.getKey().side;
+            Move move(from, to, Piece::BISHOP, side);
 
-//     ++this->_ply;
-// }
+            move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-// void Engine::unmakeMove(Move &move) {
-//     this->_board.switchSide();
-//     this->_key ^= this->_zobrist.getKey().side;
+            if (this->isMoveLegal(move, side)) {
+                captures.push_back(std::move(move));
+            }
+        }
+    }
+}
 
-//     this->_board.removeFromSquare(move.to);
-//     this->_key ^= this->_zobrist.getKey().piece[move.to][BoardUtility::getPieceIndex(move.piece, move.colour)];
+void Engine::generateRookCaptures(std::vector<Move> &captures, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
 
-//     this->_board.createPieceInSquare(move.from, move.piece, move.colour);
-//     this->_key ^= this->_zobrist.getKey().piece[move.from][BoardUtility::getPieceIndex(move.piece, move.colour)];
+    uint64_t rooks = this->_bitboards[side][Piece::ROOK];
 
-//     // If there was a captured piece, then move the captured piece back
-//     if (move.capturedPiece != Piece::EMPTY) {
-//         Colour otherColour = static_cast<Colour>(move.colour ^ 1);
+    uint64_t empty = ~this->_occupancyBoth;
 
-//         this->_board.createPieceInSquare(move.to, move.capturedPiece, otherColour);
+    while (rooks) {
+        int from = BitUtility::popLSB(rooks);
 
-//         this->_key ^= this->_zobrist.getKey().piece[move.to][BoardUtility::getPieceIndex(move.capturedPiece, otherColour)];
-//     }
+        uint64_t attacks = Rook::getAttacks(from, this->_occupancyBoth);
 
-//     this->_key = this->_keyBuffer.back();
+        uint64_t captureMoves = attacks & this->_occupancies[otherSide];
 
-//     this->_keyBuffer.pop_back();
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
 
-//     --this->_ply;
-// }
+            Move move(from, to, Piece::ROOK, side);
 
-// Result Engine::searchRoot(int depth) {
-//     Result result;
+            move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-//     int alpha = -INT_MAX;
-//     int beta = INT_MAX;
+            if (this->isMoveLegal(move, side)) {
+                captures.push_back(std::move(move));
+            }
+        }
+    }
+}
 
-//     std::vector<Move> moves = this->getMoves(this->_board.getSide());
+void Engine::generateQueenCaptures(std::vector<Move> &captures, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
 
-//     for (Move &move : moves) {
-//         if (!this->isMoveLegal(move)) {
-//             continue;
-//         }
+    uint64_t queens = this->_bitboards[side][Piece::QUEEN];
 
-//         this->makeMove(move);
+    uint64_t empty = ~this->_occupancyBoth;
 
-//         int score = -this->search(-beta, -alpha, depth - 1);
+    while (queens) {
+        int from = BitUtility::popLSB(queens);
 
-//         this->unmakeMove(move);
+        uint64_t attacks = Queen::getAttacks(from, this->_occupancyBoth);
 
-//         if (score > result.bestScore) {
-//             result.bestScore = score;
+        uint64_t captureMoves = attacks & this->_occupancies[otherSide];
 
-//             result.bestMove = move;
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
 
-//             result.isMoveFound = true;
+            Move move(from, to, Piece::QUEEN, side);
 
-//             if (score > alpha) {
-//                 alpha = score;
-//             }
-//         }
+            move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-//         // beta cutoff
-//         if (score >= beta) {
-//             break;
-//         }
-//     }
+            if (this->isMoveLegal(move, side)) {
+                captures.push_back(std::move(move));
+            }
+        }
+    }
+}
 
-//     return result;
-// }
+void Engine::generateKingCaptures(std::vector<Move> &captures, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
 
-// // Implement null heuristic and mobility score TODO
-// int Engine::search(int alpha, int beta, int depth) {
-//     if (this->isRepetition()) {
-//         return DRAW_VALUE;
-//     }
+    uint64_t kings = this->_bitboards[side][Piece::KING];
 
-//     if (depth == 0) {
-//         return this->quiescence(alpha, beta);
-//     }
+    uint64_t empty = ~this->_occupancyBoth;
 
-//     int bestScore = -INT_MAX;
+    while (kings) {
+        int from = BitUtility::popLSB(kings);
 
-//     std::vector<Move> moves = this->getMoves(this->_board.getSide());
+        uint64_t captureMoves = this->_KING_ATTACKS[from] & this->_occupancies[otherSide];
 
-//     for (Move &move : moves) {
-//         if (!this->isMoveLegal(move)) {
-//             continue;
-//         }
+        while (captureMoves) {
+            int to = BitUtility::popLSB(captureMoves);
 
-//         this->makeMove(move);
+            Move move(from, to, Piece::KING, side);
 
-//         int score = -this->search(-beta, -alpha, depth - 1);
+            move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-//         this->unmakeMove(move);
+            if (this->isMoveLegal(move, side)) {
+                captures.push_back(std::move(move));
+            }
+        }
+    }
+}
 
-//         if (score > bestScore) {
-//             bestScore = score;
+bool Engine::isMoveLegal(Move &move, Colour side) {
+    this->makeMove(move);
 
-//             if (score > alpha) {
-//                 alpha = score;
-//             }
-//         }
+    bool isInCheck = this->isInCheck(side);
 
-//         if (score >= beta) {
-//             return bestScore;
-//         }
-//     }
+    this->unmakeMove(move);
 
-//     return bestScore;
-// }
+    return isInCheck;
+}
 
-// int Engine::quiescence(int alpha, int beta) {
-//     if (this->isRepetition()) {
-//         return DRAW_VALUE;
-//     }
+bool Engine::isInCheck(Colour side) {
+    int kingSquare = this->getKingSquare(side);
 
-//     Colour side = this->_board.getSide();
+    return !this->isSquareAttacked(kingSquare, side);
+}
 
-//     int bestScore = this->evaluate(side);
+bool Engine::isSquareAttacked(int square, Colour side) {
+    Colour otherSide = BoardUtility::getOtherSide(side);
 
-//     if (bestScore >= beta) {
-//         return bestScore;
-//     }
+    if (this->_PAWN_ATTACKS[side][square] & this->_bitboards[otherSide][Piece::PAWN]) {
+        return true;
+    }
 
-//     if (bestScore > alpha) {
-//         alpha = bestScore;
-//     }
+    if (this->_KNIGHT_ATTACKS[square] & this->_bitboards[otherSide][Piece::KNIGHT]) {
+        return true;
+    }
 
-//     std::vector<Move> captures = this->getCaptureMoves(side);
+    if (this->_KING_ATTACKS[square] & this->_bitboards[otherSide][Piece::KING]) {
+        return true;
+    }
 
-//     for (Move &capture : captures) {
-//         if (!this->isMoveLegal(capture)) {
-//             continue;
-//         }
+    uint64_t bishopAttacks = Bishop::getAttacks(square, this->_occupancyBoth);
 
-//         this->makeMove(capture);
+    if (bishopAttacks & (this->_bitboards[otherSide][Piece::BISHOP] | this->_bitboards[otherSide][Piece::QUEEN])) {
+        return true;
+    }
 
-//         int score = -this->quiescence(-beta, -alpha);
+    uint64_t rookAttacks = Rook::getAttacks(square, this->_occupancyBoth);
 
-//         this->unmakeMove(capture);
+    if (rookAttacks & (this->_bitboards[otherSide][Piece::ROOK] | this->_bitboards[otherSide][Piece::QUEEN])) {
+        return true;
+    }
 
-//         if (score >= beta) {
-//             return score;
-//         }
+    return false;
+}
 
-//         if (score > bestScore) {
-//             bestScore = score;
-//         }
+int Engine::getKingSquare(Colour side) {
+    return BitUtility::getLSBIndex(this->_bitboards[side][Piece::KING]);
+}
 
-//         if (score > alpha) {
-//             alpha = score;
-//         }
-//     }
+void Engine::makeMove(Move &move) {
+    Colour otherSide = BoardUtility::getOtherSide(move.colour);
 
-//     return bestScore;
-// }
+    this->removePiece(move.from, move.piece, move.colour);
 
-// int Engine::evaluate(Colour side) {
-//     int score = 0;
+    this->createPiece(move.to, move.piece, move.colour);
 
-//     for (int square = 0; square < 64; ++square) {
-//         Piece piece = this->_board.getPieceFromSquare(square);
+    if (move.capturedPiece != Piece::EMPTY) {
+        this->removePiece(move.to, move.capturedPiece, otherSide);
+    }
 
-//         if (piece == Piece::EMPTY) {
-//             continue;
-//         }
+    this->switchSide();
+}
 
-//         Colour colour = this->_board.getColourFromSquare(square);
+void Engine::unmakeMove(Move &move) {
+    Colour otherSide = BoardUtility::getOtherSide(move.colour);
 
-//         int sign = (colour == Colour::WHITE) ? 1 : -1;
+    this->removePiece(move.to, move.piece, move.colour);
 
-//         score += sign * MATERIAL_TABLE[piece - 1];
+    this->createPiece(move.from, move.piece, move.colour);
 
-//         int trueSquare = (colour == Colour::WHITE) ? square : this->_board.getMirroredSquare(square);
+    if (move.capturedPiece != Piece::EMPTY) {
+        this->createPiece(move.to, move.capturedPiece, otherSide);
+    }
 
-//         switch (piece) {
-//         case Piece::PAWN:
-//             score += sign * PAWN_POSITION_TABLE[trueSquare];
-//             break;
-//         case Piece::KNIGHT:
-//             score += sign * KNIGHT_POSITION_TABLE[trueSquare];
-//             break;
-//         case Piece::BISHOP:
-//             score += sign * BISHOP_POSITION_TABLE[trueSquare];
-//             break;
-//         case Piece::ROOK:
-//             score += sign * ROOK_POSITION_TABLE[trueSquare];
-//             break;
-//         case Piece::QUEEN:
-//             score += sign * QUEEN_POSITION_TABLE[trueSquare];
-//             break;
-//         default:
-//             break;
-//         }
-//     }
+    this->switchSide();
+}
 
-//     int mobilityScore = this->getMoves(side).size() - this->getMoves(static_cast<Colour>(side ^ 1)).size();
+SearchResult Engine::searchRoot(int depth) {
+    SearchResult result;
 
-//     score += mobilityScore;
-//     return (side == Colour::WHITE) ? score : -score;
-// }
+    int alpha = -INT_MAX;
+    int beta = INT_MAX;
 
-// bool Engine::isRepetition() {
-//     // halfmove and full move are permanent once undo is implemented, uncomment
-//     // if (this->_board.getHalfMove() < 4) {
-//     //     return false;
-//     // }
+    std::vector<Move> moves = this->generateMoves(this->_side);
 
-//     // for (int i = 0; i < this->_keyBuffer.size(); ++i) {
-//     //     // std::cout << this->_keyBuffer[i] << '\n';
-//     //     if (this->_keyBuffer[i] == this->_key) {
-//     //         return true;
-//     //     }
-//     // }
+    for (Move &move : moves) {
+        this->makeMove(move);
 
-//     return false;
-// }
+        int score = -this->search(-beta, -alpha, depth - 1);
 
-// } // namespace engine
+        this->unmakeMove(move);
+
+        if (score > result.bestScore) {
+            result.bestScore = score;
+
+            result.bestMove = move;
+
+            result.isMoveFound = true;
+
+            if (score > alpha) {
+                alpha = score;
+            }
+        }
+
+        if (score >= beta) {
+            break;
+        }
+    }
+
+    return result;
+}
+
+int Engine::search(int alpha, int beta, int depth) {
+    if (depth == 0) {
+        return this->quiescence(alpha, beta);
+    }
+
+    // TODO Implement null move pruning- condition
+    // if (1) {
+    //     int reduction = 2; // NMP reduction
+
+    //     // Make null move
+    //     int nullScore = -this->search(-beta, -beta + 1, depth - reduction);
+    //     // Undo null move
+
+    //     if (nullScore >= beta) {
+    //         return nullScore;
+    //     }
+    // }
+
+    int bestScore = -INT_MAX;
+
+    std::vector<Move> moves = this->generateMoves(this->_side);
+
+    for (Move &move : moves) {
+        this->makeMove(move);
+
+        int score = -this->search(-beta, -alpha, depth - 1);
+
+        this->unmakeMove(move);
+
+        if (score > bestScore) {
+            bestScore = score;
+
+            if (score > alpha) {
+                alpha = score;
+            }
+        }
+
+        if (score >= beta) {
+            break;
+        }
+    }
+
+    return bestScore;
+}
+
+int Engine::quiescence(int alpha, int beta) {
+    int bestScore = this->evaluate(this->_side);
+
+    if (bestScore >= beta) {
+        return bestScore;
+    }
+
+    if (bestScore > alpha) {
+        alpha = bestScore;
+    }
+
+    std::vector<Move> captures = this->generateCaptures(this->_side);
+
+    for (Move &capture : captures) {
+        this->makeMove(capture);
+
+        int score = -this->quiescence(-beta, -alpha);
+
+        this->unmakeMove(capture);
+
+        if (score >= beta) {
+            return score;
+        }
+
+        if (score > bestScore) {
+            bestScore = score;
+        }
+
+        if (score > alpha) {
+            alpha = score;
+        }
+    }
+
+    return bestScore;
+}
+
+// TODO implement mobility score
+int Engine::evaluate(Colour side) {
+    int score = 0;
+
+    for (uint8_t piece = Piece::PAWN; piece <= Piece::KING; ++piece) {
+        uint64_t whitePieces = this->_bitboards[Colour::WHITE][piece];
+
+        while (whitePieces) {
+            int square = BitUtility::popLSB(whitePieces);
+
+            score += POSITION_TABLES[piece][square];
+        }
+
+        uint64_t blackPieces = this->_bitboards[Colour::BLACK][piece];
+
+        while (blackPieces) {
+            int square = BitUtility::popLSB(blackPieces);
+
+            score -= POSITION_TABLES[piece][MIRROR[square]];
+        }
+
+        int materialDifference = BitUtility::popCount(this->_bitboards[Colour::WHITE][piece]) - BitUtility::popCount(this->_bitboards[Colour::BLACK][piece]);
+
+        score += MATERIAL_TABLE[piece] * materialDifference;
+    }
+
+    return (side == Colour::WHITE) ? score : -score;
+}
+
+int Engine::perft(int depth) {
+    if (depth == 0) {
+        return 1;
+    }
+
+    int nodes = 0;
+
+    std::vector<Move> moves = this->generateMoves(this->_side);
+
+    for (Move &move : moves) {
+        this->makeMove(move);
+
+        nodes += this->perft(depth - 1);
+
+        this->unmakeMove(move);
+    }
+
+    return nodes;
+}
+
+void Engine::reset() {
+    memset(this->_bitboards, 0ULL, sizeof(this->_bitboards));
+
+    memset(this->_occupancies, 0ULL, sizeof(this->_occupancies));
+
+    this->_occupancyBoth = 0ULL;
+    this->_castlingRights = this->_INITIAL_CASTLING_RIGHTS;
+    this->_side = Colour::WHITE;
+    this->_enPassantSquare = -1;
+}
+
+} // namespace engine
