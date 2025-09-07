@@ -42,3 +42,9 @@ build/
 
 # Cache
 .cache/logs/
+
+# QT
+*.pro.user
+*.autosave
+*.qmlproject.user
+CMakeLists.txt.user*

@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
+
 project(chess VERSION 0.0.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -17,16 +18,19 @@ file(GLOB_RECURSE CHESS_SOURCES
 
 find_package(PkgConfig REQUIRED)
 find_package(fmt REQUIRED)
+find_package(SFML REQUIRED COMPONENTS System Window Graphics Audio)
 
 pkg_check_modules(OPENAL REQUIRED openal)
 pkg_check_modules(SNDFILE REQUIRED sndfile)
 
-add_executable(chess ${CHESS_SOURCES})
+add_executable(chess
+    ${CHESS_SOURCES}
+)
 
 target_include_directories(chess PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
     ${OPENAL_INCLUDE_DIRS}
     ${SNDFILE_INCLUDE_DIRS}
-    ${CMAKE_SOURCE_DIR}/include
 )
 
 find_library(OPENAL_FRAMEWORK OpenAL)
@@ -37,6 +41,13 @@ target_link_libraries(chess PRIVATE
     ${SNDFILE_LDFLAGS}
 )
 
+target_link_libraries(chess PRIVATE
+    SFML::System
+    SFML::Window
+    SFML::Graphics
+    SFML::Audio
+)
+
 target_compile_options(chess PRIVATE
     -O3
     -march=native
@@ -44,8 +55,11 @@ target_compile_options(chess PRIVATE
     -fomit-frame-pointer
 )
 
+if(LLD_LINKER)
+    target_link_options(chess PRIVATE -fuse-ld=lld)
+endif()
+
 target_link_options(chess PRIVATE
-    -fuse-ld=lld
     -Wl,--as-needed
     -Wl,--gc-sections
 )

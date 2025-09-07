@@ -1,6 +1,10 @@
 #pragma once
 
+#include <SFML/Graphics.hpp>
+
 #include "engine/Engine.hpp"
+
+#include "application/gui/Chess.hpp"
 
 namespace application {
 
@@ -12,6 +16,16 @@ class Application {
 
   private:
     engine::Engine _engine;
+
+    sf::RenderWindow _window;
+
+    application::gui::Chess _chess;
+
+    void update();
+
+    void render();
+
+    void renderBoard();
 };
 
 } // namespace application

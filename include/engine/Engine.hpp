@@ -36,6 +36,8 @@ class Engine {
 
     void runPerft(int depth);
 
+    uint64_t getBoard();
+
     void printBoard();
 
   private:
@@ -43,7 +45,7 @@ class Engine {
 
     static inline constexpr uint8_t _INITIAL_CASTLING_RIGHTS = 0xF;
 
-    static inline constexpr int _SEARCH_DEPTH = 6;
+    static inline constexpr int _SEARCH_DEPTH = 5;
 
     static inline uint64_t _PAWN_ATTACKS[2][64];
     static inline uint64_t _KNIGHT_ATTACKS[64];

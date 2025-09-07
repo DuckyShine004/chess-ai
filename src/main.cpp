@@ -1,13 +1,8 @@
-#include <iostream>
-#include <limits>
-
 #include "application/Application.hpp"
 
 using namespace application;
 
-int main() {
-    std::cout << "Hello world!" << std::endl;
-
+int main(int argc, char *argv[]) {
     Application application;
 
     application.run();
