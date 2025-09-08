@@ -15,9 +15,14 @@ Square::Square(int rank, int file, ColourType colour) : _file(file), _rank(rank)
     this->_square.setFillColor(COLOURS[colour]);
 
     this->_square.setPosition(sf::Vector2f(this->_x, this->_y));
+}
 
-    this->_piece.setPiece(PieceType::PAWN);
-    this->_piece.setColour(ColourType::WHITE);
+Piece &Square::getPiece() {
+    return this->_piece;
+}
+
+bool Square::isEmpty() {
+    return this->_piece.isEmpty();
 }
 
 void Square::render(sf::RenderWindow &window) {

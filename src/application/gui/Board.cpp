@@ -4,6 +4,8 @@
 
 #include "utility/BoardUtility.hpp"
 
+using namespace engine;
+
 using namespace engine::board;
 
 using namespace utility;
@@ -32,6 +34,29 @@ Board::Board() {
         }
 
         this->_squares[square] = Square(rank, file, colour);
+    }
+}
+
+Square &Board::getSquare(sf::Vector2i mousePosition) {
+    return this->_squares[0];
+}
+
+void Board::update(Engine &engine) {
+    for (int square = 0; square < 64; ++square) {
+        Piece &piece = this->_squares[square].getPiece();
+
+        piece.clear();
+
+        for (uint8_t side = ColourType::WHITE; side <= ColourType::BLACK; ++side) {
+            PieceType pieceType = engine.getPiece(square, static_cast<ColourType>(side));
+
+            if (pieceType != PieceType::EMPTY) {
+                piece.setPiece(pieceType);
+                piece.setColour(static_cast<ColourType>(side));
+
+                break;
+            }
+        }
     }
 }
 

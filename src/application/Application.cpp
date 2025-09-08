@@ -42,13 +42,20 @@ void Application::run() {
 }
 
 void Application::update() {
-    ColourType side = this->_engine.getSide();
+    // Move move = this->_chess.getMove(engine);
 
-    if (side == ColourType::WHITE) {
-        this->_chess.move(side);
-    } else {
-        this->_engine.run();
-    }
+    // if (move) {
+    // this->_chess.move(move);
+    // }
+    // this->_chess.move(this->_engine);
+    // ColourType side = this->_engine.getSide();
+
+    // if (side == ColourType::WHITE) {
+    //     this->_chess.move(side);
+    // } else {
+    //     this->_engine.run();
+    // }
+    this->_chess.update(this->_engine);
 }
 
 void Application::render() {

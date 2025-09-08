@@ -35,7 +35,8 @@ namespace engine {
 Engine::Engine() : _ply(0) {
     this->initialise();
 
-    this->parse(this->_INITIAL_FEN);
+    // this->parse(this->_INITIAL_FEN);
+    this->parse(this->_RANDOM_FEN);
 }
 
 void Engine::parse(const char *fen) {
@@ -78,6 +79,10 @@ void Engine::switchSide() {
 
 int Engine::getPly() {
     return this->_ply;
+}
+
+PieceType Engine::getPiece(int square, engine::board::ColourType side) {
+    return BoardUtility::getPiece(this->_bitboards, square, side);
 }
 
 void Engine::runPerft(int depth) {

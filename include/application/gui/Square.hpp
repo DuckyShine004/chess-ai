@@ -21,6 +21,10 @@ class Square {
 
     Square(int rank, int file, engine::board::ColourType colour);
 
+    application::gui::Piece &getPiece();
+
+    bool isEmpty();
+
     void render(sf::RenderWindow &window);
 
   private:

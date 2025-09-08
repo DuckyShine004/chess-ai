@@ -8,6 +8,10 @@
 namespace engine::move {
 
 struct Move {
+    enum MoveType : uint8_t {
+        NONE = 0,
+    };
+
     int from; // from square index
     int to;
 
@@ -25,76 +29,11 @@ struct Move {
         this->enPassantSquare = -1;
     }
 
-    Move(int from, int to, engine::board::PieceType piece, engine::board::ColourType colour) {
-        this->from = from;
-        this->to = to;
-
-        this->piece = piece;
-        this->colour = colour;
-
+    Move(int from, int to, engine::board::PieceType piece, engine::board::ColourType colour) : from(from), to(to), piece(piece), colour(colour) {
         this->capturedPiece = engine::board::PieceType::EMPTY;
 
         this->enPassantSquare = -1;
     }
 };
-
-// clang-format off
-inline constexpr int SECOND_RANK[2] = {
-    1,
-    6
-};
-
-inline constexpr int PAWN_MOVES[2][2] = {
-    {1, 2},
-    {-1, -2}
-};
-
-inline constexpr int PAWN_ATTACKS[2][2][2] = {
-    {
-        {1, -1},
-        {1, 1}
-    },
-    {
-        {-1, -1},
-        {-1, 1}
-    }
-};
-
-inline constexpr int KNIGHT_MOVES[8][2] = {
-    {-2, -1},
-    {-2, 1},
-    {-1, -2},
-    {-1, 2},
-    {1, -2},
-    {1, 2},
-    {2, -1},
-    {2, 1}
-};
-
-inline constexpr int BISHOP_MOVES[4][2] = {
-    {-1, -1},
-    {-1, 1},
-    {1, -1},
-    {1, 1}
-};
-
-inline constexpr int ROOK_MOVES[4][2] = {
-    {1, 0},
-    {-1, 0},
-    {0, -1},
-    {0, 1}
-};
-
-inline constexpr int KING_MOVES[8][2] = {
-    {-1, -1},
-    {-1, 0},
-    {-1, 1},
-    {0, -1},
-    {0, 1},
-    {1, -1},
-    {1, 0},
-    {1, 1}
-};
-// clang-format on
 
 } // namespace engine::move

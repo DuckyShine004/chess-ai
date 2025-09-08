@@ -31,6 +31,10 @@ void Piece::setColour(ColourType colour) {
     this->_colour = colour;
 }
 
+bool Piece::isEmpty() {
+    return this->_piece == PieceType::EMPTY;
+}
+
 void Piece::clear() {
     this->_piece = PieceType::EMPTY;
 
@@ -59,28 +63,6 @@ sf::Sprite Piece::getSprite(float x, float y, float squareSize) {
     sprite.setScale(sf::Vector2f(squareSize / texture.getSize().x, squareSize / texture.getSize().y));
 
     return sprite;
-    // int textureId = BoardUtility::getPieceIndex(this->_piece, this->_colour);
-
-    // sf::Texture &texture = _textureCache[textureId];
-    // // Load once
-    // if (texture.getSize().x == 0) {
-    //     const std::string path = std::string(TEXTURE_PATH) + TEXTURES[textureId];
-
-    //     if (!texture.loadFromFile(path)) {
-    //         throw std::runtime_error("Failed to load texture: " + path);
-    //     }
-    // }
-
-    // sf::Sprite sprite(texture);
-    // sprite.setPosition(sf::Vector2f(x, y));
-
-    // // scale to square size (keep aspect)
-    // const auto ts = texture.getSize();
-    // const float sx = squareSize / static_cast<float>(ts.x);
-    // const float sy = squareSize / static_cast<float>(ts.y);
-    // sprite.setScale(sf::Vector2f(sx, sy));
-
-    // return sprite;
 }
 
 } // namespace application::gui

@@ -34,9 +34,9 @@ class Engine {
 
     int getPly();
 
-    void runPerft(int depth);
+    engine::board::PieceType getPiece(int square, engine::board::ColourType side);
 
-    uint64_t getBoard();
+    void runPerft(int depth);
 
     engine::board::ColourType getSide();
 
@@ -44,6 +44,7 @@ class Engine {
 
   private:
     static inline constexpr const char *_INITIAL_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    static inline constexpr const char *_RANDOM_FEN = "3B1Qr1/P2p1bP1/1P1p1pk1/pNnP1ppR/P1PPpR2/pBq2P2/1r1N1n2/2b2K2 w - - 0 1";
 
     static inline constexpr uint8_t _INITIAL_CASTLING_RIGHTS = 0xF;
 

@@ -17,6 +17,8 @@ class Piece {
 
     void setColour(engine::board::ColourType colour);
 
+    bool isEmpty();
+
     void clear();
 
     void render(float x, float y, float squareSize, sf::RenderWindow &window);
