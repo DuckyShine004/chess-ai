@@ -14,7 +14,7 @@ namespace utility::BoardUtility {
 
 [[nodiscard]] inline constexpr int getFile(int square);
 
-[[nodiscard]] inline constexpr int getPieceIndex(engine::board::Piece piece, engine::board::Colour colour);
+[[nodiscard]] inline constexpr int getPieceIndex(engine::board::PieceType piece, engine::board::ColourType colour);
 
 [[nodiscard]] inline int getSquareFromPosition(std::string &position);
 
@@ -22,11 +22,11 @@ namespace utility::BoardUtility {
 
 [[nodiscard]] inline int getMirroredSquare(int square);
 
-[[nodiscard]] inline constexpr engine::board::Piece getPiece(uint64_t board[2][6], int rank, int file, engine::board::Colour side);
+[[nodiscard]] inline constexpr engine::board::PieceType getPiece(uint64_t board[2][6], int rank, int file, engine::board::ColourType side);
 
-[[nodiscard]] inline constexpr engine::board::Piece getPiece(uint64_t board[2][6], int square, engine::board::Colour side);
+[[nodiscard]] inline constexpr engine::board::PieceType getPiece(uint64_t board[2][6], int square, engine::board::ColourType side);
 
-[[nodiscard]] inline constexpr engine::board::Colour getOtherSide(engine::board::Colour side);
+[[nodiscard]] inline constexpr engine::board::ColourType getOtherSide(engine::board::ColourType side);
 
 inline void printBoard(uint64_t board[2][6]);
 
@@ -42,7 +42,7 @@ inline void printBoard(uint64_t board[2][6]);
     return square & 7;
 }
 
-[[nodiscard]] inline constexpr int getPieceIndex(engine::board::Piece piece, engine::board::Colour colour) {
+[[nodiscard]] inline constexpr int getPieceIndex(engine::board::PieceType piece, engine::board::ColourType colour) {
     return (piece - 1) + 6 * colour;
 }
 
@@ -69,22 +69,22 @@ inline void printBoard(uint64_t board[2][6]);
     return getSquare(7 - rank, file);
 }
 
-[[nodiscard]] inline constexpr engine::board::Piece getPiece(uint64_t board[2][6], int rank, int file, engine::board::Colour side) {
+[[nodiscard]] inline constexpr engine::board::PieceType getPiece(uint64_t board[2][6], int rank, int file, engine::board::ColourType side) {
     return getPiece(board, getSquare(rank, file), side);
 }
 
-[[nodiscard]] inline constexpr engine::board::Piece getPiece(uint64_t board[2][6], int square, engine::board::Colour side) {
+[[nodiscard]] inline constexpr engine::board::PieceType getPiece(uint64_t board[2][6], int square, engine::board::ColourType side) {
     for (uint8_t piece = 0; piece < 6; ++piece) {
         if (board[side][piece] & (1ULL << square)) {
-            return static_cast<engine::board::Piece>(piece);
+            return static_cast<engine::board::PieceType>(piece);
         }
     }
 
-    return engine::board::Piece::EMPTY;
+    return engine::board::PieceType::EMPTY;
 }
 
-[[nodiscard]] inline constexpr engine::board::Colour getOtherSide(engine::board::Colour side) {
-    return static_cast<engine::board::Colour>(side ^ 1);
+[[nodiscard]] inline constexpr engine::board::ColourType getOtherSide(engine::board::ColourType side) {
+    return static_cast<engine::board::ColourType>(side ^ 1);
 }
 
 inline void printBoard(uint64_t board[2][6]) {
@@ -94,17 +94,17 @@ inline void printBoard(uint64_t board[2][6]) {
         std::cout << rank + 1 << " |";
 
         for (int file = 0; file < 8; ++file) {
-            engine::board::Piece piece = getPiece(board, rank, file, engine::board::Colour::WHITE);
+            engine::board::PieceType piece = getPiece(board, rank, file, engine::board::ColourType::WHITE);
 
-            if (piece != engine::board::Piece::EMPTY) {
+            if (piece != engine::board::PieceType::EMPTY) {
                 std::cout << ' ' << engine::board::UNICODE_PIECES[0][piece] << " |";
 
                 continue;
             }
 
-            piece = getPiece(board, rank, file, engine::board::Colour::BLACK);
+            piece = getPiece(board, rank, file, engine::board::ColourType::BLACK);
 
-            if (piece == engine::board::Piece::EMPTY) {
+            if (piece == engine::board::PieceType::EMPTY) {
                 std::cout << "   |";
             } else {
                 std::cout << ' ' << engine::board::UNICODE_PIECES[1][piece] << " |";

@@ -17,14 +17,14 @@ class Square {
   public:
     Square();
 
-    Square(int rank, int file, engine::board::Colour colour);
+    Square(int rank, int file, engine::board::ColourType colour);
 
     void render(sf::RenderWindow &window);
 
   private:
     sf::RectangleShape _square;
 
-    engine::board::Colour _colour;
+    engine::board::ColourType _colour;
 
     float _file;
     float _rank;

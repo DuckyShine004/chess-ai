@@ -15,19 +15,19 @@ Board::Board() {
         int rank = BoardUtility::getRank(square);
         int file = BoardUtility::getFile(square);
 
-        Colour colour;
+        ColourType colour;
 
         if (rank & 1) {
             if (file & 1) {
-                colour = Colour::BLACK;
+                colour = ColourType::BLACK;
             } else {
-                colour = Colour::WHITE;
+                colour = ColourType::WHITE;
             }
         } else {
             if (file & 1) {
-                colour = Colour::WHITE;
+                colour = ColourType::WHITE;
             } else {
-                colour = Colour::BLACK;
+                colour = ColourType::BLACK;
             }
         }
 

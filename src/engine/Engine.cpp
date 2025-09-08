@@ -91,6 +91,10 @@ void Engine::runPerft(int depth) {
     std::cout << "Time: " << elapsed.count() << " ms | Nodes: " << nodes << '\n';
 }
 
+ColourType Engine::getSide() {
+    return this->_side;
+}
+
 void Engine::printBoard() {
     BoardUtility::printBoard(this->_bitboards);
 }
@@ -101,8 +105,8 @@ void Engine::initialise() {
     Rook::initialiseRays();
 
     for (int square = 0; square < 64; ++square) {
-        this->_PAWN_ATTACKS[0][square] = Pawn::getAttacks(square, Colour::WHITE);
-        this->_PAWN_ATTACKS[1][square] = Pawn::getAttacks(square, Colour::BLACK);
+        this->_PAWN_ATTACKS[0][square] = Pawn::getAttacks(square, ColourType::WHITE);
+        this->_PAWN_ATTACKS[1][square] = Pawn::getAttacks(square, ColourType::BLACK);
 
         this->_KNIGHT_ATTACKS[square] = Knight::getAttacks(square);
 
@@ -130,7 +134,7 @@ void Engine::parseFenPosition(std::string &position) {
 }
 
 void Engine::parseFenSide(std::string &side) {
-    this->_side = (side == "w") ? Colour::WHITE : Colour::BLACK;
+    this->_side = (side == "w") ? ColourType::WHITE : ColourType::BLACK;
 }
 
 void Engine::parseFenCastlingRights(std::string &castlingRights) {
@@ -173,47 +177,47 @@ void Engine::parseFenFullMove(std::string &fullMove) {
 }
 
 void Engine::createFenPiece(int rank, int file, char letter) {
-    Colour side = isupper(letter) ? Colour::WHITE : Colour::BLACK;
-    Piece piece = Piece::EMPTY;
+    ColourType side = isupper(letter) ? ColourType::WHITE : ColourType::BLACK;
+    PieceType piece = PieceType::EMPTY;
 
     letter = tolower(letter);
 
     switch (letter) {
     case 'p':
-        piece = Piece::PAWN;
+        piece = PieceType::PAWN;
         break;
     case 'n':
-        piece = Piece::KNIGHT;
+        piece = PieceType::KNIGHT;
         break;
     case 'b':
-        piece = Piece::BISHOP;
+        piece = PieceType::BISHOP;
         break;
     case 'r':
-        piece = Piece::ROOK;
+        piece = PieceType::ROOK;
         break;
     case 'q':
-        piece = Piece::QUEEN;
+        piece = PieceType::QUEEN;
         break;
     case 'k':
-        piece = Piece::KING;
+        piece = PieceType::KING;
         break;
     default:
-        piece = Piece::EMPTY;
+        piece = PieceType::EMPTY;
         break;
     }
 
-    if (piece == Piece::EMPTY) {
+    if (piece == PieceType::EMPTY) {
         return;
     }
 
     this->createPiece(rank, file, piece, side);
 }
 
-void Engine::createPiece(int rank, int file, Piece piece, Colour side) {
+void Engine::createPiece(int rank, int file, PieceType piece, ColourType side) {
     this->createPiece(BoardUtility::getSquare(rank, file), piece, side);
 }
 
-void Engine::createPiece(int square, Piece piece, Colour side) {
+void Engine::createPiece(int square, PieceType piece, ColourType side) {
     this->_bitboards[side][piece] |= BITBOARD_SQUARES[square];
 
     this->_occupancies[side] |= BITBOARD_SQUARES[square];
@@ -221,11 +225,11 @@ void Engine::createPiece(int square, Piece piece, Colour side) {
     this->_occupancyBoth = this->_occupancies[0] | this->_occupancies[1];
 }
 
-void Engine::removePiece(int rank, int file, Piece piece, Colour side) {
+void Engine::removePiece(int rank, int file, PieceType piece, ColourType side) {
     this->removePiece(BoardUtility::getSquare(rank, file), piece, side);
 }
 
-void Engine::removePiece(int square, Piece piece, Colour side) {
+void Engine::removePiece(int square, PieceType piece, ColourType side) {
     this->_bitboards[side][piece] &= ~BITBOARD_SQUARES[square];
 
     this->_occupancies[side] &= ~BITBOARD_SQUARES[square];
@@ -234,7 +238,7 @@ void Engine::removePiece(int square, Piece piece, Colour side) {
 }
 
 // TODO Sort moves by move type
-std::vector<Move> Engine::generateMoves(Colour side) {
+std::vector<Move> Engine::generateMoves(ColourType side) {
     std::vector<Move> moves;
 
     this->generatePawnMoves(moves, side);
@@ -247,10 +251,10 @@ std::vector<Move> Engine::generateMoves(Colour side) {
     return moves;
 }
 
-void Engine::generatePawnMoves(std::vector<Move> &moves, Colour side) {
-    Colour otherSide = BoardUtility::getOtherSide(side);
+void Engine::generatePawnMoves(std::vector<Move> &moves, ColourType side) {
+    ColourType otherSide = BoardUtility::getOtherSide(side);
 
-    uint64_t pawns = this->_bitboards[side][Piece::PAWN];
+    uint64_t pawns = this->_bitboards[side][PieceType::PAWN];
 
     uint64_t empty = ~this->_occupancyBoth;
 
@@ -260,7 +264,7 @@ void Engine::generatePawnMoves(std::vector<Move> &moves, Colour side) {
         if (Pawn::canSinglePush(from, side, empty)) {
             int to = Pawn::singlePush(from, side);
 
-            Move move(from, to, Piece::PAWN, side);
+            Move move(from, to, PieceType::PAWN, side);
 
             if (this->isMoveLegal(move, side)) {
                 moves.push_back(std::move(move));
@@ -272,7 +276,7 @@ void Engine::generatePawnMoves(std::vector<Move> &moves, Colour side) {
         if (Pawn::canDoublePush(from, side, empty)) {
             int to = Pawn::doublePush(from, side);
 
-            Move move(from, to, Piece::PAWN, side);
+            Move move(from, to, PieceType::PAWN, side);
 
             move.enPassantSquare = EN_PASSANT_SQUARES[side][BoardUtility::getFile(from)];
 
@@ -286,7 +290,7 @@ void Engine::generatePawnMoves(std::vector<Move> &moves, Colour side) {
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
 
-            Move move(from, to, Piece::PAWN, side);
+            Move move(from, to, PieceType::PAWN, side);
 
             move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
@@ -301,10 +305,10 @@ void Engine::generatePawnMoves(std::vector<Move> &moves, Colour side) {
     }
 }
 
-void Engine::generateKnightMoves(std::vector<Move> &moves, Colour side) {
-    Colour otherSide = BoardUtility::getOtherSide(side);
+void Engine::generateKnightMoves(std::vector<Move> &moves, ColourType side) {
+    ColourType otherSide = BoardUtility::getOtherSide(side);
 
-    uint64_t knights = this->_bitboards[side][Piece::KNIGHT];
+    uint64_t knights = this->_bitboards[side][PieceType::KNIGHT];
 
     uint64_t empty = ~this->_occupancyBoth;
 
@@ -316,7 +320,7 @@ void Engine::generateKnightMoves(std::vector<Move> &moves, Colour side) {
         while (quietMoves) {
             int to = BitUtility::popLSB(quietMoves);
 
-            Move move(from, to, Piece::KNIGHT, side);
+            Move move(from, to, PieceType::KNIGHT, side);
 
             if (this->isMoveLegal(move, side)) {
                 moves.push_back(std::move(move));
@@ -328,7 +332,7 @@ void Engine::generateKnightMoves(std::vector<Move> &moves, Colour side) {
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
 
-            Move move(from, to, Piece::KNIGHT, side);
+            Move move(from, to, PieceType::KNIGHT, side);
 
             if (this->isMoveLegal(move, side)) {
                 move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
@@ -339,10 +343,10 @@ void Engine::generateKnightMoves(std::vector<Move> &moves, Colour side) {
     }
 }
 
-void Engine::generateBishopMoves(std::vector<Move> &moves, Colour side) {
-    Colour otherSide = BoardUtility::getOtherSide(side);
+void Engine::generateBishopMoves(std::vector<Move> &moves, ColourType side) {
+    ColourType otherSide = BoardUtility::getOtherSide(side);
 
-    uint64_t bishops = this->_bitboards[side][Piece::BISHOP];
+    uint64_t bishops = this->_bitboards[side][PieceType::BISHOP];
 
     uint64_t empty = ~this->_occupancyBoth;
 
@@ -356,7 +360,7 @@ void Engine::generateBishopMoves(std::vector<Move> &moves, Colour side) {
         while (quietMoves) {
             int to = BitUtility::popLSB(quietMoves);
 
-            Move move(from, to, Piece::BISHOP, side);
+            Move move(from, to, PieceType::BISHOP, side);
 
             if (this->isMoveLegal(move, side)) {
                 moves.push_back(std::move(move));
@@ -368,7 +372,7 @@ void Engine::generateBishopMoves(std::vector<Move> &moves, Colour side) {
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
 
-            Move move(from, to, Piece::BISHOP, side);
+            Move move(from, to, PieceType::BISHOP, side);
 
             move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
@@ -379,10 +383,10 @@ void Engine::generateBishopMoves(std::vector<Move> &moves, Colour side) {
     }
 }
 
-void Engine::generateRookMoves(std::vector<Move> &moves, Colour side) {
-    Colour otherSide = BoardUtility::getOtherSide(side);
+void Engine::generateRookMoves(std::vector<Move> &moves, ColourType side) {
+    ColourType otherSide = BoardUtility::getOtherSide(side);
 
-    uint64_t rooks = this->_bitboards[side][Piece::ROOK];
+    uint64_t rooks = this->_bitboards[side][PieceType::ROOK];
 
     uint64_t empty = ~this->_occupancyBoth;
 
@@ -396,7 +400,7 @@ void Engine::generateRookMoves(std::vector<Move> &moves, Colour side) {
         while (quietMoves) {
             int to = BitUtility::popLSB(quietMoves);
 
-            Move move(from, to, Piece::ROOK, side);
+            Move move(from, to, PieceType::ROOK, side);
 
             if (this->isMoveLegal(move, side)) {
                 moves.push_back(std::move(move));
@@ -408,7 +412,7 @@ void Engine::generateRookMoves(std::vector<Move> &moves, Colour side) {
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
 
-            Move move(from, to, Piece::ROOK, side);
+            Move move(from, to, PieceType::ROOK, side);
 
             move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
@@ -419,10 +423,10 @@ void Engine::generateRookMoves(std::vector<Move> &moves, Colour side) {
     }
 }
 
-void Engine::generateQueenMoves(std::vector<Move> &moves, Colour side) {
-    Colour otherSide = BoardUtility::getOtherSide(side);
+void Engine::generateQueenMoves(std::vector<Move> &moves, ColourType side) {
+    ColourType otherSide = BoardUtility::getOtherSide(side);
 
-    uint64_t queens = this->_bitboards[side][Piece::QUEEN];
+    uint64_t queens = this->_bitboards[side][PieceType::QUEEN];
 
     uint64_t empty = ~this->_occupancyBoth;
 
@@ -436,7 +440,7 @@ void Engine::generateQueenMoves(std::vector<Move> &moves, Colour side) {
         while (quietMoves) {
             int to = BitUtility::popLSB(quietMoves);
 
-            Move move(from, to, Piece::QUEEN, side);
+            Move move(from, to, PieceType::QUEEN, side);
 
             if (this->isMoveLegal(move, side)) {
                 moves.push_back(std::move(move));
@@ -448,7 +452,7 @@ void Engine::generateQueenMoves(std::vector<Move> &moves, Colour side) {
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
 
-            Move move(from, to, Piece::QUEEN, side);
+            Move move(from, to, PieceType::QUEEN, side);
 
             move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
@@ -459,10 +463,10 @@ void Engine::generateQueenMoves(std::vector<Move> &moves, Colour side) {
     }
 }
 
-void Engine::generateKingMoves(std::vector<Move> &moves, Colour side) {
-    Colour otherSide = BoardUtility::getOtherSide(side);
+void Engine::generateKingMoves(std::vector<Move> &moves, ColourType side) {
+    ColourType otherSide = BoardUtility::getOtherSide(side);
 
-    uint64_t kings = this->_bitboards[side][Piece::KING];
+    uint64_t kings = this->_bitboards[side][PieceType::KING];
 
     uint64_t empty = ~this->_occupancyBoth;
 
@@ -474,7 +478,7 @@ void Engine::generateKingMoves(std::vector<Move> &moves, Colour side) {
         while (quietMoves) {
             int to = BitUtility::popLSB(quietMoves);
 
-            Move move(from, to, Piece::KING, side);
+            Move move(from, to, PieceType::KING, side);
 
             if (this->isMoveLegal(move, side)) {
                 moves.push_back(std::move(move));
@@ -486,7 +490,7 @@ void Engine::generateKingMoves(std::vector<Move> &moves, Colour side) {
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
 
-            Move move(from, to, Piece::KING, side);
+            Move move(from, to, PieceType::KING, side);
 
             move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
@@ -497,7 +501,7 @@ void Engine::generateKingMoves(std::vector<Move> &moves, Colour side) {
     }
 }
 
-std::vector<Move> Engine::generateCaptures(Colour side) {
+std::vector<Move> Engine::generateCaptures(ColourType side) {
     std::vector<Move> captures;
 
     this->generatePawnCaptures(captures, side);
@@ -510,10 +514,10 @@ std::vector<Move> Engine::generateCaptures(Colour side) {
     return captures;
 }
 
-void Engine::generatePawnCaptures(std::vector<Move> &captures, Colour side) {
-    Colour otherSide = BoardUtility::getOtherSide(side);
+void Engine::generatePawnCaptures(std::vector<Move> &captures, ColourType side) {
+    ColourType otherSide = BoardUtility::getOtherSide(side);
 
-    uint64_t pawns = this->_bitboards[side][Piece::PAWN];
+    uint64_t pawns = this->_bitboards[side][PieceType::PAWN];
 
     uint64_t empty = ~this->_occupancyBoth;
 
@@ -525,7 +529,7 @@ void Engine::generatePawnCaptures(std::vector<Move> &captures, Colour side) {
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
 
-            Move move(from, to, Piece::PAWN, side);
+            Move move(from, to, PieceType::PAWN, side);
 
             move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
@@ -540,10 +544,10 @@ void Engine::generatePawnCaptures(std::vector<Move> &captures, Colour side) {
     }
 }
 
-void Engine::generateKnightCaptures(std::vector<Move> &captures, Colour side) {
-    Colour otherSide = BoardUtility::getOtherSide(side);
+void Engine::generateKnightCaptures(std::vector<Move> &captures, ColourType side) {
+    ColourType otherSide = BoardUtility::getOtherSide(side);
 
-    uint64_t knights = this->_bitboards[side][Piece::KNIGHT];
+    uint64_t knights = this->_bitboards[side][PieceType::KNIGHT];
 
     uint64_t empty = ~this->_occupancyBoth;
 
@@ -555,7 +559,7 @@ void Engine::generateKnightCaptures(std::vector<Move> &captures, Colour side) {
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
 
-            Move move(from, to, Piece::KNIGHT, side);
+            Move move(from, to, PieceType::KNIGHT, side);
 
             if (this->isMoveLegal(move, side)) {
                 move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
@@ -566,10 +570,10 @@ void Engine::generateKnightCaptures(std::vector<Move> &captures, Colour side) {
     }
 }
 
-void Engine::generateBishopCaptures(std::vector<Move> &captures, Colour side) {
-    Colour otherSide = BoardUtility::getOtherSide(side);
+void Engine::generateBishopCaptures(std::vector<Move> &captures, ColourType side) {
+    ColourType otherSide = BoardUtility::getOtherSide(side);
 
-    uint64_t bishops = this->_bitboards[side][Piece::BISHOP];
+    uint64_t bishops = this->_bitboards[side][PieceType::BISHOP];
 
     uint64_t empty = ~this->_occupancyBoth;
 
@@ -583,7 +587,7 @@ void Engine::generateBishopCaptures(std::vector<Move> &captures, Colour side) {
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
 
-            Move move(from, to, Piece::BISHOP, side);
+            Move move(from, to, PieceType::BISHOP, side);
 
             move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
@@ -594,10 +598,10 @@ void Engine::generateBishopCaptures(std::vector<Move> &captures, Colour side) {
     }
 }
 
-void Engine::generateRookCaptures(std::vector<Move> &captures, Colour side) {
-    Colour otherSide = BoardUtility::getOtherSide(side);
+void Engine::generateRookCaptures(std::vector<Move> &captures, ColourType side) {
+    ColourType otherSide = BoardUtility::getOtherSide(side);
 
-    uint64_t rooks = this->_bitboards[side][Piece::ROOK];
+    uint64_t rooks = this->_bitboards[side][PieceType::ROOK];
 
     uint64_t empty = ~this->_occupancyBoth;
 
@@ -611,7 +615,7 @@ void Engine::generateRookCaptures(std::vector<Move> &captures, Colour side) {
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
 
-            Move move(from, to, Piece::ROOK, side);
+            Move move(from, to, PieceType::ROOK, side);
 
             move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
@@ -622,10 +626,10 @@ void Engine::generateRookCaptures(std::vector<Move> &captures, Colour side) {
     }
 }
 
-void Engine::generateQueenCaptures(std::vector<Move> &captures, Colour side) {
-    Colour otherSide = BoardUtility::getOtherSide(side);
+void Engine::generateQueenCaptures(std::vector<Move> &captures, ColourType side) {
+    ColourType otherSide = BoardUtility::getOtherSide(side);
 
-    uint64_t queens = this->_bitboards[side][Piece::QUEEN];
+    uint64_t queens = this->_bitboards[side][PieceType::QUEEN];
 
     uint64_t empty = ~this->_occupancyBoth;
 
@@ -639,7 +643,7 @@ void Engine::generateQueenCaptures(std::vector<Move> &captures, Colour side) {
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
 
-            Move move(from, to, Piece::QUEEN, side);
+            Move move(from, to, PieceType::QUEEN, side);
 
             move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
@@ -650,10 +654,10 @@ void Engine::generateQueenCaptures(std::vector<Move> &captures, Colour side) {
     }
 }
 
-void Engine::generateKingCaptures(std::vector<Move> &captures, Colour side) {
-    Colour otherSide = BoardUtility::getOtherSide(side);
+void Engine::generateKingCaptures(std::vector<Move> &captures, ColourType side) {
+    ColourType otherSide = BoardUtility::getOtherSide(side);
 
-    uint64_t kings = this->_bitboards[side][Piece::KING];
+    uint64_t kings = this->_bitboards[side][PieceType::KING];
 
     uint64_t empty = ~this->_occupancyBoth;
 
@@ -665,7 +669,7 @@ void Engine::generateKingCaptures(std::vector<Move> &captures, Colour side) {
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
 
-            Move move(from, to, Piece::KING, side);
+            Move move(from, to, PieceType::KING, side);
 
             move.capturedPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
@@ -676,7 +680,7 @@ void Engine::generateKingCaptures(std::vector<Move> &captures, Colour side) {
     }
 }
 
-bool Engine::isMoveLegal(Move &move, Colour side) {
+bool Engine::isMoveLegal(Move &move, ColourType side) {
     this->makeMove(move);
 
     bool isInCheck = this->isInCheck(side);
@@ -686,54 +690,54 @@ bool Engine::isMoveLegal(Move &move, Colour side) {
     return isInCheck;
 }
 
-bool Engine::isInCheck(Colour side) {
+bool Engine::isInCheck(ColourType side) {
     int kingSquare = this->getKingSquare(side);
 
     return !this->isSquareAttacked(kingSquare, side);
 }
 
-bool Engine::isSquareAttacked(int square, Colour side) {
-    Colour otherSide = BoardUtility::getOtherSide(side);
+bool Engine::isSquareAttacked(int square, ColourType side) {
+    ColourType otherSide = BoardUtility::getOtherSide(side);
 
-    if (this->_PAWN_ATTACKS[side][square] & this->_bitboards[otherSide][Piece::PAWN]) {
+    if (this->_PAWN_ATTACKS[side][square] & this->_bitboards[otherSide][PieceType::PAWN]) {
         return true;
     }
 
-    if (this->_KNIGHT_ATTACKS[square] & this->_bitboards[otherSide][Piece::KNIGHT]) {
+    if (this->_KNIGHT_ATTACKS[square] & this->_bitboards[otherSide][PieceType::KNIGHT]) {
         return true;
     }
 
-    if (this->_KING_ATTACKS[square] & this->_bitboards[otherSide][Piece::KING]) {
+    if (this->_KING_ATTACKS[square] & this->_bitboards[otherSide][PieceType::KING]) {
         return true;
     }
 
     uint64_t bishopAttacks = Bishop::getAttacks(square, this->_occupancyBoth);
 
-    if (bishopAttacks & (this->_bitboards[otherSide][Piece::BISHOP] | this->_bitboards[otherSide][Piece::QUEEN])) {
+    if (bishopAttacks & (this->_bitboards[otherSide][PieceType::BISHOP] | this->_bitboards[otherSide][PieceType::QUEEN])) {
         return true;
     }
 
     uint64_t rookAttacks = Rook::getAttacks(square, this->_occupancyBoth);
 
-    if (rookAttacks & (this->_bitboards[otherSide][Piece::ROOK] | this->_bitboards[otherSide][Piece::QUEEN])) {
+    if (rookAttacks & (this->_bitboards[otherSide][PieceType::ROOK] | this->_bitboards[otherSide][PieceType::QUEEN])) {
         return true;
     }
 
     return false;
 }
 
-int Engine::getKingSquare(Colour side) {
-    return BitUtility::getLSBIndex(this->_bitboards[side][Piece::KING]);
+int Engine::getKingSquare(ColourType side) {
+    return BitUtility::getLSBIndex(this->_bitboards[side][PieceType::KING]);
 }
 
 void Engine::makeMove(Move &move) {
-    Colour otherSide = BoardUtility::getOtherSide(move.colour);
+    ColourType otherSide = BoardUtility::getOtherSide(move.colour);
 
     this->removePiece(move.from, move.piece, move.colour);
 
     this->createPiece(move.to, move.piece, move.colour);
 
-    if (move.capturedPiece != Piece::EMPTY) {
+    if (move.capturedPiece != PieceType::EMPTY) {
         this->removePiece(move.to, move.capturedPiece, otherSide);
     }
 
@@ -741,13 +745,13 @@ void Engine::makeMove(Move &move) {
 }
 
 void Engine::unmakeMove(Move &move) {
-    Colour otherSide = BoardUtility::getOtherSide(move.colour);
+    ColourType otherSide = BoardUtility::getOtherSide(move.colour);
 
     this->removePiece(move.to, move.piece, move.colour);
 
     this->createPiece(move.from, move.piece, move.colour);
 
-    if (move.capturedPiece != Piece::EMPTY) {
+    if (move.capturedPiece != PieceType::EMPTY) {
         this->createPiece(move.to, move.capturedPiece, otherSide);
     }
 
@@ -871,11 +875,11 @@ int Engine::quiescence(int alpha, int beta) {
 }
 
 // TODO implement mobility score
-int Engine::evaluate(Colour side) {
+int Engine::evaluate(ColourType side) {
     int score = 0;
 
-    for (uint8_t piece = Piece::PAWN; piece <= Piece::KING; ++piece) {
-        uint64_t whitePieces = this->_bitboards[Colour::WHITE][piece];
+    for (uint8_t piece = PieceType::PAWN; piece <= PieceType::KING; ++piece) {
+        uint64_t whitePieces = this->_bitboards[ColourType::WHITE][piece];
 
         while (whitePieces) {
             int square = BitUtility::popLSB(whitePieces);
@@ -883,7 +887,7 @@ int Engine::evaluate(Colour side) {
             score += POSITION_TABLES[piece][square];
         }
 
-        uint64_t blackPieces = this->_bitboards[Colour::BLACK][piece];
+        uint64_t blackPieces = this->_bitboards[ColourType::BLACK][piece];
 
         while (blackPieces) {
             int square = BitUtility::popLSB(blackPieces);
@@ -891,12 +895,12 @@ int Engine::evaluate(Colour side) {
             score -= POSITION_TABLES[piece][MIRROR[square]];
         }
 
-        int materialDifference = BitUtility::popCount(this->_bitboards[Colour::WHITE][piece]) - BitUtility::popCount(this->_bitboards[Colour::BLACK][piece]);
+        int materialDifference = BitUtility::popCount(this->_bitboards[ColourType::WHITE][piece]) - BitUtility::popCount(this->_bitboards[ColourType::BLACK][piece]);
 
         score += MATERIAL_TABLE[piece] * materialDifference;
     }
 
-    return (side == Colour::WHITE) ? score : -score;
+    return (side == ColourType::WHITE) ? score : -score;
 }
 
 int Engine::perft(int depth) {
@@ -926,7 +930,7 @@ void Engine::reset() {
 
     this->_occupancyBoth = 0ULL;
     this->_castlingRights = this->_INITIAL_CASTLING_RIGHTS;
-    this->_side = Colour::WHITE;
+    this->_side = ColourType::WHITE;
     this->_enPassantSquare = -1;
 }
 

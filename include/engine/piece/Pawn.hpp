@@ -30,19 +30,19 @@ constexpr uint64_t SECOND_RANK[2] = {
 
 [[nodiscard]] inline constexpr uint64_t southWest(uint64_t square);
 
-[[nodiscard]] inline constexpr uint64_t getAttacks(int square, engine::board::Colour side);
+[[nodiscard]] inline constexpr uint64_t getAttacks(int square, engine::board::ColourType side);
 
-[[nodiscard]] inline constexpr bool canSinglePush(int square, engine::board::Colour side, uint64_t empty);
+[[nodiscard]] inline constexpr bool canSinglePush(int square, engine::board::ColourType side, uint64_t empty);
 
-[[nodiscard]] inline constexpr bool canDoublePush(int square, engine::board::Colour side, uint64_t empty);
+[[nodiscard]] inline constexpr bool canDoublePush(int square, engine::board::ColourType side, uint64_t empty);
 
-[[nodiscard]] inline constexpr int singlePush(int square, engine::board::Colour side);
+[[nodiscard]] inline constexpr int singlePush(int square, engine::board::ColourType side);
 
-[[nodiscard]] inline constexpr int doublePush(int square, engine::board::Colour side);
+[[nodiscard]] inline constexpr int doublePush(int square, engine::board::ColourType side);
 
-[[nodiscard]] inline constexpr uint64_t getSinglePushAll(uint64_t pawns, engine::board::Colour side, uint64_t empty);
+[[nodiscard]] inline constexpr uint64_t getSinglePushAll(uint64_t pawns, engine::board::ColourType side, uint64_t empty);
 
-[[nodiscard]] inline constexpr uint64_t getDoublePushAll(uint64_t pawns, engine::board::Colour side, uint64_t empty);
+[[nodiscard]] inline constexpr uint64_t getDoublePushAll(uint64_t pawns, engine::board::ColourType side, uint64_t empty);
 
 [[nodiscard]] inline constexpr uint64_t north(uint64_t square) {
     return square << 8;
@@ -76,12 +76,12 @@ constexpr uint64_t SECOND_RANK[2] = {
     return (square >> 9) & NOT_H_FILE;
 }
 
-[[nodiscard]] inline constexpr uint64_t getAttacks(int square, engine::board::Colour side) {
+[[nodiscard]] inline constexpr uint64_t getAttacks(int square, engine::board::ColourType side) {
     uint64_t squareU64 = 1ULL << square;
 
     uint64_t attacks = 0ULL;
 
-    if (side == engine::board::Colour::WHITE) {
+    if (side == engine::board::ColourType::WHITE) {
         attacks |= northEast(squareU64);
         attacks |= northWest(squareU64);
     } else {
@@ -92,13 +92,13 @@ constexpr uint64_t SECOND_RANK[2] = {
     return attacks;
 }
 
-[[nodiscard]] inline constexpr bool canSinglePush(int square, engine::board::Colour side, uint64_t empty) {
+[[nodiscard]] inline constexpr bool canSinglePush(int square, engine::board::ColourType side, uint64_t empty) {
     uint64_t squareU64 = 1ULL << square;
 
-    return (side == engine::board::Colour::WHITE) ? north(squareU64) & empty : south(squareU64) & empty;
+    return (side == engine::board::ColourType::WHITE) ? north(squareU64) & empty : south(squareU64) & empty;
 }
 
-[[nodiscard]] inline constexpr bool canDoublePush(int square, engine::board::Colour side, uint64_t empty) {
+[[nodiscard]] inline constexpr bool canDoublePush(int square, engine::board::ColourType side, uint64_t empty) {
     if (!canSinglePush(square, side, empty)) {
         return false;
     }
@@ -107,22 +107,22 @@ constexpr uint64_t SECOND_RANK[2] = {
 
     squareU64 &= SECOND_RANK[side];
 
-    return (side == engine::board::Colour::WHITE) ? north(north(squareU64)) & empty : south(south(squareU64)) & empty;
+    return (side == engine::board::ColourType::WHITE) ? north(north(squareU64)) & empty : south(south(squareU64)) & empty;
 }
 
-[[nodiscard]] inline constexpr int singlePush(int square, engine::board::Colour side) {
-    return (side == engine::board::Colour::WHITE) ? square + 8 : square - 8;
+[[nodiscard]] inline constexpr int singlePush(int square, engine::board::ColourType side) {
+    return (side == engine::board::ColourType::WHITE) ? square + 8 : square - 8;
 }
 
-[[nodiscard]] inline constexpr int doublePush(int square, engine::board::Colour side) {
-    return (side == engine::board::Colour::WHITE) ? square + 16 : square - 16;
+[[nodiscard]] inline constexpr int doublePush(int square, engine::board::ColourType side) {
+    return (side == engine::board::ColourType::WHITE) ? square + 16 : square - 16;
 }
 
-[[nodiscard]] inline constexpr uint64_t getSinglePushAll(uint64_t pawns, engine::board::Colour side, uint64_t empty) {
-    return (side == engine::board::Colour::WHITE) ? northAll(pawns) & empty : southAll(pawns) & empty;
+[[nodiscard]] inline constexpr uint64_t getSinglePushAll(uint64_t pawns, engine::board::ColourType side, uint64_t empty) {
+    return (side == engine::board::ColourType::WHITE) ? northAll(pawns) & empty : southAll(pawns) & empty;
 }
 
-[[nodiscard]] inline constexpr uint64_t getDoublePushAll(uint64_t pawns, engine::board::Colour side, uint64_t empty) {
+[[nodiscard]] inline constexpr uint64_t getDoublePushAll(uint64_t pawns, engine::board::ColourType side, uint64_t empty) {
     uint64_t secondRankPawns = pawns & SECOND_RANK[side];
 
     uint64_t thirdRankPawns = getSinglePushAll(secondRankPawns, side, empty);

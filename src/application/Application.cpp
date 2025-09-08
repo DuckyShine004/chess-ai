@@ -2,6 +2,10 @@
 
 #include "application/Application.hpp"
 
+#include "engine/board/Colour.hpp"
+
+using namespace engine::board;
+
 namespace application {
 
 Application::Application() {
@@ -30,7 +34,13 @@ void Application::run() {
 }
 
 void Application::update() {
-    sf::Vector2i mousePosition = sf::Mouse::getPosition(this->_window);
+    ColourType side = this->_engine.getSide();
+
+    if (side == ColourType::WHITE) {
+        this->_chess.move(side);
+    } else {
+        this->_engine.run();
+    }
 }
 
 void Application::render() {

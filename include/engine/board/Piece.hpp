@@ -4,7 +4,7 @@
 
 namespace engine::board {
 
-enum Piece : uint8_t {
+enum PieceType : uint8_t {
     PAWN = 0,
     KNIGHT = 1,
     BISHOP = 2,
@@ -34,7 +34,7 @@ inline constexpr const char* UNICODE_PIECES[2][12] = {
     }
 };
 
-inline constexpr Piece BACKRANK_PIECES[8] = {
+inline constexpr PieceType BACKRANK_PIECES[8] = {
     ROOK,
     KNIGHT,
     BISHOP,

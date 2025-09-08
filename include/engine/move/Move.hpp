@@ -14,25 +14,25 @@ struct Move {
     // Check what type of move it is (mask variable)
     int8_t enPassantSquare;
 
-    engine::board::Piece piece;
-    engine::board::Colour colour;
+    engine::board::PieceType piece;
+    engine::board::ColourType colour;
 
-    engine::board::Piece capturedPiece;
+    engine::board::PieceType capturedPiece;
 
     Move() {
-        this->capturedPiece = engine::board::Piece::EMPTY;
+        this->capturedPiece = engine::board::PieceType::EMPTY;
 
         this->enPassantSquare = -1;
     }
 
-    Move(int from, int to, engine::board::Piece piece, engine::board::Colour colour) {
+    Move(int from, int to, engine::board::PieceType piece, engine::board::ColourType colour) {
         this->from = from;
         this->to = to;
 
         this->piece = piece;
         this->colour = colour;
 
-        this->capturedPiece = engine::board::Piece::EMPTY;
+        this->capturedPiece = engine::board::PieceType::EMPTY;
 
         this->enPassantSquare = -1;
     }

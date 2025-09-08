@@ -6,7 +6,7 @@ namespace application::gui {
 
 Square::Square() = default;
 
-Square::Square(int rank, int file, Colour colour) : _file(file), _rank(rank), _size(SIZE), _colour(colour) {
+Square::Square(int rank, int file, ColourType colour) : _file(file), _rank(rank), _size(SIZE), _colour(colour) {
     float x = file * this->_size;
     float y = (7 - rank) * this->_size;
 
