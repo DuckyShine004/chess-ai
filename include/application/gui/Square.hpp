@@ -1,5 +1,6 @@
 #pragma once
 
+#include <SFML/System.hpp>
 #include <SFML/Graphics.hpp>
 
 #include "engine/board/Colour.hpp"
@@ -15,6 +16,8 @@ inline constexpr sf::Color COLOURS[2] = {
     sf::Color(181, 136, 99),
 };
 
+inline constexpr sf::Color ATTACK_COLOUR = sf::Color(106, 111, 64);
+
 class Square {
   public:
     Square();
@@ -24,6 +27,14 @@ class Square {
     application::gui::Piece &getPiece();
 
     bool isEmpty();
+
+    bool isCollideWithPoint(sf::Vector2i position);
+
+    int getSquare();
+
+    void setIsActive(bool isActive);
+
+    void setIsAttacked(bool isAttacked);
 
     void render(sf::RenderWindow &window);
 
@@ -40,6 +51,13 @@ class Square {
 
     float _x;
     float _y;
+
+    bool _isActive;
+    bool _isAttacked;
+
+    sf::Vector2f getCentre();
+
+    void renderAttack(sf::RenderWindow &window);
 };
 
 } // namespace application::gui

@@ -81,7 +81,7 @@ int Engine::getPly() {
     return this->_ply;
 }
 
-PieceType Engine::getPiece(int square, engine::board::ColourType side) {
+PieceType Engine::getPiece(int square, ColourType side) {
     return BoardUtility::getPiece(this->_bitboards, square, side);
 }
 

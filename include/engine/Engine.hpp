@@ -36,6 +36,8 @@ class Engine {
 
     engine::board::PieceType getPiece(int square, engine::board::ColourType side);
 
+    std::vector<engine::move::Move> generateMoves(engine::board::ColourType side);
+
     void runPerft(int depth);
 
     engine::board::ColourType getSide();
@@ -91,8 +93,6 @@ class Engine {
     void removePiece(int rank, int file, engine::board::PieceType piece, engine::board::ColourType side);
 
     void removePiece(int square, engine::board::PieceType piece, engine::board::ColourType side);
-
-    std::vector<engine::move::Move> generateMoves(engine::board::ColourType side);
 
     void generatePawnMoves(std::vector<engine::move::Move> &moves, engine::board::ColourType side);
 

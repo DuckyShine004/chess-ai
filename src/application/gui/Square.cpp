@@ -1,12 +1,18 @@
 #include "application/gui/Square.hpp"
 
+#include "utility/BoardUtility.hpp"
+#include <SFML/System/Vector2.hpp>
+
 using namespace engine::board;
+
+using namespace utility;
 
 namespace application::gui {
 
-Square::Square() = default;
+Square::Square() : _isActive(false), _isAttacked(false) {
+}
 
-Square::Square(int rank, int file, ColourType colour) : _file(file), _rank(rank), _size(SIZE), _colour(colour) {
+Square::Square(int rank, int file, ColourType colour) : _file(file), _rank(rank), _size(SIZE), _colour(colour), _isActive(false), _isAttacked(false) {
     this->_x = file * this->_size;
     this->_y = (7 - rank) * this->_size;
 
@@ -21,14 +27,61 @@ Piece &Square::getPiece() {
     return this->_piece;
 }
 
+int Square::getSquare() {
+    return BoardUtility::getSquare(this->_rank, this->_file);
+}
+
 bool Square::isEmpty() {
     return this->_piece.isEmpty();
+}
+
+bool Square::isCollideWithPoint(sf::Vector2i position) {
+    sf::FloatRect bounds = this->_square.getGlobalBounds();
+
+    sf::Vector2f fPosition(position.x, position.y);
+
+    std::cout << "Position: " << fPosition.x << ", " << fPosition.y << '\n';
+
+    return bounds.contains(fPosition);
+}
+
+void Square::setIsActive(bool isActive) {
+    this->_isActive = isActive;
+}
+
+void Square::setIsAttacked(bool isAttacked) {
+    this->_isAttacked = isAttacked;
+}
+
+sf::Vector2f Square::getCentre() {
+    float centreX = this->_x + (this->_size / 2.0f);
+    float centreY = this->_y + (this->_size / 2.0f);
+
+    return sf::Vector2f(centreX, centreY);
+}
+
+void Square::renderAttack(sf::RenderWindow &window) {
+    float radius = SIZE / 8.0f;
+
+    sf::Vector2f centre = this->getCentre();
+
+    sf::CircleShape circle(radius);
+
+    circle.setFillColor(ATTACK_COLOUR);
+
+    circle.setPosition(sf::Vector2f(centre.x - radius, centre.y - radius));
+
+    window.draw(circle);
 }
 
 void Square::render(sf::RenderWindow &window) {
     window.draw(this->_square);
 
     this->_piece.render(this->_x, this->_y, this->_size, window);
+
+    if (this->_isAttacked) {
+        this->renderAttack(window);
+    }
 }
 
 } // namespace application::gui

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 #include <SFML/Graphics.hpp>
 
 #include "application/gui/Board.hpp"
@@ -16,16 +18,24 @@ class Chess {
   public:
     Chess();
 
-    void move(engine::Engine &engine);
+    void move(sf::RenderWindow &window, engine::Engine &engine);
 
-    void update(engine::Engine &engine);
+    void update(sf::RenderWindow &window, engine::Engine &engine);
 
     void render(sf::RenderWindow &window);
 
   private:
     Board _board;
 
-    engine::move::Move getPlayerMove(engine::board::ColourType side);
+    application::gui::Square *_selectedSquare;
+
+    std::map<int, engine::move::Move> _activeMoves;
+
+    engine::move::Move *getPlayerMove(sf::RenderWindow &window, engine::Engine &engine, engine::board::ColourType side);
+
+    void handleFirstSelectedSquare(engine::Engine &engine, application::gui::Square *square, engine::board::ColourType side);
+
+    // engine::board::Move *handleSecondSelectedSquare();
 };
 
 } // namespace application::gui

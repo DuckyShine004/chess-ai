@@ -33,17 +33,27 @@ Board::Board() {
             }
         }
 
-        this->_squares[square] = Square(rank, file, colour);
+        this->_squares[square] = new Square(rank, file, colour);
     }
 }
 
-Square &Board::getSquare(sf::Vector2i mousePosition) {
-    return this->_squares[0];
+Square *Board::getSquare(int square) {
+    return this->_squares[square];
+}
+
+Square *Board::getSquare(sf::Vector2i mousePosition) {
+    for (Square *square : this->_squares) {
+        if (square->isCollideWithPoint(mousePosition)) {
+            return square;
+        }
+    }
+
+    return nullptr;
 }
 
 void Board::update(Engine &engine) {
     for (int square = 0; square < 64; ++square) {
-        Piece &piece = this->_squares[square].getPiece();
+        Piece &piece = this->_squares[square]->getPiece();
 
         piece.clear();
 
@@ -61,8 +71,8 @@ void Board::update(Engine &engine) {
 }
 
 void Board::render(sf::RenderWindow &window) {
-    for (Square &square : this->_squares) {
-        square.render(window);
+    for (Square *square : this->_squares) {
+        square->render(window);
     }
 }
 

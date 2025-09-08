@@ -1,3 +1,4 @@
+#include <SFML/Window/Mouse.hpp>
 #include <iostream>
 
 #include "application/Application.hpp"
@@ -19,6 +20,10 @@ Application::Application() {
 }
 
 void Application::initialise() {
+    sf::ContextSettings settings;
+
+    settings.antiAliasingLevel = 8;
+
     TextureManager::getInstance().initialise();
 }
 
@@ -34,6 +39,10 @@ void Application::run() {
             if (event->is<sf::Event::Closed>()) {
                 this->_window.close();
             }
+
+            // if (event->is<sf::Event::MouseButtonPressed>()) {
+            //     const auto& mouseEvent = event->get<sf::Event::MouseButtonPressed>();
+            // }
         }
 
         this->update();
@@ -55,7 +64,7 @@ void Application::update() {
     // } else {
     //     this->_engine.run();
     // }
-    this->_chess.update(this->_engine);
+    this->_chess.update(this->_window, this->_engine);
 }
 
 void Application::render() {

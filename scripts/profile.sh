@@ -1,4 +1,4 @@
 #!/bin/bash
 
-perf record --latency
+perf record --latency ./build/chess
 perf report --latency
