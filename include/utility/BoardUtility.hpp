@@ -43,7 +43,7 @@ inline void printBoard(uint64_t board[2][6]);
 }
 
 [[nodiscard]] inline constexpr int getPieceIndex(engine::board::PieceType piece, engine::board::ColourType colour) {
-    return (piece - 1) + 6 * colour;
+    return piece + 6 * colour;
 }
 
 [[nodiscard]] inline int getSquareFromPosition(std::string &position) {

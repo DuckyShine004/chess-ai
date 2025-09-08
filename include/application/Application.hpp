@@ -12,6 +12,8 @@ class Application {
   public:
     Application();
 
+    void initialise();
+
     void run();
 
   private:
@@ -24,8 +26,6 @@ class Application {
     void update();
 
     void render();
-
-    void renderBoard();
 };
 
 } // namespace application

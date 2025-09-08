@@ -42,6 +42,7 @@ build/
 
 # Cache
 .cache/logs/
+.cache/clangd/
 
 # QT
 *.pro.user

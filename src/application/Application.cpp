@@ -2,9 +2,13 @@
 
 #include "application/Application.hpp"
 
+#include "application/manager/TextureManager.hpp"
+
 #include "engine/board/Colour.hpp"
 
 using namespace engine::board;
+
+using namespace application::manager;
 
 namespace application {
 
@@ -12,6 +16,10 @@ Application::Application() {
     sf::VideoMode mode(sf::Vector2u(1440, 900));
 
     this->_window = sf::RenderWindow(mode, "Chess");
+}
+
+void Application::initialise() {
+    TextureManager::getInstance().initialise();
 }
 
 void Application::run() {

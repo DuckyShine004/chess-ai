@@ -7,18 +7,23 @@ namespace application::gui {
 Square::Square() = default;
 
 Square::Square(int rank, int file, ColourType colour) : _file(file), _rank(rank), _size(SIZE), _colour(colour) {
-    float x = file * this->_size;
-    float y = (7 - rank) * this->_size;
+    this->_x = file * this->_size;
+    this->_y = (7 - rank) * this->_size;
 
     this->_square = sf::RectangleShape(sf::Vector2f(SIZE, SIZE));
 
     this->_square.setFillColor(COLOURS[colour]);
 
-    this->_square.setPosition(sf::Vector2f(x, y));
+    this->_square.setPosition(sf::Vector2f(this->_x, this->_y));
+
+    this->_piece.setPiece(PieceType::PAWN);
+    this->_piece.setColour(ColourType::WHITE);
 }
 
 void Square::render(sf::RenderWindow &window) {
     window.draw(this->_square);
+
+    this->_piece.render(this->_x, this->_y, this->_size, window);
 }
 
 } // namespace application::gui

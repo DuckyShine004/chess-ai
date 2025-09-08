@@ -13,12 +13,20 @@ class Piece {
 
     Piece(engine::board::PieceType piece, engine::board::ColourType colour);
 
-    void render(sf::RenderWindow &window);
+    void setPiece(engine::board::PieceType piece);
+
+    void setColour(engine::board::ColourType colour);
+
+    void clear();
+
+    void render(float x, float y, float squareSize, sf::RenderWindow &window);
 
   private:
     engine::board::PieceType _piece;
 
     engine::board::ColourType _colour;
+
+    sf::Sprite getSprite(float x, float y, float squareSize);
 };
 
 } // namespace application::gui

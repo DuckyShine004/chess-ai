@@ -2,7 +2,9 @@
 
 #include <SFML/Graphics.hpp>
 
-#include <engine/board/Colour.hpp>
+#include "engine/board/Colour.hpp"
+
+#include "application/gui/Piece.hpp"
 
 namespace application::gui {
 
@@ -26,9 +28,14 @@ class Square {
 
     engine::board::ColourType _colour;
 
+    Piece _piece;
+
     float _file;
     float _rank;
     float _size;
+
+    float _x;
+    float _y;
 };
 
 } // namespace application::gui
