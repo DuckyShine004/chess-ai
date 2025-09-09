@@ -1,6 +1,3 @@
-#include <string>
-#include <stdexcept>
-
 #include <SFML/Graphics/Texture.hpp>
 
 #include "application/gui/Piece.hpp"
@@ -23,8 +20,16 @@ Piece::Piece() : _piece(PieceType::EMPTY), _colour(ColourType::NONE) {
 Piece::Piece(PieceType piece, ColourType colour) : _piece(piece), _colour(colour) {
 }
 
+PieceType Piece::getPiece() {
+    return this->_piece;
+}
+
 void Piece::setPiece(PieceType piece) {
     this->_piece = piece;
+}
+
+ColourType Piece::getColour() {
+    return this->_colour;
 }
 
 void Piece::setColour(ColourType colour) {

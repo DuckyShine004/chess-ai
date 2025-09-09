@@ -83,12 +83,12 @@ void Board::onHover(sf::RenderWindow &window) {
 
     Square *square = this->getSquare(mousePosition);
 
-    if (square == nullptr) {
-        return;
-    }
-
     if (this->_hoveredSquare != nullptr) {
         this->_hoveredSquare->setIsHovered(false);
+    }
+
+    if (square == nullptr) {
+        return;
     }
 
     square->setIsHovered(true);

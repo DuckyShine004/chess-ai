@@ -13,7 +13,11 @@ class Piece {
 
     Piece(engine::board::PieceType piece, engine::board::ColourType colour);
 
+    engine::board::PieceType getPiece();
+
     void setPiece(engine::board::PieceType piece);
+
+    engine::board::ColourType getColour();
 
     void setColour(engine::board::ColourType colour);
 

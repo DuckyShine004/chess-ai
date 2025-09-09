@@ -32,7 +32,7 @@ void Chess::move(sf::RenderWindow &window, Engine &engine, sf::Vector2i mousePos
         return;
     }
 
-    if (_selectedSquare == nullptr) {
+    if (_selectedSquare == nullptr || this->isOwnPiece(square, side)) {
         this->handleFirstSelectedSquare(engine, square, side);
     } else {
         this->handleSecondSelectedSquare(engine, square);
@@ -70,6 +70,12 @@ void Chess::handleFirstSelectedSquare(Engine &engine, Square *square, ColourType
         return;
     }
 
+    if (square == this->_selectedSquare) {
+        this->clearSelection();
+
+        return;
+    }
+
     std::vector<Move> moves = engine.generateMoves(side);
 
     for (Move &move : moves) {
@@ -101,6 +107,12 @@ void Chess::handleSecondSelectedSquare(Engine &engine, Square *square) {
     this->clearSelection();
 
     engine.makeMove(move);
+}
+
+bool Chess::isOwnPiece(Square *square, ColourType side) {
+    Piece &piece = square->getPiece();
+
+    return piece.getPiece() != PieceType::EMPTY && piece.getColour() == side;
 }
 
 } // namespace application::gui

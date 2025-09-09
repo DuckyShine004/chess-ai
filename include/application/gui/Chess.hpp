@@ -38,6 +38,8 @@ class Chess {
     void handleFirstSelectedSquare(engine::Engine &engine, application::gui::Square *square, engine::board::ColourType side);
 
     void handleSecondSelectedSquare(engine::Engine &engine, application::gui::Square *square);
+
+    bool isOwnPiece(application::gui::Square *square, engine::board::ColourType side);
 };
 
 } // namespace application::gui
