@@ -14,15 +14,19 @@ class Board {
 
     Square *getSquare(sf::Vector2i mousePosition);
 
-    void update(engine::Engine &engine);
+    void update(sf::RenderWindow &window, engine::Engine &engine);
 
     void render(sf::RenderWindow &window);
 
   private:
     Square *_squares[64];
 
+    Square *_hoveredSquare;
+
     float _x;
     float _y;
+
+    void onHover(sf::RenderWindow &window);
 };
 
 } // namespace application::gui

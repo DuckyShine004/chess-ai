@@ -18,7 +18,7 @@ class Chess {
   public:
     Chess();
 
-    void move(sf::RenderWindow &window, engine::Engine &engine);
+    void move(sf::RenderWindow &window, engine::Engine &engine, sf::Vector2i mousePosition);
 
     void update(sf::RenderWindow &window, engine::Engine &engine);
 
@@ -27,17 +27,17 @@ class Chess {
   private:
     Board _board;
 
+    bool _isClicking;
+
     application::gui::Square *_selectedSquare;
 
     std::map<int, engine::move::Move> _activeMoves;
-
-    engine::move::Move *getPlayerMove(sf::RenderWindow &window, engine::Engine &engine, engine::board::ColourType side);
 
     void clearSelection();
 
     void handleFirstSelectedSquare(engine::Engine &engine, application::gui::Square *square, engine::board::ColourType side);
 
-    // engine::board::Move *handleSecondSelectedSquare();
+    void handleSecondSelectedSquare(engine::Engine &engine, application::gui::Square *square);
 };
 
 } // namespace application::gui

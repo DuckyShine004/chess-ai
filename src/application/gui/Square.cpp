@@ -1,7 +1,6 @@
 #include "application/gui/Square.hpp"
 
 #include "utility/BoardUtility.hpp"
-#include <SFML/System/Vector2.hpp>
 
 using namespace engine::board;
 
@@ -12,7 +11,7 @@ namespace application::gui {
 Square::Square() : _isActive(false), _isAttacked(false) {
 }
 
-Square::Square(int rank, int file, ColourType colour) : _file(file), _rank(rank), _size(SIZE), _colour(colour), _isActive(false), _isAttacked(false) {
+Square::Square(int rank, int file, ColourType colour) : _file(file), _rank(rank), _size(SIZE), _colour(colour), _isActive(false), _isHovered(false), _isAttacked(false) {
     this->_x = file * this->_size;
     this->_y = (7 - rank) * this->_size;
 
@@ -47,8 +46,16 @@ void Square::setIsActive(bool isActive) {
     this->_isActive = isActive;
 }
 
+void Square::setIsHovered(bool isHovered) {
+    this->_isHovered = isHovered;
+}
+
 void Square::setIsAttacked(bool isAttacked) {
     this->_isAttacked = isAttacked;
+}
+
+bool Square::isAttacked() {
+    return this->_isAttacked;
 }
 
 sf::Vector2f Square::getCentre() {
@@ -72,6 +79,20 @@ void Square::renderAttack(sf::RenderWindow &window) {
     window.draw(circle);
 }
 
+void Square::renderBorder(sf::RenderWindow &window) {
+    sf::RectangleShape square(sf::Vector2f(this->_size, this->_size));
+
+    square.setPosition(sf::Vector2f(this->_x, this->_y));
+
+    square.setFillColor(sf::Color::Transparent);
+
+    square.setOutlineColor(BORDER_COLOUR);
+
+    square.setOutlineThickness(BORDER_THICKNESS);
+
+    window.draw(square);
+}
+
 void Square::render(sf::RenderWindow &window) {
     window.draw(this->_square);
 
@@ -79,6 +100,10 @@ void Square::render(sf::RenderWindow &window) {
 
     if (this->_isAttacked) {
         this->renderAttack(window);
+    }
+
+    if (this->_isActive || this->_isHovered) {
+        this->renderBorder(window);
     }
 }
 

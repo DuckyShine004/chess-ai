@@ -2,10 +2,10 @@ namespace logger {
 
 enum class Severity : int {
     INFO = 0,
-    DEBUG,
-    WARN,
-    ERROR,
-    FATAL,
+    DEBUG = 1,
+    WARN = 2,
+    ERROR = 3,
+    FATAL = 4,
 };
 
 // clang-format off

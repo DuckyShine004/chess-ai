@@ -34,6 +34,14 @@ void Application::run() {
             if (event->is<sf::Event::Closed>()) {
                 this->_window.close();
             }
+
+            if (event->is<sf::Event::MouseButtonPressed>()) {
+                const auto &mouseEvent = event->getIf<sf::Event::MouseButtonPressed>();
+
+                if (mouseEvent->button == sf::Mouse::Button::Left) {
+                    this->_chess.move(this->_window, this->_engine, mouseEvent->position);
+                }
+            }
         }
 
         this->update();

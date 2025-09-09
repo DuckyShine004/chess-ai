@@ -53,24 +53,15 @@ void Engine::parse(const char *fen) {
 }
 
 void Engine::run() {
-    this->printBoard();
+    SearchResult result = this->searchRoot(this->_SEARCH_DEPTH);
 
-    for (int i = 0; i < 50; ++i) {
-        SearchResult result = this->searchRoot(this->_SEARCH_DEPTH);
-
-        if (!result.isMoveFound) {
-            continue;
-        }
-
-        Move &move = result.bestMove;
-
-        this->makeMove(move);
-
-        this->printBoard();
-
-        std::cout << BoardUtility::getPositionFromSquare(move.from) << " -> " << BoardUtility::getPositionFromSquare(move.to);
-        std::cout << ": " << result.bestScore << '\n';
+    if (!result.isMoveFound) {
+        throw std::runtime_error("Engine could not find move...");
     }
+
+    Move &move = result.bestMove;
+
+    this->makeMove(move);
 }
 
 void Engine::switchSide() {

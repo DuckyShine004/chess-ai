@@ -12,7 +12,7 @@ using namespace utility;
 
 namespace application::gui {
 
-Board::Board() {
+Board::Board() : _hoveredSquare(nullptr) {
     for (int square = 0; square < 64; ++square) {
         int rank = BoardUtility::getRank(square);
         int file = BoardUtility::getFile(square);
@@ -51,7 +51,7 @@ Square *Board::getSquare(sf::Vector2i mousePosition) {
     return nullptr;
 }
 
-void Board::update(Engine &engine) {
+void Board::update(sf::RenderWindow &window, Engine &engine) {
     for (int square = 0; square < 64; ++square) {
         Piece &piece = this->_squares[square]->getPiece();
 
@@ -68,12 +68,32 @@ void Board::update(Engine &engine) {
             }
         }
     }
+
+    this->onHover(window);
 }
 
 void Board::render(sf::RenderWindow &window) {
     for (Square *square : this->_squares) {
         square->render(window);
     }
+}
+
+void Board::onHover(sf::RenderWindow &window) {
+    sf::Vector2i mousePosition = sf::Mouse::getPosition(window);
+
+    Square *square = this->getSquare(mousePosition);
+
+    if (square == nullptr) {
+        return;
+    }
+
+    if (this->_hoveredSquare != nullptr) {
+        this->_hoveredSquare->setIsHovered(false);
+    }
+
+    square->setIsHovered(true);
+
+    this->_hoveredSquare = square;
 }
 
 } // namespace application::gui

@@ -29,9 +29,9 @@ class TextureManager final : public Manager {
   public:
     static TextureManager &getInstance();
 
-    sf::Texture &getTexture(int id);
-
     void initialise() override;
+
+    sf::Texture &getTexture(int id);
 
   private:
     TextureManager();

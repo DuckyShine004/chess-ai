@@ -38,6 +38,8 @@ class Engine {
 
     std::vector<engine::move::Move> generateMoves(engine::board::ColourType side);
 
+    void makeMove(engine::move::Move &move);
+
     void runPerft(int depth);
 
     engine::board::ColourType getSide();
@@ -127,8 +129,6 @@ class Engine {
     bool isSquareAttacked(int square, engine::board::ColourType side);
 
     int getKingSquare(engine::board::ColourType side);
-
-    void makeMove(engine::move::Move &move);
 
     void unmakeMove(engine::move::Move &move);
 

@@ -11,12 +11,16 @@ namespace application::gui {
 
 inline constexpr float SIZE = 100.0f;
 
+inline constexpr float BORDER_THICKNESS = -5.0f;
+
 inline constexpr sf::Color COLOURS[2] = {
     sf::Color(240, 217, 181),
     sf::Color(181, 136, 99),
 };
 
 inline constexpr sf::Color ATTACK_COLOUR = sf::Color(106, 111, 64);
+
+inline constexpr sf::Color BORDER_COLOUR = sf::Color(0, 0, 0);
 
 class Square {
   public:
@@ -34,7 +38,11 @@ class Square {
 
     void setIsActive(bool isActive);
 
+    void setIsHovered(bool isHovered);
+
     void setIsAttacked(bool isAttacked);
+
+    bool isAttacked();
 
     void render(sf::RenderWindow &window);
 
@@ -53,11 +61,14 @@ class Square {
     float _y;
 
     bool _isActive;
+    bool _isHovered;
     bool _isAttacked;
 
     sf::Vector2f getCentre();
 
     void renderAttack(sf::RenderWindow &window);
+
+    void renderBorder(sf::RenderWindow &window);
 };
 
 } // namespace application::gui

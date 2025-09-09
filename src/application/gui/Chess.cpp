@@ -4,6 +4,8 @@
 
 #include "engine/board/Colour.hpp"
 
+#include "logger/LoggerMacros.hpp"
+
 using namespace engine;
 
 using namespace engine::board;
@@ -12,50 +14,41 @@ using namespace engine::move;
 
 namespace application::gui {
 
-Chess::Chess() : _selectedSquare(nullptr) {
+Chess::Chess() : _isClicking(false), _selectedSquare(nullptr) {
 }
 
-void Chess::move(sf::RenderWindow &window, Engine &engine) {
+void Chess::move(sf::RenderWindow &window, Engine &engine, sf::Vector2i mousePosition) {
     ColourType side = engine.getSide();
 
-    if (side == ColourType::WHITE) {
-        this->getPlayerMove(window, engine, side);
+    if (side != ColourType::WHITE) {
+        return;
+    }
+
+    Square *square = this->_board.getSquare(mousePosition);
+
+    if (square == nullptr) {
+        this->clearSelection();
+
+        return;
+    }
+
+    if (_selectedSquare == nullptr) {
+        this->handleFirstSelectedSquare(engine, square, side);
     } else {
-        engine.run();
+        this->handleSecondSelectedSquare(engine, square);
     }
 }
 
 void Chess::update(sf::RenderWindow &window, Engine &engine) {
-    this->move(window, engine);
+    if (engine.getSide() != ColourType::WHITE) {
+        engine.run();
+    }
 
-    this->_board.update(engine);
+    this->_board.update(window, engine);
 }
 
 void Chess::render(sf::RenderWindow &window) {
     this->_board.render(window);
-}
-
-Move *Chess::getPlayerMove(sf::RenderWindow &window, Engine &engine, ColourType side) {
-    if (!sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)) {
-        return nullptr;
-    }
-
-    Square *square = this->_board.getSquare(sf::Mouse::getPosition(window));
-
-    if (square == nullptr || square->isEmpty()) {
-        return nullptr;
-    }
-
-    // If first click, then handle the first click, otherwise, handle second click
-    // if (this->_isSquareSelected) {
-    //     return this->handle
-    // }
-    if (this->_selectedSquare != nullptr) {
-    }
-
-    this->handleFirstSelectedSquare(engine, square, side);
-
-    return nullptr;
 }
 
 void Chess::clearSelection() {
@@ -65,11 +58,17 @@ void Chess::clearSelection() {
 
     this->_activeMoves.clear();
 
-    this->_selectedSquare = nullptr;
+    if (this->_selectedSquare != nullptr) {
+        this->_selectedSquare->setIsActive(false);
+
+        this->_selectedSquare = nullptr;
+    }
 }
 
 void Chess::handleFirstSelectedSquare(Engine &engine, Square *square, ColourType side) {
-    this->clearSelection();
+    if (square->isEmpty()) {
+        return;
+    }
 
     std::vector<Move> moves = engine.generateMoves(side);
 
@@ -83,11 +82,25 @@ void Chess::handleFirstSelectedSquare(Engine &engine, Square *square, ColourType
         this->_activeMoves[move.to] = move;
     }
 
-    if (this->_activeMoves.empty()) {
+    if (!this->_activeMoves.empty()) {
+        this->_selectedSquare = square;
+
+        this->_selectedSquare->setIsActive(true);
+    }
+}
+
+void Chess::handleSecondSelectedSquare(Engine &engine, Square *square) {
+    if (!square->isAttacked()) {
+        this->clearSelection();
+
         return;
     }
 
-    this->_selectedSquare = square;
+    Move &move = this->_activeMoves[square->getSquare()];
+
+    this->clearSelection();
+
+    engine.makeMove(move);
 }
 
 } // namespace application::gui
