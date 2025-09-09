@@ -53,15 +53,19 @@ void Engine::parse(const char *fen) {
 }
 
 void Engine::run() {
-    SearchResult result = this->searchRoot(this->_SEARCH_DEPTH);
+    Move &move = this->getMove();
 
-    if (!result.isMoveFound) {
+    this->makeMove(move);
+}
+
+engine::move::Move &Engine::getMove() {
+    this->searchRoot(this->_SEARCH_DEPTH);
+
+    if (!this->_searchResult.isMoveFound) {
         throw std::runtime_error("Engine could not find move...");
     }
 
-    Move &move = result.bestMove;
-
-    this->makeMove(move);
+    return this->_searchResult.bestMove;
 }
 
 void Engine::switchSide() {
@@ -754,8 +758,8 @@ void Engine::unmakeMove(Move &move) {
     this->switchSide();
 }
 
-SearchResult Engine::searchRoot(int depth) {
-    SearchResult result;
+void Engine::searchRoot(int depth) {
+    this->_searchResult.clear();
 
     int alpha = -INT_MAX;
     int beta = INT_MAX;
@@ -769,12 +773,12 @@ SearchResult Engine::searchRoot(int depth) {
 
         this->unmakeMove(move);
 
-        if (score > result.bestScore) {
-            result.bestScore = score;
+        if (score > this->_searchResult.bestScore) {
+            this->_searchResult.bestScore = score;
 
-            result.bestMove = move;
+            this->_searchResult.bestMove = move;
 
-            result.isMoveFound = true;
+            this->_searchResult.isMoveFound = true;
 
             if (score > alpha) {
                 alpha = score;
@@ -785,8 +789,6 @@ SearchResult Engine::searchRoot(int depth) {
             break;
         }
     }
-
-    return result;
 }
 
 int Engine::search(int alpha, int beta, int depth) {

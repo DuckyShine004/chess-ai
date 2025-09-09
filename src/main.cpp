@@ -7,7 +7,13 @@ int main(int argc, char *argv[]) {
 
     application.initialise();
 
-    application.run();
+    // clang-format off
+    #ifdef NDEBUG
+        application.run();
+    #else
+        application.debug();
+    #endif
+    // clang-format on
 
     return 0;
 }

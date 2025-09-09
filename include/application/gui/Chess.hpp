@@ -29,9 +29,16 @@ class Chess {
 
     bool _isClicking;
 
+    int _previousFrom;
+    int _previousTo;
+
     application::gui::Square *_selectedSquare;
 
     std::map<int, engine::move::Move> _activeMoves;
+
+    void setPreviousSquares(int from, int to);
+
+    void clearPreviousSquares();
 
     void clearSelection();
 

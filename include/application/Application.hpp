@@ -18,6 +18,8 @@ class Application {
 
     void run();
 
+    void debug();
+
   private:
     engine::Engine _engine;
 

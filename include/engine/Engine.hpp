@@ -20,6 +20,12 @@ struct SearchResult {
 
     SearchResult() : bestScore(-INT_MAX), isMoveFound(false) {
     }
+
+    void clear() {
+        this->bestScore = -INT_MAX;
+
+        this->isMoveFound = false;
+    }
 };
 
 class Engine {
@@ -29,6 +35,8 @@ class Engine {
     void parse(const char *fen);
 
     void run();
+
+    engine::move::Move &getMove();
 
     void switchSide();
 
@@ -68,6 +76,8 @@ class Engine {
     uint16_t _fullMove;
 
     engine::board::ColourType _side;
+
+    SearchResult _searchResult;
 
     int _enPassantSquare;
     int _ply;
@@ -132,7 +142,7 @@ class Engine {
 
     void unmakeMove(engine::move::Move &move);
 
-    SearchResult searchRoot(int depth);
+    void searchRoot(int depth);
 
     int search(int alpha, int beta, int depth);
 

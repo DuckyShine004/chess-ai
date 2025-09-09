@@ -14,7 +14,7 @@ using namespace engine::move;
 
 namespace application::gui {
 
-Chess::Chess() : _isClicking(false), _selectedSquare(nullptr) {
+Chess::Chess() : _isClicking(false), _selectedSquare(nullptr), _previousFrom(-1), _previousTo(-1) {
 }
 
 void Chess::move(sf::RenderWindow &window, Engine &engine, sf::Vector2i mousePosition) {
@@ -41,7 +41,11 @@ void Chess::move(sf::RenderWindow &window, Engine &engine, sf::Vector2i mousePos
 
 void Chess::update(sf::RenderWindow &window, Engine &engine) {
     if (engine.getSide() != ColourType::WHITE) {
-        engine.run();
+        Move &move = engine.getMove();
+
+        this->setPreviousSquares(move.from, move.to);
+
+        engine.makeMove(move);
     }
 
     this->_board.update(window, engine);
@@ -49,6 +53,25 @@ void Chess::update(sf::RenderWindow &window, Engine &engine) {
 
 void Chess::render(sf::RenderWindow &window) {
     this->_board.render(window);
+}
+
+void Chess::setPreviousSquares(int from, int to) {
+    this->clearPreviousSquares();
+
+    this->_board.getSquare(from)->setIsPrevious(true);
+    this->_board.getSquare(to)->setIsPrevious(true);
+
+    this->_previousFrom = from;
+    this->_previousTo = to;
+}
+
+void Chess::clearPreviousSquares() {
+    if (this->_previousFrom == -1 || this->_previousTo == -1) {
+        return;
+    }
+
+    this->_board.getSquare(this->_previousFrom)->setIsPrevious(false);
+    this->_board.getSquare(this->_previousTo)->setIsPrevious(false);
 }
 
 void Chess::clearSelection() {
@@ -103,6 +126,8 @@ void Chess::handleSecondSelectedSquare(Engine &engine, Square *square) {
     }
 
     Move &move = this->_activeMoves[square->getSquare()];
+
+    this->setPreviousSquares(this->_selectedSquare->getSquare(), square->getSquare());
 
     this->clearSelection();
 

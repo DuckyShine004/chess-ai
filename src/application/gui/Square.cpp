@@ -17,7 +17,7 @@ Square::Square(int rank, int file, ColourType colour) : _file(file), _rank(rank)
 
     this->_square = sf::RectangleShape(sf::Vector2f(SIZE, SIZE));
 
-    this->_square.setFillColor(COLOURS[colour]);
+    this->_square.setFillColor(SQUARE_COLOURS[colour]);
 
     this->_square.setPosition(sf::Vector2f(this->_x, this->_y));
 }
@@ -52,6 +52,14 @@ void Square::setIsHovered(bool isHovered) {
 
 void Square::setIsAttacked(bool isAttacked) {
     this->_isAttacked = isAttacked;
+}
+
+void Square::setIsPrevious(bool isPrevious) {
+    if (isPrevious) {
+        this->_square.setFillColor(PREVIOUS_COLOURS[this->_colour]);
+    } else {
+        this->_square.setFillColor(SQUARE_COLOURS[this->_colour]);
+    }
 }
 
 bool Square::isAttacked() {

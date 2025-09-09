@@ -25,10 +25,6 @@ void Application::initialise() {
 }
 
 void Application::run() {
-    // for (int depth = 1; depth <= 5; ++depth) {
-    //     this->_engine.runPerft(depth);
-    // }
-
     while (this->_window.isOpen()) {
         while (const std::optional event = this->_window.pollEvent()) {
             if (event->is<sf::Event::Closed>()) {
@@ -46,6 +42,12 @@ void Application::run() {
 
         this->update();
         this->render();
+    }
+}
+
+void Application::debug() {
+    for (int depth = 1; depth <= 5; ++depth) {
+        this->_engine.runPerft(depth);
     }
 }
 
