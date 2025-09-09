@@ -40,8 +40,6 @@ bool Square::isCollideWithPoint(sf::Vector2i position) {
 
     sf::Vector2f fPosition(position.x, position.y);
 
-    std::cout << "Position: " << fPosition.x << ", " << fPosition.y << '\n';
-
     return bounds.contains(fPosition);
 }
 

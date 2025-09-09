@@ -1,11 +1,8 @@
 #include <SFML/Window/Mouse.hpp>
-#include <iostream>
 
 #include "application/Application.hpp"
 
 #include "application/manager/TextureManager.hpp"
-
-#include "engine/board/Colour.hpp"
 
 using namespace engine::board;
 
@@ -28,8 +25,6 @@ void Application::initialise() {
 }
 
 void Application::run() {
-    // this->_engine.run();
-
     // for (int depth = 1; depth <= 5; ++depth) {
     //     this->_engine.runPerft(depth);
     // }
@@ -39,10 +34,6 @@ void Application::run() {
             if (event->is<sf::Event::Closed>()) {
                 this->_window.close();
             }
-
-            // if (event->is<sf::Event::MouseButtonPressed>()) {
-            //     const auto& mouseEvent = event->get<sf::Event::MouseButtonPressed>();
-            // }
         }
 
         this->update();
@@ -51,24 +42,11 @@ void Application::run() {
 }
 
 void Application::update() {
-    // Move move = this->_chess.getMove(engine);
-
-    // if (move) {
-    // this->_chess.move(move);
-    // }
-    // this->_chess.move(this->_engine);
-    // ColourType side = this->_engine.getSide();
-
-    // if (side == ColourType::WHITE) {
-    //     this->_chess.move(side);
-    // } else {
-    //     this->_engine.run();
-    // }
     this->_chess.update(this->_window, this->_engine);
 }
 
 void Application::render() {
-    this->_window.clear(sf::Color(22, 21, 18));
+    this->_window.clear(BACKGROUND_COLOUR);
 
     this->_chess.render(this->_window);
 

@@ -8,6 +8,8 @@
 
 namespace application {
 
+inline constexpr sf::Color BACKGROUND_COLOUR = sf::Color(22, 21, 18);
+
 class Application {
   public:
     Application();

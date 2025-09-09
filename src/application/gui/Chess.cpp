@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include <SFML/Window.hpp>
 
 #include "application/gui/Chess.hpp"
@@ -52,14 +50,26 @@ Move *Chess::getPlayerMove(sf::RenderWindow &window, Engine &engine, ColourType 
     // if (this->_isSquareSelected) {
     //     return this->handle
     // }
+    if (this->_selectedSquare != nullptr) {
+    }
 
     this->handleFirstSelectedSquare(engine, square, side);
 
     return nullptr;
 }
 
-void Chess::handleFirstSelectedSquare(Engine &engine, Square *square, ColourType side) {
+void Chess::clearSelection() {
+    for (const auto &[square, move] : this->_activeMoves) {
+        this->_board.getSquare(move.to)->setIsAttacked(false);
+    }
+
     this->_activeMoves.clear();
+
+    this->_selectedSquare = nullptr;
+}
+
+void Chess::handleFirstSelectedSquare(Engine &engine, Square *square, ColourType side) {
+    this->clearSelection();
 
     std::vector<Move> moves = engine.generateMoves(side);
 
@@ -71,6 +81,10 @@ void Chess::handleFirstSelectedSquare(Engine &engine, Square *square, ColourType
         this->_board.getSquare(move.to)->setIsAttacked(true);
 
         this->_activeMoves[move.to] = move;
+    }
+
+    if (this->_activeMoves.empty()) {
+        return;
     }
 
     this->_selectedSquare = square;

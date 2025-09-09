@@ -35,8 +35,8 @@ namespace engine {
 Engine::Engine() : _ply(0) {
     this->initialise();
 
-    // this->parse(this->_INITIAL_FEN);
-    this->parse(this->_RANDOM_FEN);
+    this->parse(this->_INITIAL_FEN);
+    // this->parse(this->_RANDOM_FEN);
 }
 
 void Engine::parse(const char *fen) {

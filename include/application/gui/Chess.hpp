@@ -33,6 +33,8 @@ class Chess {
 
     engine::move::Move *getPlayerMove(sf::RenderWindow &window, engine::Engine &engine, engine::board::ColourType side);
 
+    void clearSelection();
+
     void handleFirstSelectedSquare(engine::Engine &engine, application::gui::Square *square, engine::board::ColourType side);
 
     // engine::board::Move *handleSecondSelectedSquare();
