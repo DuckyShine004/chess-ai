@@ -58,7 +58,7 @@ class Engine {
     static inline constexpr const char *_INITIAL_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     static inline constexpr const char *_RANDOM_FEN = "3B1Qr1/P2p1bP1/1P1p1pk1/pNnP1ppR/P1PPpR2/pBq2P2/1r1N1n2/2b2K2 w - - 0 1";
 
-    static inline constexpr uint8_t _INITIAL_CASTLING_RIGHTS = 0xF;
+    static inline constexpr uint8_t _INITIAL_CASTLE_RIGHTS = 0xF;
 
     static inline constexpr int _SEARCH_DEPTH = 5;
 
@@ -70,7 +70,7 @@ class Engine {
     uint64_t _occupancies[2];
     uint64_t _occupancyBoth;
 
-    uint8_t _castlingRights;
+    uint8_t _castleRights;
 
     uint16_t _halfMove;
     uint16_t _fullMove;
@@ -88,7 +88,7 @@ class Engine {
 
     void parseFenSide(std::string &side);
 
-    void parseFenCastlingRights(std::string &castlingRights);
+    void parseFenCastleRights(std::string &castleRights);
 
     void parseFenEnPassantSquare(std::string &enPassantSquare);
 
@@ -118,6 +118,8 @@ class Engine {
 
     void generateKingMoves(std::vector<engine::move::Move> &moves, engine::board::ColourType side);
 
+    void generateCastleMoves(std::vector<engine::move::Move> &moves, engine::board::ColourType side);
+
     std::vector<engine::move::Move> generateCaptures(engine::board::ColourType side);
 
     void generatePawnCaptures(std::vector<engine::move::Move> &captures, engine::board::ColourType side);
@@ -137,6 +139,8 @@ class Engine {
     bool isInCheck(engine::board::ColourType side);
 
     bool isSquareAttacked(int square, engine::board::ColourType side);
+
+    bool areSquaresAttacked(uint64_t squares, engine::board::ColourType side);
 
     int getKingSquare(engine::board::ColourType side);
 

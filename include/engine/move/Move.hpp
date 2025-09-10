@@ -7,32 +7,38 @@
 
 namespace engine::move {
 
+enum MoveType : uint8_t {
+    QUIET = 0,
+    CAPTURE = 1,
+    EN_PASSANT = 2,
+    KING_CASTLE = 3,
+    QUEEN_CASTLE = 4,
+    NONE = 5,
+};
+
 struct Move {
-    enum MoveType : uint8_t {
-        NONE = 0,
-    };
-
-    int from; // from square index
+    int from;
     int to;
-
-    // Check what type of move it is (mask variable)
-    int8_t enPassantSquare;
 
     engine::board::PieceType piece;
     engine::board::ColourType colour;
 
     engine::board::PieceType capturedPiece;
 
-    Move() {
-        this->capturedPiece = engine::board::PieceType::EMPTY;
+    MoveType moveType;
 
-        this->enPassantSquare = -1;
+    Move() {
+        this->initialise();
     }
 
     Move(int from, int to, engine::board::PieceType piece, engine::board::ColourType colour) : from(from), to(to), piece(piece), colour(colour) {
+        this->initialise();
+    }
+
+    void initialise() {
         this->capturedPiece = engine::board::PieceType::EMPTY;
 
-        this->enPassantSquare = -1;
+        this->moveType = MoveType::NONE;
     }
 };
 

@@ -46,7 +46,7 @@ void Engine::parse(const char *fen) {
 
     this->parseFenPosition(states[0]);
     this->parseFenSide(states[1]);
-    this->parseFenCastlingRights(states[2]);
+    this->parseFenCastleRights(states[2]);
     this->parseFenEnPassantSquare(states[3]);
     this->parseFenHalfMove(states[4]);
     this->parseFenFullMove(states[5]);
@@ -137,26 +137,26 @@ void Engine::parseFenSide(std::string &side) {
     this->_side = (side == "w") ? ColourType::WHITE : ColourType::BLACK;
 }
 
-void Engine::parseFenCastlingRights(std::string &castlingRights) {
-    this->_castlingRights = 0;
+void Engine::parseFenCastleRights(std::string &castleRights) {
+    this->_castleRights = 0;
 
-    if (castlingRights == "-") {
+    if (castleRights == "-") {
         return;
     }
 
-    for (char c : castlingRights) {
+    for (char c : castleRights) {
         switch (c) {
         case 'K':
-            this->_castlingRights |= Castle::WHITE_KING;
+            this->_castleRights |= (1ULL << Castle::WHITE_KING);
             break;
         case 'Q':
-            this->_castlingRights |= Castle::WHITE_QUEEN;
+            this->_castleRights |= (1ULL << Castle::WHITE_QUEEN);
             break;
         case 'k':
-            this->_castlingRights |= Castle::BLACK_KING;
+            this->_castleRights |= (1ULL << Castle::BLACK_KING);
             break;
         case 'q':
-            this->_castlingRights |= Castle::BLACK_QUEEN;
+            this->_castleRights |= (1ULL << Castle::BLACK_QUEEN);
             break;
         default:
             break;
@@ -237,16 +237,21 @@ void Engine::removePiece(int square, PieceType piece, ColourType side) {
     this->_occupancyBoth = this->_occupancies[0] | this->_occupancies[1];
 }
 
-// TODO Sort moves by move type
+// TODO: Sort moves by move type
 std::vector<Move> Engine::generateMoves(ColourType side) {
     std::vector<Move> moves;
+
+    this->generateKingMoves(moves, side);
+
+    // if (this->isInCheck(side)) {
+    //     return moves;
+    // }
 
     this->generatePawnMoves(moves, side);
     this->generateKnightMoves(moves, side);
     this->generateBishopMoves(moves, side);
     this->generateRookMoves(moves, side);
     this->generateQueenMoves(moves, side);
-    this->generateKingMoves(moves, side);
 
     return moves;
 }
@@ -270,7 +275,7 @@ void Engine::generatePawnMoves(std::vector<Move> &moves, ColourType side) {
                 moves.push_back(std::move(move));
             }
 
-            // TODO Pawn promotion
+            // TODO: Pawn promotion
         }
 
         if (Pawn::canDoublePush(from, side, empty)) {
@@ -299,9 +304,9 @@ void Engine::generatePawnMoves(std::vector<Move> &moves, ColourType side) {
             }
         }
 
-        // TODO Check if we can capture enpassant square
+        // TODO: Check if we can capture enpassant square
 
-        // TODO Handle capture into pawn promotion
+        // TODO: Handle capture into pawn promotion
     }
 }
 
@@ -499,17 +504,62 @@ void Engine::generateKingMoves(std::vector<Move> &moves, ColourType side) {
             }
         }
     }
+
+    // this->generateCastleMoves(moves, side);
+    // TODO: Castling
+}
+
+void Engine::generateCastleMoves(std::vector<Move> &moves, ColourType side) {
+    const Castle kingSide = (side == ColourType::WHITE) ? Castle::WHITE_KING : Castle::BLACK_KING;
+    const Castle queenSide = (side == ColourType::WHITE) ? Castle::WHITE_QUEEN : Castle::BLACK_QUEEN;
+
+    if (this->isInCheck(side)) {
+        return;
+    }
+
+    // Check if we can king side castle
+    if (this->_castleRights & (1ULL << kingSide)) {
+        bool isEmpty = (this->_occupancies[side] & CASTLE_EMPTY_MASK[kingSide]) == 0ULL;
+
+        bool isSafe = !this->areSquaresAttacked(CASTLE_SAFE_MASK[kingSide], side);
+
+        if (isEmpty && isSafe) {
+            // Create castling move
+            Move move;
+
+            moves.push_back(std::move(move));
+        }
+    }
+
+    // Check if we can castle queen side
+    if (this->_castleRights & (1ULL << queenSide)) {
+        bool isEmpty = (this->_occupancies[side] & CASTLE_EMPTY_MASK[queenSide]) == 0ULL;
+
+        bool isSafe = !this->areSquaresAttacked(CASTLE_SAFE_MASK[queenSide], side);
+
+        if (isEmpty && isSafe) {
+            // Create castling queen side
+            Move move;
+
+            moves.push_back(std::move(move));
+        }
+    }
 }
 
 std::vector<Move> Engine::generateCaptures(ColourType side) {
     std::vector<Move> captures;
+
+    this->generateKingCaptures(captures, side);
+
+    // if (this->isInCheck(side)) {
+    //     return captures;
+    // }
 
     this->generatePawnCaptures(captures, side);
     this->generateKnightCaptures(captures, side);
     this->generateBishopCaptures(captures, side);
     this->generateRookCaptures(captures, side);
     this->generateQueenCaptures(captures, side);
-    this->generateKingCaptures(captures, side);
 
     return captures;
 }
@@ -538,9 +588,9 @@ void Engine::generatePawnCaptures(std::vector<Move> &captures, ColourType side) 
             }
         }
 
-        // TODO Check if we can capture enpassant square
+        // TODO: Check if we can capture enpassant square
 
-        // TODO Handle pawn capture into promotion
+        // TODO: Handle pawn capture into promotion
     }
 }
 
@@ -677,6 +727,8 @@ void Engine::generateKingCaptures(std::vector<Move> &captures, ColourType side) 
                 captures.push_back(std::move(move));
             }
         }
+
+        // TODO: check
     }
 }
 
@@ -721,6 +773,21 @@ bool Engine::isSquareAttacked(int square, ColourType side) {
 
     if (rookAttacks & (this->_bitboards[otherSide][PieceType::ROOK] | this->_bitboards[otherSide][PieceType::QUEEN])) {
         return true;
+    }
+
+    return false;
+}
+
+bool Engine::areSquaresAttacked(uint64_t squares, ColourType side) {
+    ColourType otherSide = BoardUtility::getOtherSide(side);
+
+    // PERF: Optimise later if it becomes an issue
+    while (squares) {
+        int square = BitUtility::popLSB(squares);
+
+        if (this->isSquareAttacked(square, side)) {
+            return true;
+        }
     }
 
     return false;
@@ -796,7 +863,7 @@ int Engine::search(int alpha, int beta, int depth) {
         return this->quiescence(alpha, beta);
     }
 
-    // TODO Implement null move pruning- condition
+    // TODO: Implement null move pruning- condition
     // if (1) {
     //     int reduction = 2; // NMP reduction
 
@@ -872,7 +939,7 @@ int Engine::quiescence(int alpha, int beta) {
     return bestScore;
 }
 
-// TODO implement mobility score
+// TODO: implement mobility score
 int Engine::evaluate(ColourType side) {
     int score = 0;
 
@@ -927,7 +994,7 @@ void Engine::reset() {
     memset(this->_occupancies, 0ULL, sizeof(this->_occupancies));
 
     this->_occupancyBoth = 0ULL;
-    this->_castlingRights = this->_INITIAL_CASTLING_RIGHTS;
+    this->_castleRights = this->_INITIAL_CASTLE_RIGHTS;
     this->_side = ColourType::WHITE;
     this->_enPassantSquare = -1;
 }

@@ -32,7 +32,11 @@ void Chess::move(sf::RenderWindow &window, Engine &engine, sf::Vector2i mousePos
         return;
     }
 
-    if (_selectedSquare == nullptr || this->isOwnPiece(square, side)) {
+    if (square != this->_selectedSquare && this->isOwnPiece(square, side)) {
+        this->clearSelection();
+    }
+
+    if (_selectedSquare == nullptr) {
         this->handleFirstSelectedSquare(engine, square, side);
     } else {
         this->handleSecondSelectedSquare(engine, square);
