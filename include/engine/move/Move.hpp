@@ -53,11 +53,11 @@ struct Move {
         }
 
         if (moveType == MoveType::BISHOP_PROMOTION || moveType == MoveType::BISHOP_PROMOTION_CAPTURE) {
-            return engine::board::PieceType::KNIGHT;
+            return engine::board::PieceType::BISHOP;
         }
 
         if (moveType == MoveType::ROOK_PROMOTION || moveType == MoveType::ROOK_PROMOTION_CAPTURE) {
-            return engine::board::PieceType::KNIGHT;
+            return engine::board::PieceType::ROOK;
         }
 
         return engine::board::PieceType::QUEEN;

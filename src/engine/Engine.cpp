@@ -967,6 +967,9 @@ void Engine::makeMove(Move &move) {
         // Remove the captured piece
         this->removePiece(move.to, capturedPiece, otherSide);
 
+        // Remove the pawn at the to square
+        this->removePiece(move.to, fromPiece, this->_side);
+
         // Set the promoted piece
         this->createPiece(move.to, move.getPromotionPiece(), this->_side);
 
