@@ -3,42 +3,64 @@
 #include <cstdint>
 
 #include "engine/board/Piece.hpp"
-#include "engine/board/Colour.hpp"
 
 namespace engine::move {
 
 enum MoveType : uint8_t {
     QUIET = 0,
     CAPTURE = 1,
-    EN_PASSANT = 2,
-    KING_CASTLE = 3,
-    QUEEN_CASTLE = 4,
-    NONE = 5,
+    DOUBLE_PAWN = 2,
+    EN_PASSANT = 3,
+    KING_CASTLE = 4,
+    QUEEN_CASTLE = 5,
+    KNIGHT_PROMOTION = 6,
+    BISHOP_PROMOTION = 7,
+    ROOK_PROMOTION = 8,
+    QUEEN_PROMOTION = 9,
+    KNIGHT_PROMOTION_CAPTURE = 10,
+    BISHOP_PROMOTION_CAPTURE = 11,
+    ROOK_PROMOTION_CAPTURE = 12,
+    QUEEN_PROMOTION_CAPTURE = 13,
 };
 
 struct Move {
     int from;
     int to;
 
-    engine::board::PieceType piece;
-    engine::board::ColourType colour;
-
-    engine::board::PieceType capturedPiece;
-
     MoveType moveType;
 
-    Move() {
-        this->initialise();
+    Move() : moveType(MoveType::QUIET) {
     }
 
-    Move(int from, int to, engine::board::PieceType piece, engine::board::ColourType colour) : from(from), to(to), piece(piece), colour(colour) {
-        this->initialise();
+    Move(int from, int to, MoveType moveType) : from(from), to(to), moveType(moveType) {
     }
 
-    void initialise() {
-        this->capturedPiece = engine::board::PieceType::EMPTY;
+    bool isPromotion() {
+        return moveType >= MoveType::KNIGHT_PROMOTION && moveType <= MoveType::QUEEN_PROMOTION_CAPTURE;
+    }
 
-        this->moveType = MoveType::NONE;
+    bool isPromotionQuiet() {
+        return moveType >= MoveType::KNIGHT_PROMOTION && moveType <= MoveType::QUEEN_PROMOTION;
+    }
+
+    bool isPromotionCapture() {
+        return moveType >= MoveType::KNIGHT_PROMOTION_CAPTURE && moveType <= MoveType::QUEEN_PROMOTION_CAPTURE;
+    }
+
+    engine::board::PieceType getPromotionPiece() {
+        if (moveType == MoveType::KNIGHT_PROMOTION || moveType == MoveType::KNIGHT_PROMOTION_CAPTURE) {
+            return engine::board::PieceType::KNIGHT;
+        }
+
+        if (moveType == MoveType::BISHOP_PROMOTION || moveType == MoveType::BISHOP_PROMOTION_CAPTURE) {
+            return engine::board::PieceType::BISHOP;
+        }
+
+        if (moveType == MoveType::ROOK_PROMOTION || moveType == MoveType::ROOK_PROMOTION_CAPTURE) {
+            return engine::board::PieceType::ROOK;
+        }
+
+        return engine::board::PieceType::QUEEN;
     }
 };
 

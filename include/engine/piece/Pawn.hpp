@@ -14,6 +14,11 @@ constexpr uint64_t SECOND_RANK[2] = {
     0x00FF000000000000ULL,
 };
 
+constexpr uint64_t ENEMY_BACK_RANK[2] = {
+    0xFF00000000000000ULL,
+    0x00000000000000FFULL,
+};
+
 [[nodiscard]] inline constexpr uint64_t north(uint64_t square);
 
 [[nodiscard]] inline constexpr uint64_t south(uint64_t square);

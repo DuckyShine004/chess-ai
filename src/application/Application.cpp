@@ -4,6 +4,8 @@
 
 #include "application/manager/TextureManager.hpp"
 
+#include "engine/board/Fen.hpp"
+
 using namespace engine::board;
 
 using namespace application::manager;
@@ -46,6 +48,10 @@ void Application::run() {
 }
 
 void Application::debug() {
+    this->_engine.parse(POSITIONS[4]);
+
+    this->_engine.printBoard();
+
     for (int depth = 1; depth <= 5; ++depth) {
         this->_engine.runPerft(depth);
     }
