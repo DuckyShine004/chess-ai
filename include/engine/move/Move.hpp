@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <utility>
 
 #include "engine/board/Piece.hpp"
 
@@ -61,6 +62,23 @@ struct Move {
         }
 
         return engine::board::PieceType::QUEEN;
+    }
+};
+
+struct MoveList {
+    Move moves[64];
+
+    int size;
+
+    MoveList() : size(0) {
+    }
+
+    void add(int from, int to, MoveType moveType) {
+        moves[size++] = Move(from, to, moveType);
+    }
+
+    void add(const Move &move) {
+        moves[size++] = move;
     }
 };
 

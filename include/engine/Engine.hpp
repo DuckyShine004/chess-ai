@@ -46,7 +46,7 @@ class Engine {
 
     engine::board::PieceType getPiece(int square, engine::board::ColourType side);
 
-    std::vector<engine::move::Move> generateMoves(engine::board::ColourType side);
+    engine::move::MoveList generateMoves(engine::board::ColourType side);
 
     void makeMove(engine::move::Move &move);
 
@@ -57,11 +57,9 @@ class Engine {
     void printBoard();
 
   private:
-    static inline constexpr const char *_RANDOM_FEN = "3B1Qr1/P2p1bP1/1P1p1pk1/pNnP1ppR/P1PPpR2/pBq2P2/1r1N1n2/2b2K2 w - - 0 1";
-
     static inline constexpr uint8_t _INITIAL_CASTLE_RIGHTS = 0xF;
 
-    static inline constexpr int _SEARCH_DEPTH = 1;
+    static inline constexpr int _SEARCH_DEPTH = 4;
 
     static inline uint64_t _PAWN_ATTACKS[2][64];
     static inline uint64_t _KNIGHT_ATTACKS[64];
@@ -117,33 +115,33 @@ class Engine {
 
     void removePiece(int square, engine::board::PieceType piece, engine::board::ColourType side);
 
-    void generatePawnMoves(std::vector<engine::move::Move> &moves, engine::board::ColourType side);
+    void generatePawnMoves(engine::move::MoveList &moves, engine::board::ColourType side);
 
-    void generateKnightMoves(std::vector<engine::move::Move> &moves, engine::board::ColourType side);
+    void generateKnightMoves(engine::move::MoveList &moves, engine::board::ColourType side);
 
-    void generateBishopMoves(std::vector<engine::move::Move> &moves, engine::board::ColourType side);
+    void generateBishopMoves(engine::move::MoveList &moves, engine::board::ColourType side);
 
-    void generateRookMoves(std::vector<engine::move::Move> &moves, engine::board::ColourType side);
+    void generateRookMoves(engine::move::MoveList &moves, engine::board::ColourType side);
 
-    void generateQueenMoves(std::vector<engine::move::Move> &moves, engine::board::ColourType side);
+    void generateQueenMoves(engine::move::MoveList &moves, engine::board::ColourType side);
 
-    void generateKingMoves(std::vector<engine::move::Move> &moves, engine::board::ColourType side);
+    void generateKingMoves(engine::move::MoveList &moves, engine::board::ColourType side);
 
-    void generateCastleMoves(std::vector<engine::move::Move> &moves, engine::board::ColourType side);
+    void generateCastleMoves(engine::move::MoveList &moves, engine::board::ColourType side);
 
-    std::vector<engine::move::Move> generateCaptures(engine::board::ColourType side);
+    engine::move::MoveList generateCaptures(engine::board::ColourType side);
 
-    void generatePawnCaptures(std::vector<engine::move::Move> &captures, engine::board::ColourType side);
+    void generatePawnCaptures(engine::move::MoveList &captures, engine::board::ColourType side);
 
-    void generateKnightCaptures(std::vector<engine::move::Move> &captures, engine::board::ColourType side);
+    void generateKnightCaptures(engine::move::MoveList &captures, engine::board::ColourType side);
 
-    void generateBishopCaptures(std::vector<engine::move::Move> &captures, engine::board::ColourType side);
+    void generateBishopCaptures(engine::move::MoveList &captures, engine::board::ColourType side);
 
-    void generateRookCaptures(std::vector<engine::move::Move> &captures, engine::board::ColourType side);
+    void generateRookCaptures(engine::move::MoveList &captures, engine::board::ColourType side);
 
-    void generateQueenCaptures(std::vector<engine::move::Move> &captures, engine::board::ColourType side);
+    void generateQueenCaptures(engine::move::MoveList &captures, engine::board::ColourType side);
 
-    void generateKingCaptures(std::vector<engine::move::Move> &captures, engine::board::ColourType side);
+    void generateKingCaptures(engine::move::MoveList &captures, engine::board::ColourType side);
 
     bool isMoveLegal(engine::move::Move &move, engine::board::ColourType side);
 
