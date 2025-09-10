@@ -5,9 +5,11 @@
 #include <cstdint>
 #include <climits>
 
+#include "engine/board/Piece.hpp"
 #include "engine/board/Colour.hpp"
 
 #include "engine/move/Move.hpp"
+#include "engine/move/Undo.hpp"
 
 namespace engine {
 
@@ -55,12 +57,11 @@ class Engine {
     void printBoard();
 
   private:
-    static inline constexpr const char *_INITIAL_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     static inline constexpr const char *_RANDOM_FEN = "3B1Qr1/P2p1bP1/1P1p1pk1/pNnP1ppR/P1PPpR2/pBq2P2/1r1N1n2/2b2K2 w - - 0 1";
 
     static inline constexpr uint8_t _INITIAL_CASTLE_RIGHTS = 0xF;
 
-    static inline constexpr int _SEARCH_DEPTH = 5;
+    static inline constexpr int _SEARCH_DEPTH = 1;
 
     static inline uint64_t _PAWN_ATTACKS[2][64];
     static inline uint64_t _KNIGHT_ATTACKS[64];
@@ -82,6 +83,8 @@ class Engine {
     int _enPassantSquare;
     int _ply;
 
+    std::vector<engine::move::Undo> _undoStack;
+
     void initialise();
 
     void parseFenPosition(std::string &position);
@@ -98,9 +101,17 @@ class Engine {
 
     void createFenPiece(int rank, int file, char letter);
 
+    void createPiece(int rank, int file, engine::board::ColourType side);
+
+    void createPiece(int square, engine::board::ColourType side);
+
     void createPiece(int rank, int file, engine::board::PieceType piece, engine::board::ColourType side);
 
     void createPiece(int square, engine::board::PieceType piece, engine::board::ColourType side);
+
+    void removePiece(int rank, int file, engine::board::ColourType side);
+
+    void removePiece(int square, engine::board::ColourType side);
 
     void removePiece(int rank, int file, engine::board::PieceType piece, engine::board::ColourType side);
 
@@ -143,6 +154,10 @@ class Engine {
     bool areSquaresAttacked(uint64_t squares, engine::board::ColourType side);
 
     int getKingSquare(engine::board::ColourType side);
+
+    void updateCastleRights();
+
+    void updateCastleRights(engine::board::ColourType side);
 
     void unmakeMove(engine::move::Move &move);
 

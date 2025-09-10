@@ -32,21 +32,21 @@ inline constexpr Square KING_ORIGIN_SQUARES[2] = {
     Square::e8,
 };
 
-inline constexpr uint64_t ROOK_ORIGIN_SQUARES[4] = {
+inline constexpr Square ROOK_ORIGIN_SQUARES[4] = {
     Square::h1,
     Square::a1,
     Square::h8,
     Square::a8,
 };
 
-inline constexpr uint64_t KING_LANDING_SQUARES[4] = {
+inline constexpr Square KING_TO_SQUARES[4] = {
     Square::g1,
     Square::c1,
     Square::g8,
     Square::c8,
 };
 
-inline constexpr uint64_t ROOK_LANDING_SQUARES[4] = {
+inline constexpr Square ROOK_TO_SQUARES[4] = {
     Square::f1,
     Square::d1,
     Square::f8,

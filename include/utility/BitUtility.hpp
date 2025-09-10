@@ -25,6 +25,8 @@ inline constexpr void clearBit(uint64_t &value, int position);
 
 inline constexpr void clearBit(uint64_t &value, int rank, int file);
 
+inline constexpr void clearBit(uint8_t &value, int position);
+
 [[nodiscard]] inline constexpr int popLSB(uint64_t &value);
 
 void printBitBoard(uint64_t bitboard);
@@ -59,6 +61,10 @@ inline constexpr void clearBit(uint64_t &value, int position) {
 
 inline constexpr void clearBit(uint64_t &value, int rank, int file) {
     clearBit(value, BoardUtility::getSquare(rank, file));
+}
+
+inline constexpr void clearBit(uint8_t &value, int position) {
+    value &= ~(1ULL << position);
 }
 
 [[nodiscard]] inline constexpr int popLSB(uint64_t &value) {

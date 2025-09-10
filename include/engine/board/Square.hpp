@@ -50,9 +50,14 @@ inline constexpr uint64_t BITBOARD_SQUARES_2D[8][8] = {
     { 1ULL << 56, 1ULL << 57, 1ULL << 58, 1ULL << 59, 1ULL << 60, 1ULL << 61, 1ULL << 62, 1ULL << 63 },
 };
 
-inline constexpr uint8_t EN_PASSANT_SQUARES[2][8] = {
+inline constexpr Square EN_PASSANT_SQUARES[2][8] = {
     { a3, b3, c3, d3, e3, f3, g3, h3 },
     { a6, b6, c6, d6, e6, f6, g6, h6 },
+};
+
+inline constexpr Square EN_PASSANT_CAPTURE_SQUARES[2][8] = {
+    { a5, b5, c5, d5, e5, f5, g5, h5 },
+    { a4, b4, c4, d4, e4, f4, g4, h4 },
 };
 
 } // namespace engine::board
