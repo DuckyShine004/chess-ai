@@ -103,9 +103,11 @@ void Chess::handleFirstSelectedSquare(Engine &engine, Square *square, ColourType
         return;
     }
 
-    std::vector<Move> moves = engine.generateMoves(side);
+    MoveList moves = engine.generateMoves(side);
 
-    for (Move &move : moves) {
+    for (int i = 0; i < moves.size; ++i) {
+        Move &move = moves.moves[i];
+
         if (move.from != square->getSquare()) {
             continue;
         }

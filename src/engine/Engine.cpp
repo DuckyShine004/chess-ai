@@ -100,9 +100,9 @@ void Engine::printBoard() {
 }
 
 void Engine::initialise() {
-    Bishop::initialiseRays();
+    Bishop::initialise();
 
-    Rook::initialiseRays();
+    Rook::initialise();
 
     for (int square = 0; square < 64; ++square) {
         this->_PAWN_ATTACKS[0][square] = Pawn::getAttacks(square, ColourType::WHITE);
@@ -147,16 +147,16 @@ void Engine::parseFenCastleRights(std::string &castleRights) {
     for (char c : castleRights) {
         switch (c) {
         case 'K':
-            this->_castleRights |= (1ULL << Castle::WHITE_KING);
+            this->_castleRights |= CASTLE_MASK[Castle::WHITE_KING];
             break;
         case 'Q':
-            this->_castleRights |= (1ULL << Castle::WHITE_QUEEN);
+            this->_castleRights |= CASTLE_MASK[Castle::WHITE_QUEEN];
             break;
         case 'k':
-            this->_castleRights |= (1ULL << Castle::BLACK_KING);
+            this->_castleRights |= CASTLE_MASK[Castle::BLACK_KING];
             break;
         case 'q':
-            this->_castleRights |= (1ULL << Castle::BLACK_QUEEN);
+            this->_castleRights |= CASTLE_MASK[Castle::BLACK_QUEEN];
             break;
         default:
             break;
@@ -232,11 +232,13 @@ void Engine::createPiece(int rank, int file, PieceType piece, ColourType side) {
 }
 
 void Engine::createPiece(int square, PieceType piece, ColourType side) {
-    this->_bitboards[side][piece] |= BITBOARD_SQUARES[square];
+    const uint64_t bitboard_square = BITBOARD_SQUARES[square];
 
-    this->_occupancies[side] |= BITBOARD_SQUARES[square];
+    this->_bitboards[side][piece] |= bitboard_square;
 
-    this->_occupancyBoth = this->_occupancies[0] | this->_occupancies[1];
+    this->_occupancies[side] |= bitboard_square;
+
+    this->_occupancyBoth |= bitboard_square;
 }
 
 void Engine::removePiece(int rank, int file, ColourType side) {
@@ -258,16 +260,18 @@ void Engine::removePiece(int rank, int file, PieceType piece, ColourType side) {
 }
 
 void Engine::removePiece(int square, PieceType piece, ColourType side) {
-    this->_bitboards[side][piece] &= ~BITBOARD_SQUARES[square];
+    const uint64_t inverted_bitboard_square = INVERTED_BITBOARD_SQUARES[square];
 
-    this->_occupancies[side] &= ~BITBOARD_SQUARES[square];
+    this->_bitboards[side][piece] &= inverted_bitboard_square;
 
-    this->_occupancyBoth = this->_occupancies[0] | this->_occupancies[1];
+    this->_occupancies[side] &= inverted_bitboard_square;
+
+    this->_occupancyBoth &= inverted_bitboard_square;
 }
 
 // TODO: Sort moves by move type
-std::vector<Move> Engine::generateMoves(ColourType side) {
-    std::vector<Move> moves;
+MoveList Engine::generateMoves(ColourType side) {
+    MoveList moves;
 
     this->generatePawnMoves(moves, side);
     this->generateKnightMoves(moves, side);
@@ -279,7 +283,7 @@ std::vector<Move> Engine::generateMoves(ColourType side) {
     return moves;
 }
 
-void Engine::generatePawnMoves(std::vector<Move> &moves, ColourType side) {
+void Engine::generatePawnMoves(MoveList &moves, ColourType side) {
     ColourType otherSide = BoardUtility::getOtherSide(side);
 
     uint64_t pawns = this->_bitboards[side][PieceType::PAWN];
@@ -292,35 +296,35 @@ void Engine::generatePawnMoves(std::vector<Move> &moves, ColourType side) {
         if (Pawn::canSinglePush(from, side, empty)) {
             int to = Pawn::singlePush(from, side);
 
-            if (Pawn::ENEMY_BACK_RANK[side] & (1ULL << to)) {
+            if (Pawn::ENEMY_BACK_RANK[side] & (BITBOARD_SQUARES[to])) {
                 Move move(from, to, MoveType::KNIGHT_PROMOTION);
 
                 if (this->isMoveLegal(move, side)) {
-                    moves.push_back(std::move(move));
+                    moves.add(std::move(move));
                 }
 
                 move = Move(from, to, MoveType::BISHOP_PROMOTION);
 
                 if (this->isMoveLegal(move, side)) {
-                    moves.push_back(std::move(move));
+                    moves.add(std::move(move));
                 }
 
                 move = Move(from, to, MoveType::ROOK_PROMOTION);
 
                 if (this->isMoveLegal(move, side)) {
-                    moves.push_back(std::move(move));
+                    moves.add(std::move(move));
                 }
 
                 move = Move(from, to, MoveType::QUEEN_PROMOTION);
 
                 if (this->isMoveLegal(move, side)) {
-                    moves.push_back(std::move(move));
+                    moves.add(std::move(move));
                 }
             } else {
                 Move move(from, to, MoveType::QUIET);
 
                 if (this->isMoveLegal(move, side)) {
-                    moves.push_back(std::move(move));
+                    moves.add(std::move(move));
                 }
             }
         }
@@ -331,7 +335,7 @@ void Engine::generatePawnMoves(std::vector<Move> &moves, ColourType side) {
             Move move(from, to, MoveType::DOUBLE_PAWN);
 
             if (this->isMoveLegal(move, side)) {
-                moves.push_back(std::move(move));
+                moves.add(std::move(move));
             }
         }
 
@@ -340,41 +344,41 @@ void Engine::generatePawnMoves(std::vector<Move> &moves, ColourType side) {
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
 
-            if (Pawn::ENEMY_BACK_RANK[side] & (1ULL << to)) {
+            if (Pawn::ENEMY_BACK_RANK[side] & BITBOARD_SQUARES[to]) {
                 Move move(from, to, MoveType::KNIGHT_PROMOTION_CAPTURE);
 
                 if (this->isMoveLegal(move, side)) {
-                    moves.push_back(std::move(move));
+                    moves.add(std::move(move));
                 }
 
                 move = Move(from, to, MoveType::BISHOP_PROMOTION_CAPTURE);
 
                 if (this->isMoveLegal(move, side)) {
-                    moves.push_back(std::move(move));
+                    moves.add(std::move(move));
                 }
 
                 move = Move(from, to, MoveType::ROOK_PROMOTION_CAPTURE);
 
                 if (this->isMoveLegal(move, side)) {
-                    moves.push_back(std::move(move));
+                    moves.add(std::move(move));
                 }
 
                 move = Move(from, to, MoveType::QUEEN_PROMOTION_CAPTURE);
 
                 if (this->isMoveLegal(move, side)) {
-                    moves.push_back(std::move(move));
+                    moves.add(std::move(move));
                 }
             } else {
                 Move move(from, to, MoveType::CAPTURE);
 
                 if (this->isMoveLegal(move, side)) {
-                    moves.push_back(std::move(move));
+                    moves.add(std::move(move));
                 }
             }
         }
 
         if (this->_enPassantSquare != -1) {
-            uint64_t enPassantMoves = this->_PAWN_ATTACKS[side][from] & (1ULL << this->_enPassantSquare);
+            uint64_t enPassantMoves = this->_PAWN_ATTACKS[side][from] & BITBOARD_SQUARES[this->_enPassantSquare];
 
             while (enPassantMoves) {
                 int to = BitUtility::popLSB(enPassantMoves);
@@ -382,14 +386,14 @@ void Engine::generatePawnMoves(std::vector<Move> &moves, ColourType side) {
                 Move move(from, to, MoveType::EN_PASSANT);
 
                 if (this->isMoveLegal(move, side)) {
-                    moves.push_back(std::move(move));
+                    moves.add(std::move(move));
                 }
             }
         }
     }
 }
 
-void Engine::generateKnightMoves(std::vector<Move> &moves, ColourType side) {
+void Engine::generateKnightMoves(MoveList &moves, ColourType side) {
     ColourType otherSide = BoardUtility::getOtherSide(side);
 
     uint64_t knights = this->_bitboards[side][PieceType::KNIGHT];
@@ -407,7 +411,7 @@ void Engine::generateKnightMoves(std::vector<Move> &moves, ColourType side) {
             Move move(from, to, MoveType::QUIET);
 
             if (this->isMoveLegal(move, side)) {
-                moves.push_back(std::move(move));
+                moves.add(std::move(move));
             }
         }
 
@@ -419,13 +423,13 @@ void Engine::generateKnightMoves(std::vector<Move> &moves, ColourType side) {
             Move move(from, to, MoveType::CAPTURE);
 
             if (this->isMoveLegal(move, side)) {
-                moves.push_back(std::move(move));
+                moves.add(std::move(move));
             }
         }
     }
 }
 
-void Engine::generateBishopMoves(std::vector<Move> &moves, ColourType side) {
+void Engine::generateBishopMoves(MoveList &moves, ColourType side) {
     ColourType otherSide = BoardUtility::getOtherSide(side);
 
     uint64_t bishops = this->_bitboards[side][PieceType::BISHOP];
@@ -445,7 +449,7 @@ void Engine::generateBishopMoves(std::vector<Move> &moves, ColourType side) {
             Move move(from, to, MoveType::QUIET);
 
             if (this->isMoveLegal(move, side)) {
-                moves.push_back(std::move(move));
+                moves.add(std::move(move));
             }
         }
 
@@ -457,13 +461,13 @@ void Engine::generateBishopMoves(std::vector<Move> &moves, ColourType side) {
             Move move(from, to, MoveType::CAPTURE);
 
             if (this->isMoveLegal(move, side)) {
-                moves.push_back(std::move(move));
+                moves.add(std::move(move));
             }
         }
     }
 }
 
-void Engine::generateRookMoves(std::vector<Move> &moves, ColourType side) {
+void Engine::generateRookMoves(MoveList &moves, ColourType side) {
     ColourType otherSide = BoardUtility::getOtherSide(side);
 
     uint64_t rooks = this->_bitboards[side][PieceType::ROOK];
@@ -483,7 +487,7 @@ void Engine::generateRookMoves(std::vector<Move> &moves, ColourType side) {
             Move move(from, to, MoveType::QUIET);
 
             if (this->isMoveLegal(move, side)) {
-                moves.push_back(std::move(move));
+                moves.add(std::move(move));
             }
         }
 
@@ -495,13 +499,13 @@ void Engine::generateRookMoves(std::vector<Move> &moves, ColourType side) {
             Move move(from, to, MoveType::CAPTURE);
 
             if (this->isMoveLegal(move, side)) {
-                moves.push_back(std::move(move));
+                moves.add(std::move(move));
             }
         }
     }
 }
 
-void Engine::generateQueenMoves(std::vector<Move> &moves, ColourType side) {
+void Engine::generateQueenMoves(MoveList &moves, ColourType side) {
     ColourType otherSide = BoardUtility::getOtherSide(side);
 
     uint64_t queens = this->_bitboards[side][PieceType::QUEEN];
@@ -521,7 +525,7 @@ void Engine::generateQueenMoves(std::vector<Move> &moves, ColourType side) {
             Move move(from, to, MoveType::QUIET);
 
             if (this->isMoveLegal(move, side)) {
-                moves.push_back(std::move(move));
+                moves.add(std::move(move));
             }
         }
 
@@ -533,13 +537,13 @@ void Engine::generateQueenMoves(std::vector<Move> &moves, ColourType side) {
             Move move(from, to, MoveType::CAPTURE);
 
             if (this->isMoveLegal(move, side)) {
-                moves.push_back(std::move(move));
+                moves.add(std::move(move));
             }
         }
     }
 }
 
-void Engine::generateKingMoves(std::vector<Move> &moves, ColourType side) {
+void Engine::generateKingMoves(MoveList &moves, ColourType side) {
     ColourType otherSide = BoardUtility::getOtherSide(side);
 
     uint64_t kings = this->_bitboards[side][PieceType::KING];
@@ -557,7 +561,7 @@ void Engine::generateKingMoves(std::vector<Move> &moves, ColourType side) {
             Move move(from, to, MoveType::QUIET);
 
             if (this->isMoveLegal(move, side)) {
-                moves.push_back(std::move(move));
+                moves.add(std::move(move));
             }
         }
 
@@ -569,7 +573,7 @@ void Engine::generateKingMoves(std::vector<Move> &moves, ColourType side) {
             Move move(from, to, MoveType::CAPTURE);
 
             if (this->isMoveLegal(move, side)) {
-                moves.push_back(std::move(move));
+                moves.add(std::move(move));
             }
         }
     }
@@ -577,7 +581,7 @@ void Engine::generateKingMoves(std::vector<Move> &moves, ColourType side) {
     this->generateCastleMoves(moves, side);
 }
 
-void Engine::generateCastleMoves(std::vector<Move> &moves, ColourType side) {
+void Engine::generateCastleMoves(MoveList &moves, ColourType side) {
     const Castle kingSide = (side == ColourType::WHITE) ? Castle::WHITE_KING : Castle::BLACK_KING;
     const Castle queenSide = (side == ColourType::WHITE) ? Castle::WHITE_QUEEN : Castle::BLACK_QUEEN;
 
@@ -589,7 +593,7 @@ void Engine::generateCastleMoves(std::vector<Move> &moves, ColourType side) {
     }
 
     // Check if we can king side castle
-    if (this->_castleRights & (1ULL << kingSide)) {
+    if (this->_castleRights & CASTLE_MASK[kingSide]) {
         // Check if it's actually the rook there
         bool isRookAtOrigin = BitUtility::isBitSet(this->_bitboards[side][PieceType::ROOK], ROOK_ORIGIN_SQUARES[kingSide]);
 
@@ -601,12 +605,12 @@ void Engine::generateCastleMoves(std::vector<Move> &moves, ColourType side) {
 
         if (isRookAtOrigin && isEmpty && isSafe) {
             // Since we have already checked if it's safe to move to the safe squares, we don't need to perform extra king check
-            moves.emplace_back(kingOriginSquare, KING_TO_SQUARES[kingSide], MoveType::KING_CASTLE);
+            moves.add(kingOriginSquare, KING_TO_SQUARES[kingSide], MoveType::KING_CASTLE);
         }
     }
 
     // Check if we can castle queen side
-    if (this->_castleRights & (1ULL << queenSide)) {
+    if (this->_castleRights & CASTLE_MASK[queenSide]) {
         bool isRookAtOrigin = BitUtility::isBitSet(this->_bitboards[side][PieceType::ROOK], ROOK_ORIGIN_SQUARES[queenSide]);
 
         bool isEmpty = (this->_occupancyBoth & CASTLE_EMPTY_MASK[queenSide]) == 0ULL;
@@ -614,13 +618,13 @@ void Engine::generateCastleMoves(std::vector<Move> &moves, ColourType side) {
         bool isSafe = !this->areSquaresAttacked(CASTLE_SAFE_MASK[queenSide], side);
 
         if (isRookAtOrigin && isEmpty && isSafe) {
-            moves.emplace_back(kingOriginSquare, KING_TO_SQUARES[queenSide], MoveType::QUEEN_CASTLE);
+            moves.add(kingOriginSquare, KING_TO_SQUARES[queenSide], MoveType::QUEEN_CASTLE);
         }
     }
 }
 
-std::vector<Move> Engine::generateCaptures(ColourType side) {
-    std::vector<Move> captures;
+MoveList Engine::generateCaptures(ColourType side) {
+    MoveList captures;
 
     this->generatePawnCaptures(captures, side);
     this->generateKnightCaptures(captures, side);
@@ -632,7 +636,7 @@ std::vector<Move> Engine::generateCaptures(ColourType side) {
     return captures;
 }
 
-void Engine::generatePawnCaptures(std::vector<Move> &captures, ColourType side) {
+void Engine::generatePawnCaptures(MoveList &captures, ColourType side) {
     ColourType otherSide = BoardUtility::getOtherSide(side);
 
     uint64_t pawns = this->_bitboards[side][PieceType::PAWN];
@@ -647,40 +651,40 @@ void Engine::generatePawnCaptures(std::vector<Move> &captures, ColourType side) 
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
 
-            if (Pawn::ENEMY_BACK_RANK[side] & (1ULL << to)) {
+            if (Pawn::ENEMY_BACK_RANK[side] & BITBOARD_SQUARES[to]) {
                 Move move(from, to, MoveType::KNIGHT_PROMOTION_CAPTURE);
 
                 if (this->isMoveLegal(move, side)) {
-                    captures.push_back(std::move(move));
+                    captures.add(std::move(move));
                 }
 
                 move = Move(from, to, MoveType::BISHOP_PROMOTION_CAPTURE);
 
                 if (this->isMoveLegal(move, side)) {
-                    captures.push_back(std::move(move));
+                    captures.add(std::move(move));
                 }
 
                 move = Move(from, to, MoveType::ROOK_PROMOTION_CAPTURE);
 
                 if (this->isMoveLegal(move, side)) {
-                    captures.push_back(std::move(move));
+                    captures.add(std::move(move));
                 }
                 move = Move(from, to, MoveType::QUEEN_PROMOTION_CAPTURE);
 
                 if (this->isMoveLegal(move, side)) {
-                    captures.push_back(std::move(move));
+                    captures.add(std::move(move));
                 }
             } else {
                 Move move(from, to, MoveType::CAPTURE);
 
                 if (this->isMoveLegal(move, side)) {
-                    captures.push_back(std::move(move));
+                    captures.add(std::move(move));
                 }
             }
         }
 
         if (this->_enPassantSquare != -1) {
-            uint64_t enPassantMoves = this->_PAWN_ATTACKS[side][from] & (1ULL << this->_enPassantSquare);
+            uint64_t enPassantMoves = this->_PAWN_ATTACKS[side][from] & BITBOARD_SQUARES[this->_enPassantSquare];
 
             while (enPassantMoves) {
                 int to = BitUtility::popLSB(enPassantMoves);
@@ -688,14 +692,14 @@ void Engine::generatePawnCaptures(std::vector<Move> &captures, ColourType side) 
                 Move move(from, to, MoveType::EN_PASSANT);
 
                 if (this->isMoveLegal(move, side)) {
-                    captures.push_back(std::move(move));
+                    captures.add(std::move(move));
                 }
             }
         }
     }
 }
 
-void Engine::generateKnightCaptures(std::vector<Move> &captures, ColourType side) {
+void Engine::generateKnightCaptures(MoveList &captures, ColourType side) {
     ColourType otherSide = BoardUtility::getOtherSide(side);
 
     uint64_t knights = this->_bitboards[side][PieceType::KNIGHT];
@@ -713,13 +717,13 @@ void Engine::generateKnightCaptures(std::vector<Move> &captures, ColourType side
             Move move(from, to, MoveType::CAPTURE);
 
             if (this->isMoveLegal(move, side)) {
-                captures.push_back(std::move(move));
+                captures.add(std::move(move));
             }
         }
     }
 }
 
-void Engine::generateBishopCaptures(std::vector<Move> &captures, ColourType side) {
+void Engine::generateBishopCaptures(MoveList &captures, ColourType side) {
     ColourType otherSide = BoardUtility::getOtherSide(side);
 
     uint64_t bishops = this->_bitboards[side][PieceType::BISHOP];
@@ -739,13 +743,13 @@ void Engine::generateBishopCaptures(std::vector<Move> &captures, ColourType side
             Move move(from, to, MoveType::CAPTURE);
 
             if (this->isMoveLegal(move, side)) {
-                captures.push_back(std::move(move));
+                captures.add(std::move(move));
             }
         }
     }
 }
 
-void Engine::generateRookCaptures(std::vector<Move> &captures, ColourType side) {
+void Engine::generateRookCaptures(MoveList &captures, ColourType side) {
     ColourType otherSide = BoardUtility::getOtherSide(side);
 
     uint64_t rooks = this->_bitboards[side][PieceType::ROOK];
@@ -765,13 +769,13 @@ void Engine::generateRookCaptures(std::vector<Move> &captures, ColourType side) 
             Move move(from, to, MoveType::CAPTURE);
 
             if (this->isMoveLegal(move, side)) {
-                captures.push_back(std::move(move));
+                captures.add(std::move(move));
             }
         }
     }
 }
 
-void Engine::generateQueenCaptures(std::vector<Move> &captures, ColourType side) {
+void Engine::generateQueenCaptures(MoveList &captures, ColourType side) {
     ColourType otherSide = BoardUtility::getOtherSide(side);
 
     uint64_t queens = this->_bitboards[side][PieceType::QUEEN];
@@ -791,13 +795,13 @@ void Engine::generateQueenCaptures(std::vector<Move> &captures, ColourType side)
             Move move(from, to, MoveType::CAPTURE);
 
             if (this->isMoveLegal(move, side)) {
-                captures.push_back(std::move(move));
+                captures.add(std::move(move));
             }
         }
     }
 }
 
-void Engine::generateKingCaptures(std::vector<Move> &captures, ColourType side) {
+void Engine::generateKingCaptures(MoveList &captures, ColourType side) {
     ColourType otherSide = BoardUtility::getOtherSide(side);
 
     uint64_t kings = this->_bitboards[side][PieceType::KING];
@@ -815,7 +819,7 @@ void Engine::generateKingCaptures(std::vector<Move> &captures, ColourType side) 
             Move move(from, to, MoveType::CAPTURE);
 
             if (this->isMoveLegal(move, side)) {
-                captures.push_back(std::move(move));
+                captures.add(std::move(move));
             }
         }
     }
@@ -916,7 +920,6 @@ void Engine::updateCastleRights(ColourType side) {
 void Engine::makeMove(Move &move) {
     Undo undo;
 
-    // Keep track of previous states
     undo.castleRights = this->_castleRights;
     undo.enPassantSquare = this->_enPassantSquare;
 
@@ -924,63 +927,27 @@ void Engine::makeMove(Move &move) {
 
     PieceType fromPiece = BoardUtility::getPiece(this->_bitboards, move.from, this->_side);
 
-    // Remove the piece from the from square
-    this->removePiece(move.from, fromPiece, this->_side);
-
-    // Create from piece in the to square
-    this->createPiece(move.to, fromPiece, this->_side);
-
-    const Castle kingSide = (this->_side == ColourType::WHITE) ? Castle::WHITE_KING : Castle::BLACK_KING;
-    const Castle queenSide = (this->_side == ColourType::WHITE) ? Castle::WHITE_QUEEN : Castle::BLACK_QUEEN;
-    // Perform the move type
-    if (move.moveType == MoveType::CAPTURE) {
-        // Check what the captured piece was
-        PieceType capturedPiece = BoardUtility::getPiece(this->_bitboards, move.to, otherSide);
-
-        // Remove the captured piece
-        this->removePiece(move.to, capturedPiece, otherSide);
-
-        undo.capturedPiece = capturedPiece;
-    } else if (move.moveType == MoveType::DOUBLE_PAWN) {
-        this->_enPassantSquare = EN_PASSANT_SQUARES[this->_side][BoardUtility::getFile(move.from)];
-    } else if (move.moveType == MoveType::EN_PASSANT) {
-        // Remove piece at the en passant capture square
-        this->removePiece(EN_PASSANT_CAPTURE_SQUARES[this->_side][BoardUtility::getFile(move.to)], PieceType::PAWN, otherSide);
-    } else if (move.moveType == MoveType::KING_CASTLE) {
-        // Move the king side rook to landing square
-        this->removePiece(ROOK_ORIGIN_SQUARES[kingSide], PieceType::ROOK, this->_side);
-        this->createPiece(ROOK_TO_SQUARES[kingSide], PieceType::ROOK, this->_side);
-    } else if (move.moveType == MoveType::QUEEN_CASTLE) {
-        // Move the queen side rook
-        this->removePiece(ROOK_ORIGIN_SQUARES[queenSide], PieceType::ROOK, this->_side);
-        this->createPiece(ROOK_TO_SQUARES[queenSide], PieceType::ROOK, this->_side);
+    if (move.isQuiet()) {
+        this->makeQuietMove(move, fromPiece);
+    } else if (move.isCapture()) {
+        this->makeCaptureMove(move, undo, fromPiece, otherSide);
+    } else if (move.isDoublePawn()) {
+        this->makeDoublePawnMove(move, fromPiece);
+    } else if (move.isEnPassant()) {
+        this->makeEnPassantMove(move, fromPiece, otherSide);
+    } else if (move.isQueenCastle()) {
+        this->makeQueenCastleMove(move, fromPiece);
+    } else if (move.isKingCastle()) {
+        this->makeKingCastleMove(move, fromPiece);
     } else if (move.isPromotionQuiet()) {
-        // Remove from piece in the to square
-        this->removePiece(move.to, fromPiece, this->_side);
-
-        // Replace with promotion piece
-        this->createPiece(move.to, move.getPromotionPiece(), this->_side);
+        this->makePromotionQuietMove(move);
     } else if (move.isPromotionCapture()) {
-        // Check what the captured piece was
-        PieceType capturedPiece = BoardUtility::getPiece(this->_bitboards, move.to, otherSide);
-
-        // Remove the captured piece
-        this->removePiece(move.to, capturedPiece, otherSide);
-
-        // Remove the pawn at the to square
-        this->removePiece(move.to, fromPiece, this->_side);
-
-        // Set the promoted piece
-        this->createPiece(move.to, move.getPromotionPiece(), this->_side);
-
-        undo.capturedPiece = capturedPiece;
+        this->makePromotionCaptureMove(move, undo, otherSide);
     }
 
-    // Update castle rights for both sides (more of checking if king or rook has moved)
     this->updateCastleRights();
 
-    // If we didn't do a double pawn push, then en passant square should reset
-    if (move.moveType != MoveType::DOUBLE_PAWN) {
+    if (!move.isDoublePawn()) {
         this->_enPassantSquare = -1;
     }
 
@@ -989,70 +956,178 @@ void Engine::makeMove(Move &move) {
     this->switchSide();
 }
 
+// Switch sides immediately since we last switched at leaf node
 void Engine::unmakeMove(Move &move) {
-    // Switch immediately, e.g., if white was leaf,
-    // then we want to switch back to get back to white
-    // Because at leaf, we switched sides to black
     this->switchSide();
 
-    Undo &undo = this->_undoStack.back();
+    const Undo &undo = this->_undoStack.back();
 
     ColourType otherSide = BoardUtility::getOtherSide(this->_side);
 
-    // Check to piece since we're going to move it back to from
     PieceType toPiece = BoardUtility::getPiece(this->_bitboards, move.to, this->_side);
 
-    // Remove the piece from the to square
-    this->removePiece(move.to, toPiece, this->_side);
-
-    // Create the to piece in the from square
-    this->createPiece(move.from, toPiece, this->_side);
-
-    // Undo the move type
-    const Castle kingSide = (this->_side == ColourType::WHITE) ? Castle::WHITE_KING : Castle::BLACK_KING;
-    const Castle queenSide = (this->_side == ColourType::WHITE) ? Castle::WHITE_QUEEN : Castle::BLACK_QUEEN;
-
-    if (move.moveType == MoveType::CAPTURE) {
-        // Create the capture piece back in the to square on the other side
-        this->createPiece(move.to, undo.capturedPiece, otherSide);
-    } else if (move.moveType == MoveType::EN_PASSANT) {
-        // create piece at the en passant capture square
-        this->createPiece(EN_PASSANT_CAPTURE_SQUARES[this->_side][BoardUtility::getFile(move.to)], PieceType::PAWN, otherSide);
-    } else if (move.moveType == MoveType::KING_CASTLE) {
-        this->removePiece(ROOK_TO_SQUARES[kingSide], PieceType::ROOK, this->_side);
-        this->createPiece(ROOK_ORIGIN_SQUARES[kingSide], PieceType::ROOK, this->_side);
-    } else if (move.moveType == MoveType::QUEEN_CASTLE) {
-        // Move the queen side rook back to the origin
-        this->removePiece(ROOK_TO_SQUARES[queenSide], PieceType::ROOK, this->_side);
-        this->createPiece(ROOK_ORIGIN_SQUARES[queenSide], PieceType::ROOK, this->_side);
+    if (move.isQuiet() || move.isDoublePawn()) {
+        this->unmakeQuietMove(move, toPiece);
+    } else if (move.isCapture()) {
+        this->unmakeCaptureMove(move, undo, toPiece, otherSide);
+    } else if (move.isEnPassant()) {
+        this->unmakeEnPassantMove(move, toPiece, otherSide);
+    } else if (move.isQueenCastle()) {
+        this->unmakeQueenCastleMove(move, toPiece);
+    } else if (move.isKingCastle()) {
+        this->unmakeKingCastleMove(move, toPiece);
     } else if (move.isPromotionQuiet()) {
-        // If promotion is quiet, the remove promotion piece which should be at the to square
-        this->removePiece(move.to, move.getPromotionPiece(), this->_side);
-
-        // Then we want to remove the piece that was just created at the from square
-        this->removePiece(move.from, toPiece, this->_side);
-
-        // Replace with pawn
-        this->createPiece(move.from, PieceType::PAWN, this->_side);
+        this->unmakePromotionQuietMove(move);
     } else if (move.isPromotionCapture()) {
-        // Remove the promotion piece
-        this->removePiece(move.to, move.getPromotionPiece(), this->_side);
-
-        // Place the captured piece back
-        this->createPiece(move.to, undo.capturedPiece, otherSide);
-
-        // Remove the piece we just placed at from square
-        this->removePiece(move.from, toPiece, this->_side);
-
-        // Replace with pawn
-        this->createPiece(move.from, PieceType::PAWN, this->_side);
+        this->unmakePromotionCaptureMove(move, undo, otherSide);
     }
 
-    // Get back the previous state
     this->_castleRights = undo.castleRights;
     this->_enPassantSquare = undo.enPassantSquare;
 
     this->_undoStack.pop_back();
+}
+
+void Engine::makeQuietMove(const Move &move, PieceType fromPiece) {
+    this->removePiece(move.from, fromPiece, this->_side);
+
+    this->createPiece(move.to, fromPiece, this->_side);
+}
+
+void Engine::makeCaptureMove(const Move &move, Undo &undo, PieceType fromPiece, ColourType otherSide) {
+    PieceType capturedPiece = BoardUtility::getPiece(this->_bitboards, move.to, otherSide);
+
+    this->removePiece(move.from, fromPiece, this->_side);
+
+    this->removePiece(move.to, capturedPiece, otherSide);
+
+    this->createPiece(move.to, fromPiece, this->_side);
+
+    undo.capturedPiece = capturedPiece;
+}
+
+void Engine::makeDoublePawnMove(const Move &move, PieceType fromPiece) {
+    int fromFile = BoardUtility::getFile(move.from);
+
+    this->_enPassantSquare = EN_PASSANT_SQUARES[this->_side][fromFile];
+
+    this->removePiece(move.from, fromPiece, this->_side);
+
+    this->createPiece(move.to, fromPiece, this->_side);
+}
+
+void Engine::makeEnPassantMove(const Move &move, PieceType fromPiece, ColourType otherSide) {
+    int toFile = BoardUtility::getFile(move.to);
+
+    this->removePiece(EN_PASSANT_CAPTURE_SQUARES[this->_side][toFile], PieceType::PAWN, otherSide);
+
+    this->removePiece(move.from, fromPiece, this->_side);
+
+    this->createPiece(move.to, fromPiece, this->_side);
+}
+
+void Engine::makeQueenCastleMove(const Move &move, PieceType fromPiece) {
+    const Castle queenSide = (this->_side == ColourType::WHITE) ? Castle::WHITE_QUEEN : Castle::BLACK_QUEEN;
+
+    this->removePiece(ROOK_ORIGIN_SQUARES[queenSide], PieceType::ROOK, this->_side);
+
+    this->removePiece(move.from, fromPiece, this->_side);
+
+    this->createPiece(ROOK_TO_SQUARES[queenSide], PieceType::ROOK, this->_side);
+
+    this->createPiece(move.to, fromPiece, this->_side);
+}
+
+void Engine::makeKingCastleMove(const Move &move, PieceType fromPiece) {
+    const Castle kingSide = (this->_side == ColourType::WHITE) ? Castle::WHITE_KING : Castle::BLACK_KING;
+
+    this->removePiece(ROOK_ORIGIN_SQUARES[kingSide], PieceType::ROOK, this->_side);
+
+    this->removePiece(move.from, fromPiece, this->_side);
+
+    this->createPiece(ROOK_TO_SQUARES[kingSide], PieceType::ROOK, this->_side);
+
+    this->createPiece(move.to, fromPiece, this->_side);
+}
+
+void Engine::makePromotionQuietMove(const Move &move) {
+    this->removePiece(move.from, PieceType::PAWN, this->_side);
+
+    this->createPiece(move.to, move.getPromotionPiece(), this->_side);
+}
+
+void Engine::makePromotionCaptureMove(const Move &move, Undo &undo, ColourType otherSide) {
+    PieceType capturedPiece = BoardUtility::getPiece(this->_bitboards, move.to, otherSide);
+
+    this->removePiece(move.from, PieceType::PAWN, this->_side);
+
+    this->removePiece(move.to, capturedPiece, otherSide);
+
+    this->createPiece(move.to, move.getPromotionPiece(), this->_side);
+
+    undo.capturedPiece = capturedPiece;
+}
+
+void Engine::unmakeQuietMove(const Move &move, PieceType toPiece) {
+    this->removePiece(move.to, toPiece, this->_side);
+
+    this->createPiece(move.from, toPiece, this->_side);
+}
+
+void Engine::unmakeCaptureMove(const Move &move, const Undo &undo, PieceType toPiece, ColourType otherSide) {
+    this->removePiece(move.to, toPiece, this->_side);
+
+    this->createPiece(move.from, toPiece, this->_side);
+
+    this->createPiece(move.to, undo.capturedPiece, otherSide);
+}
+
+void Engine::unmakeEnPassantMove(const Move &move, PieceType toPiece, ColourType otherSide) {
+    int toFile = BoardUtility::getFile(move.to);
+
+    this->removePiece(move.to, toPiece, this->_side);
+
+    this->createPiece(move.from, toPiece, this->_side);
+
+    this->createPiece(EN_PASSANT_CAPTURE_SQUARES[this->_side][toFile], PieceType::PAWN, otherSide);
+}
+
+void Engine::unmakeQueenCastleMove(const Move &move, PieceType toPiece) {
+    const Castle queenSide = (this->_side == ColourType::WHITE) ? Castle::WHITE_QUEEN : Castle::BLACK_QUEEN;
+
+    this->removePiece(ROOK_TO_SQUARES[queenSide], PieceType::ROOK, this->_side);
+
+    this->removePiece(move.to, toPiece, this->_side);
+
+    this->createPiece(ROOK_ORIGIN_SQUARES[queenSide], PieceType::ROOK, this->_side);
+
+    this->createPiece(move.from, toPiece, this->_side);
+}
+
+void Engine::unmakeKingCastleMove(const Move &move, PieceType toPiece) {
+    const Castle kingSide = (this->_side == ColourType::WHITE) ? Castle::WHITE_KING : Castle::BLACK_KING;
+
+    this->removePiece(ROOK_TO_SQUARES[kingSide], PieceType::ROOK, this->_side);
+
+    this->removePiece(move.to, toPiece, this->_side);
+
+    this->createPiece(ROOK_ORIGIN_SQUARES[kingSide], PieceType::ROOK, this->_side);
+
+    this->createPiece(move.from, toPiece, this->_side);
+}
+
+void Engine::unmakePromotionQuietMove(const Move &move) {
+    this->removePiece(move.to, move.getPromotionPiece(), this->_side);
+
+    this->createPiece(move.from, PieceType::PAWN, this->_side);
+}
+
+void Engine::unmakePromotionCaptureMove(const Move &move, const Undo &undo, ColourType otherSide) {
+    this->removePiece(move.to, move.getPromotionPiece(), this->_side);
+
+    this->createPiece(move.from, PieceType::PAWN, this->_side);
+
+    this->createPiece(move.to, undo.capturedPiece, otherSide);
 }
 
 void Engine::searchRoot(int depth) {
@@ -1061,9 +1136,11 @@ void Engine::searchRoot(int depth) {
     int alpha = -INT_MAX;
     int beta = INT_MAX;
 
-    std::vector<Move> moves = this->generateMoves(this->_side);
+    MoveList moves = this->generateMoves(this->_side);
 
-    for (Move &move : moves) {
+    for (int i = 0; i < moves.size; ++i) {
+        Move &move = moves.moves[i];
+
         this->makeMove(move);
 
         int score = -this->search(-beta, -alpha, depth - 1);
@@ -1108,9 +1185,11 @@ int Engine::search(int alpha, int beta, int depth) {
 
     int bestScore = -INT_MAX;
 
-    std::vector<Move> moves = this->generateMoves(this->_side);
+    MoveList moves = this->generateMoves(this->_side);
 
-    for (Move &move : moves) {
+    for (int i = 0; i < moves.size; ++i) {
+        Move &move = moves.moves[i];
+
         this->makeMove(move);
 
         int score = -this->search(-beta, -alpha, depth - 1);
@@ -1144,9 +1223,11 @@ int Engine::quiescence(int alpha, int beta) {
         alpha = bestScore;
     }
 
-    std::vector<Move> captures = this->generateCaptures(this->_side);
+    MoveList captures = this->generateCaptures(this->_side);
 
-    for (Move &capture : captures) {
+    for (int i = 0; i < captures.size; ++i) {
+        Move &capture = captures.moves[i];
+
         this->makeMove(capture);
 
         int score = -this->quiescence(-beta, -alpha);
@@ -1205,9 +1286,11 @@ int Engine::perft(int depth) {
 
     int nodes = 0;
 
-    std::vector<Move> moves = this->generateMoves(this->_side);
+    MoveList moves = this->generateMoves(this->_side);
 
-    for (Move &move : moves) {
+    for (int i = 0; i < moves.size; ++i) {
+        Move &move = moves.moves[i];
+
         this->makeMove(move);
 
         nodes += this->perft(depth - 1);

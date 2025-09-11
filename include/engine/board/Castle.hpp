@@ -13,6 +13,13 @@ enum Castle : uint8_t {
     BLACK_QUEEN = 3,
 };
 
+inline constexpr uint8_t CASTLE_MASK[4] = {
+    0b00000001,
+    0b00000010,
+    0b00000100,
+    0b00001000,
+};
+
 inline constexpr uint64_t CASTLE_EMPTY_MASK[4] = {
     0x0000000000000060,
     0x000000000000000e,

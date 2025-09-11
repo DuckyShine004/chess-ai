@@ -1,7 +1,7 @@
 #pragma once
 
-#include "engine/piece/Bishop.hpp"
 #include "engine/piece/Rook.hpp"
+#include "engine/piece/Bishop.hpp"
 
 namespace engine::piece::Queen {
 

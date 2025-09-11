@@ -22,7 +22,7 @@ enum MoveType : uint8_t {
     ROOK_PROMOTION_CAPTURE = 12,
     QUEEN_PROMOTION_CAPTURE = 13,
 };
-
+// TODO: encode move struct to optimise memory
 struct Move {
     int from;
     int to;
@@ -33,6 +33,30 @@ struct Move {
     }
 
     Move(int from, int to, MoveType moveType) : from(from), to(to), moveType(moveType) {
+    }
+
+    bool isQuiet() {
+        return moveType == MoveType::QUIET;
+    }
+
+    bool isCapture() {
+        return moveType == MoveType::CAPTURE;
+    }
+
+    bool isDoublePawn() {
+        return moveType == MoveType::DOUBLE_PAWN;
+    }
+
+    bool isEnPassant() {
+        return moveType == MoveType::EN_PASSANT;
+    }
+
+    bool isQueenCastle() {
+        return moveType == MoveType::QUEEN_CASTLE;
+    }
+
+    bool isKingCastle() {
+        return moveType == MoveType::KING_CASTLE;
     }
 
     bool isPromotion() {
@@ -47,7 +71,7 @@ struct Move {
         return moveType >= MoveType::KNIGHT_PROMOTION_CAPTURE && moveType <= MoveType::QUEEN_PROMOTION_CAPTURE;
     }
 
-    engine::board::PieceType getPromotionPiece() {
+    engine::board::PieceType getPromotionPiece() const {
         if (moveType == MoveType::KNIGHT_PROMOTION || moveType == MoveType::KNIGHT_PROMOTION_CAPTURE) {
             return engine::board::PieceType::KNIGHT;
         }
@@ -61,6 +85,23 @@ struct Move {
         }
 
         return engine::board::PieceType::QUEEN;
+    }
+};
+
+struct MoveList {
+    Move moves[256];
+
+    int size;
+
+    MoveList() : size(0) {
+    }
+
+    void add(int from, int to, MoveType moveType) {
+        moves[size++] = Move(from, to, moveType);
+    }
+
+    void add(const Move &move) {
+        moves[size++] = move;
     }
 };
 
