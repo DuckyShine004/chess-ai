@@ -100,9 +100,9 @@ void Engine::printBoard() {
 }
 
 void Engine::initialise() {
-    Bishop::initialiseRays();
+    Bishop::initialise();
 
-    Rook::initialiseRays();
+    Rook::initialise();
 
     for (int square = 0; square < 64; ++square) {
         this->_PAWN_ATTACKS[0][square] = Pawn::getAttacks(square, ColourType::WHITE);
