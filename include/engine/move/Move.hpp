@@ -89,7 +89,7 @@ struct Move {
 };
 
 struct MoveList {
-    Move moves[64];
+    Move moves[256];
 
     int size;
 

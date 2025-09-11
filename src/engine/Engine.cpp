@@ -238,8 +238,7 @@ void Engine::createPiece(int square, PieceType piece, ColourType side) {
 
     this->_occupancies[side] |= bitboard_square;
 
-    // this->_occupancyBoth |= bitboard_square;
-    this->_occupancyBoth = this->_occupancies[0] | this->_occupancies[1];
+    this->_occupancyBoth |= bitboard_square;
 }
 
 void Engine::removePiece(int rank, int file, ColourType side) {
@@ -267,8 +266,7 @@ void Engine::removePiece(int square, PieceType piece, ColourType side) {
 
     this->_occupancies[side] &= inverted_bitboard_square;
 
-    // this->_occupancyBoth &= inverted_bitboard_square;
-    this->_occupancyBoth = this->_occupancies[0] | this->_occupancies[1];
+    this->_occupancyBoth &= inverted_bitboard_square;
 }
 
 // TODO: Sort moves by move type
@@ -929,77 +927,23 @@ void Engine::makeMove(Move &move) {
 
     PieceType fromPiece = BoardUtility::getPiece(this->_bitboards, move.from, this->_side);
 
-    // if (move.isQuiet()) {
-    //     this->makeQuietMove(move, fromPiece);
-    // } else if (move.isCapture()) {
-    //     this->makeCaptureMove(move, undo, fromPiece, otherSide);
-    // } else if (move.isDoublePawn()) {
-    //     this->makeDoublePawnMove(move, fromPiece);
-    // } else if (move.isEnPassant()) {
-    //     this->makeEnPassantMove(move, fromPiece, otherSide);
-    // } else if (move.isQueenCastle()) {
-    //     this->makeQueenCastleMove(move, fromPiece);
-    // } else if (move.isKingCastle()) {
-    //     this->makeKingCastleMove(move, fromPiece);
-    // } else if (move.isPromotionQuiet()) {
-    //     this->makePromotionQuietMove(move);
-    // } else if (move.isPromotionCapture()) {
-    //     this->makePromotionCaptureMove(move, undo, otherSide);
-    // }
-
-    this->removePiece(move.from, fromPiece, this->_side);
-
-    // Create from piece in the to square
-    this->createPiece(move.to, fromPiece, this->_side);
-
-    const Castle kingSide = (this->_side == ColourType::WHITE) ? Castle::WHITE_KING : Castle::BLACK_KING;
-    const Castle queenSide = (this->_side == ColourType::WHITE) ? Castle::WHITE_QUEEN : Castle::BLACK_QUEEN;
-
-    // Perform the move type
-    if (move.moveType == MoveType::CAPTURE) {
-        // Check what the captured piece was
-        PieceType capturedPiece = BoardUtility::getPiece(this->_bitboards, move.to, otherSide);
-
-        // Remove the captured piece
-        this->removePiece(move.to, capturedPiece, otherSide);
-
-        undo.capturedPiece = capturedPiece;
-    } else if (move.moveType == MoveType::DOUBLE_PAWN) {
-        this->_enPassantSquare = EN_PASSANT_SQUARES[this->_side][BoardUtility::getFile(move.from)];
-    } else if (move.moveType == MoveType::EN_PASSANT) {
-        // Remove piece at the en passant capture square
-        this->removePiece(EN_PASSANT_CAPTURE_SQUARES[this->_side][BoardUtility::getFile(move.to)], PieceType::PAWN, otherSide);
-    } else if (move.moveType == MoveType::KING_CASTLE) {
-        // Move the king side rook to landing square
-        this->removePiece(ROOK_ORIGIN_SQUARES[kingSide], PieceType::ROOK, this->_side);
-        this->createPiece(ROOK_TO_SQUARES[kingSide], PieceType::ROOK, this->_side);
-    } else if (move.moveType == MoveType::QUEEN_CASTLE) {
-        // Move the queen side rook
-        this->removePiece(ROOK_ORIGIN_SQUARES[queenSide], PieceType::ROOK, this->_side);
-        this->createPiece(ROOK_TO_SQUARES[queenSide], PieceType::ROOK, this->_side);
+    if (move.isQuiet()) {
+        this->makeQuietMove(move, fromPiece);
+    } else if (move.isCapture()) {
+        this->makeCaptureMove(move, undo, fromPiece, otherSide);
+    } else if (move.isDoublePawn()) {
+        this->makeDoublePawnMove(move, fromPiece);
+    } else if (move.isEnPassant()) {
+        this->makeEnPassantMove(move, fromPiece, otherSide);
+    } else if (move.isQueenCastle()) {
+        this->makeQueenCastleMove(move, fromPiece);
+    } else if (move.isKingCastle()) {
+        this->makeKingCastleMove(move, fromPiece);
     } else if (move.isPromotionQuiet()) {
-        // Remove from piece in the to square
-        this->removePiece(move.to, fromPiece, this->_side);
-
-        // Replace with promotion piece
-        this->createPiece(move.to, move.getPromotionPiece(), this->_side);
+        this->makePromotionQuietMove(move);
     } else if (move.isPromotionCapture()) {
-        // Check what the captured piece was
-        PieceType capturedPiece = BoardUtility::getPiece(this->_bitboards, move.to, otherSide);
-
-        // Remove the captured piece
-        this->removePiece(move.to, capturedPiece, otherSide);
-
-        // Remove the pawn at the to square
-        this->removePiece(move.to, fromPiece, this->_side);
-
-        // Set the promoted piece
-        this->createPiece(move.to, move.getPromotionPiece(), this->_side);
-
-        undo.capturedPiece = capturedPiece;
+        this->makePromotionCaptureMove(move, undo, otherSide);
     }
-
-    // this->createPiece(move.to, fromPiece, this->_side);
 
     this->updateCastleRights();
 
@@ -1022,68 +966,22 @@ void Engine::unmakeMove(Move &move) {
 
     PieceType toPiece = BoardUtility::getPiece(this->_bitboards, move.to, this->_side);
 
-    // if (move.isQuiet() || move.isDoublePawn()) {
-    //     this->unmakeQuietMove(move, toPiece);
-    // } else if (move.isCapture()) {
-    //     this->unmakeCaptureMove(move, undo, toPiece, otherSide);
-    // } else if (move.isEnPassant()) {
-    //     this->unmakeEnPassantMove(move, toPiece, otherSide);
-    // } else if (move.isQueenCastle()) {
-    //     this->unmakeQueenCastleMove(move, toPiece);
-    // } else if (move.isKingCastle()) {
-    //     this->unmakeKingCastleMove(move, toPiece);
-    // } else if (move.isPromotionQuiet()) {
-    //     this->unmakePromotionQuietMove(move);
-    // } else if (move.isPromotionCapture()) {
-    //     this->unmakePromotionCaptureMove(move, undo, otherSide);
-    // }
-    // Remove the piece from the to square
-    this->removePiece(move.to, toPiece, this->_side);
-
-    // Create the to piece in the from square
-    this->createPiece(move.from, toPiece, this->_side);
-
-    // Undo the move type
-    const Castle kingSide = (this->_side == ColourType::WHITE) ? Castle::WHITE_KING : Castle::BLACK_KING;
-    const Castle queenSide = (this->_side == ColourType::WHITE) ? Castle::WHITE_QUEEN : Castle::BLACK_QUEEN;
-
-    if (move.moveType == MoveType::CAPTURE) {
-        // Create the capture piece back in the to square on the other side
-        this->createPiece(move.to, undo.capturedPiece, otherSide);
-    } else if (move.moveType == MoveType::EN_PASSANT) {
-        // create piece at the en passant capture square
-        this->createPiece(EN_PASSANT_CAPTURE_SQUARES[this->_side][BoardUtility::getFile(move.to)], PieceType::PAWN, otherSide);
-    } else if (move.moveType == MoveType::KING_CASTLE) {
-        this->removePiece(ROOK_TO_SQUARES[kingSide], PieceType::ROOK, this->_side);
-        this->createPiece(ROOK_ORIGIN_SQUARES[kingSide], PieceType::ROOK, this->_side);
-    } else if (move.moveType == MoveType::QUEEN_CASTLE) {
-        // Move the queen side rook back to the origin
-        this->removePiece(ROOK_TO_SQUARES[queenSide], PieceType::ROOK, this->_side);
-        this->createPiece(ROOK_ORIGIN_SQUARES[queenSide], PieceType::ROOK, this->_side);
+    if (move.isQuiet() || move.isDoublePawn()) {
+        this->unmakeQuietMove(move, toPiece);
+    } else if (move.isCapture()) {
+        this->unmakeCaptureMove(move, undo, toPiece, otherSide);
+    } else if (move.isEnPassant()) {
+        this->unmakeEnPassantMove(move, toPiece, otherSide);
+    } else if (move.isQueenCastle()) {
+        this->unmakeQueenCastleMove(move, toPiece);
+    } else if (move.isKingCastle()) {
+        this->unmakeKingCastleMove(move, toPiece);
     } else if (move.isPromotionQuiet()) {
-        // If promotion is quiet, the remove promotion piece which should be at the to square
-        this->removePiece(move.to, move.getPromotionPiece(), this->_side);
-
-        // Then we want to remove the piece that was just created at the from square
-        this->removePiece(move.from, toPiece, this->_side);
-
-        // Replace with pawn
-        this->createPiece(move.from, PieceType::PAWN, this->_side);
+        this->unmakePromotionQuietMove(move);
     } else if (move.isPromotionCapture()) {
-        // Remove the promotion piece
-        this->removePiece(move.to, move.getPromotionPiece(), this->_side);
-
-        // Remove the piece we just placed at from square
-        this->removePiece(move.from, toPiece, this->_side);
-
-        // Place the captured piece back
-        this->createPiece(move.to, undo.capturedPiece, otherSide);
-
-        // Replace with pawn
-        this->createPiece(move.from, PieceType::PAWN, this->_side);
+        this->unmakePromotionCaptureMove(move, undo, otherSide);
     }
 
-    // Get back the previous state
     this->_castleRights = undo.castleRights;
     this->_enPassantSquare = undo.enPassantSquare;
 
