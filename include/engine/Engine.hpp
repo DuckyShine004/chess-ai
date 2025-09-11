@@ -159,6 +159,10 @@ class Engine {
 
     void unmakeMove(engine::move::Move &move);
 
+    void makeQuietMove(engine::move::Move &move);
+
+    void makeCaptureMove(engine::move::Move &move);
+
     void searchRoot(int depth);
 
     int search(int alpha, int beta, int depth);

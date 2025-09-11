@@ -147,16 +147,16 @@ void Engine::parseFenCastleRights(std::string &castleRights) {
     for (char c : castleRights) {
         switch (c) {
         case 'K':
-            this->_castleRights |= (1ULL << Castle::WHITE_KING);
+            this->_castleRights |= CASTLE_MASK[Castle::WHITE_KING];
             break;
         case 'Q':
-            this->_castleRights |= (1ULL << Castle::WHITE_QUEEN);
+            this->_castleRights |= CASTLE_MASK[Castle::WHITE_QUEEN];
             break;
         case 'k':
-            this->_castleRights |= (1ULL << Castle::BLACK_KING);
+            this->_castleRights |= CASTLE_MASK[Castle::BLACK_KING];
             break;
         case 'q':
-            this->_castleRights |= (1ULL << Castle::BLACK_QUEEN);
+            this->_castleRights |= CASTLE_MASK[Castle::BLACK_QUEEN];
             break;
         default:
             break;
@@ -232,15 +232,13 @@ void Engine::createPiece(int rank, int file, PieceType piece, ColourType side) {
 }
 
 void Engine::createPiece(int square, PieceType piece, ColourType side) {
-    uint64_t bitboard_square = BITBOARD_SQUARES[square];
+    const uint64_t bitboard_square = BITBOARD_SQUARES[square];
 
     this->_bitboards[side][piece] |= bitboard_square;
 
     this->_occupancies[side] |= bitboard_square;
 
     this->_occupancyBoth |= bitboard_square;
-
-    // this->_occupancyBoth = this->_occupancies[0] | this->_occupancies[1];
 }
 
 void Engine::removePiece(int rank, int file, ColourType side) {
@@ -262,13 +260,13 @@ void Engine::removePiece(int rank, int file, PieceType piece, ColourType side) {
 }
 
 void Engine::removePiece(int square, PieceType piece, ColourType side) {
-    uint64_t bitboard_square = BITBOARD_SQUARES[square];
-    this->_bitboards[side][piece] &= ~bitboard_square;
+    const uint64_t inverted_bitboard_square = INVERTED_BITBOARD_SQUARES[square];
 
-    this->_occupancies[side] &= ~bitboard_square;
+    this->_bitboards[side][piece] &= inverted_bitboard_square;
 
-    // this->_occupancyBoth &= ~bitboard_square;
-    this->_occupancyBoth = this->_occupancies[0] | this->_occupancies[1];
+    this->_occupancies[side] &= inverted_bitboard_square;
+
+    this->_occupancyBoth &= inverted_bitboard_square;
 }
 
 // TODO: Sort moves by move type
@@ -298,7 +296,7 @@ void Engine::generatePawnMoves(MoveList &moves, ColourType side) {
         if (Pawn::canSinglePush(from, side, empty)) {
             int to = Pawn::singlePush(from, side);
 
-            if (Pawn::ENEMY_BACK_RANK[side] & (1ULL << to)) {
+            if (Pawn::ENEMY_BACK_RANK[side] & (BITBOARD_SQUARES[to])) {
                 Move move(from, to, MoveType::KNIGHT_PROMOTION);
 
                 if (this->isMoveLegal(move, side)) {
@@ -346,7 +344,7 @@ void Engine::generatePawnMoves(MoveList &moves, ColourType side) {
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
 
-            if (Pawn::ENEMY_BACK_RANK[side] & (1ULL << to)) {
+            if (Pawn::ENEMY_BACK_RANK[side] & BITBOARD_SQUARES[to]) {
                 Move move(from, to, MoveType::KNIGHT_PROMOTION_CAPTURE);
 
                 if (this->isMoveLegal(move, side)) {
@@ -380,7 +378,7 @@ void Engine::generatePawnMoves(MoveList &moves, ColourType side) {
         }
 
         if (this->_enPassantSquare != -1) {
-            uint64_t enPassantMoves = this->_PAWN_ATTACKS[side][from] & (1ULL << this->_enPassantSquare);
+            uint64_t enPassantMoves = this->_PAWN_ATTACKS[side][from] & BITBOARD_SQUARES[this->_enPassantSquare];
 
             while (enPassantMoves) {
                 int to = BitUtility::popLSB(enPassantMoves);
@@ -595,7 +593,7 @@ void Engine::generateCastleMoves(MoveList &moves, ColourType side) {
     }
 
     // Check if we can king side castle
-    if (this->_castleRights & (1ULL << kingSide)) {
+    if (this->_castleRights & CASTLE_MASK[kingSide]) {
         // Check if it's actually the rook there
         bool isRookAtOrigin = BitUtility::isBitSet(this->_bitboards[side][PieceType::ROOK], ROOK_ORIGIN_SQUARES[kingSide]);
 
@@ -612,7 +610,7 @@ void Engine::generateCastleMoves(MoveList &moves, ColourType side) {
     }
 
     // Check if we can castle queen side
-    if (this->_castleRights & (1ULL << queenSide)) {
+    if (this->_castleRights & CASTLE_MASK[queenSide]) {
         bool isRookAtOrigin = BitUtility::isBitSet(this->_bitboards[side][PieceType::ROOK], ROOK_ORIGIN_SQUARES[queenSide]);
 
         bool isEmpty = (this->_occupancyBoth & CASTLE_EMPTY_MASK[queenSide]) == 0ULL;
@@ -653,7 +651,7 @@ void Engine::generatePawnCaptures(MoveList &captures, ColourType side) {
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
 
-            if (Pawn::ENEMY_BACK_RANK[side] & (1ULL << to)) {
+            if (Pawn::ENEMY_BACK_RANK[side] & BITBOARD_SQUARES[to]) {
                 Move move(from, to, MoveType::KNIGHT_PROMOTION_CAPTURE);
 
                 if (this->isMoveLegal(move, side)) {
@@ -686,7 +684,7 @@ void Engine::generatePawnCaptures(MoveList &captures, ColourType side) {
         }
 
         if (this->_enPassantSquare != -1) {
-            uint64_t enPassantMoves = this->_PAWN_ATTACKS[side][from] & (1ULL << this->_enPassantSquare);
+            uint64_t enPassantMoves = this->_PAWN_ATTACKS[side][from] & BITBOARD_SQUARES[this->_enPassantSquare];
 
             while (enPassantMoves) {
                 int to = BitUtility::popLSB(enPassantMoves);
@@ -934,10 +932,11 @@ void Engine::makeMove(Move &move) {
     this->removePiece(move.from, fromPiece, this->_side);
 
     // Create from piece in the to square
-    this->createPiece(move.to, fromPiece, this->_side);
+    // this->createPiece(move.to, fromPiece, this->_side);
 
     const Castle kingSide = (this->_side == ColourType::WHITE) ? Castle::WHITE_KING : Castle::BLACK_KING;
     const Castle queenSide = (this->_side == ColourType::WHITE) ? Castle::WHITE_QUEEN : Castle::BLACK_QUEEN;
+
     // Perform the move type
     if (move.moveType == MoveType::CAPTURE) {
         // Check what the captured piece was
@@ -981,6 +980,8 @@ void Engine::makeMove(Move &move) {
 
         undo.capturedPiece = capturedPiece;
     }
+
+    this->createPiece(move.to, fromPiece, this->_side);
 
     // Update castle rights for both sides (more of checking if king or rook has moved)
     this->updateCastleRights();
@@ -1044,11 +1045,11 @@ void Engine::unmakeMove(Move &move) {
         // Remove the promotion piece
         this->removePiece(move.to, move.getPromotionPiece(), this->_side);
 
-        // Place the captured piece back
-        this->createPiece(move.to, undo.capturedPiece, otherSide);
-
         // Remove the piece we just placed at from square
         this->removePiece(move.from, toPiece, this->_side);
+
+        // Place the captured piece back
+        this->createPiece(move.to, undo.capturedPiece, otherSide);
 
         // Replace with pawn
         this->createPiece(move.from, PieceType::PAWN, this->_side);
@@ -1059,6 +1060,9 @@ void Engine::unmakeMove(Move &move) {
     this->_enPassantSquare = undo.enPassantSquare;
 
     this->_undoStack.pop_back();
+}
+
+void Engine::makeQuietMove(Move &move) {
 }
 
 void Engine::searchRoot(int depth) {

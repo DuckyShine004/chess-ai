@@ -38,8 +38,9 @@ target_link_libraries(chess PRIVATE fmt::fmt ${OPENAL_LDFLAGS}
 target_link_libraries(chess PRIVATE SFML::System SFML::Window SFML::Graphics
                                     SFML::Audio)
 
-target_compile_options(chess PRIVATE -O3 -march=native -mbmi2
-                                     -fomit-frame-pointer)
+target_compile_options(
+  chess PRIVATE -O3 -march=native -mtune=native -fomit-frame-pointer
+                -fno-semantic-interposition)
 
 if(LLD_LINKER)
   target_link_options(chess PRIVATE -fuse-ld=lld)
