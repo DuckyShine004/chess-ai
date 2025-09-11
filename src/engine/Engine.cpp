@@ -587,29 +587,22 @@ void Engine::generateCastleMoves(MoveList &moves, ColourType side) {
 
     int kingOriginSquare = KING_ORIGIN_SQUARES[side];
 
-    // Check if the king is actually at it's origin
     if (!BitUtility::isBitSet(this->_bitboards[side][PieceType::KING], kingOriginSquare)) {
         return;
     }
 
-    // Check if we can king side castle
     if (this->_castleRights & CASTLE_MASK[kingSide]) {
-        // Check if it's actually the rook there
         bool isRookAtOrigin = BitUtility::isBitSet(this->_bitboards[side][PieceType::ROOK], ROOK_ORIGIN_SQUARES[kingSide]);
 
-        // Check if there are pieces in between
         bool isEmpty = (this->_occupancyBoth & CASTLE_EMPTY_MASK[kingSide]) == 0ULL;
 
-        // Check if the squares we are moving to are safe
         bool isSafe = !this->areSquaresAttacked(CASTLE_SAFE_MASK[kingSide], side);
 
         if (isRookAtOrigin && isEmpty && isSafe) {
-            // Since we have already checked if it's safe to move to the safe squares, we don't need to perform extra king check
             moves.add(kingOriginSquare, KING_TO_SQUARES[kingSide], MoveType::KING_CASTLE);
         }
     }
 
-    // Check if we can castle queen side
     if (this->_castleRights & CASTLE_MASK[queenSide]) {
         bool isRookAtOrigin = BitUtility::isBitSet(this->_bitboards[side][PieceType::ROOK], ROOK_ORIGIN_SQUARES[queenSide]);
 

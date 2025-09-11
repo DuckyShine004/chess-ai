@@ -61,7 +61,7 @@ class Engine {
   private:
     static inline constexpr uint8_t _INITIAL_CASTLE_RIGHTS = 0xF;
 
-    static inline constexpr int _SEARCH_DEPTH = 4;
+    static inline constexpr int _SEARCH_DEPTH = 5;
 
     static inline uint64_t _PAWN_ATTACKS[2][64];
     static inline uint64_t _KNIGHT_ATTACKS[64];

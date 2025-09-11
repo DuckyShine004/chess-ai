@@ -6,6 +6,8 @@
 
 #include "engine/board/Fen.hpp"
 
+#include "logger/LoggerMacros.hpp"
+
 using namespace engine::board;
 
 using namespace application::manager;
@@ -50,13 +52,25 @@ void Application::run() {
 }
 
 void Application::debug() {
-    this->_engine.parse(POSITIONS[1]);
+    // this->_engine.parse(POSITIONS[1]);
 
-    this->_engine.printBoard();
-
-    for (int depth = 1; depth <= 7; ++depth) {
-        this->_engine.runPerft(depth);
+    // this->_engine.printBoard();
+    //
+    // for (int depth = 1; depth <= 7; ++depth) {
+    //     this->_engine.runPerft(depth);
+    // }
+    int moves = 50;
+    long long totalElapsed = 0LL;
+    for (int i = 0; i < moves; ++i) {
+        auto start = std::chrono::high_resolution_clock::now();
+        this->_engine.run();
+        auto end = std::chrono::high_resolution_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        this->_engine.printBoard();
+        totalElapsed += elapsed.count();
     }
+    LOG_DEBUG("Moves: {}", moves);
+    LOG_DEBUG("Time: {} ms", totalElapsed);
 }
 
 void Application::update() {
