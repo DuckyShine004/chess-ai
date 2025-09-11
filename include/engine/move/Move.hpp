@@ -51,8 +51,12 @@ struct Move {
         return moveType == MoveType::EN_PASSANT;
     }
 
-    bool isCastle() {
-        return moveType == MoveType::QUEEN_CASTLE || moveType == MoveType::KING_CASTLE;
+    bool isQueenCastle() {
+        return moveType == MoveType::QUEEN_CASTLE;
+    }
+
+    bool isKingCastle() {
+        return moveType == MoveType::KING_CASTLE;
     }
 
     bool isPromotion() {

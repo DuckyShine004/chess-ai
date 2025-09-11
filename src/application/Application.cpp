@@ -16,6 +16,8 @@ Application::Application() {
     sf::VideoMode mode(sf::Vector2u(1440, 900));
 
     this->_window = sf::RenderWindow(mode, "Chess");
+
+    this->initialise();
 }
 
 void Application::initialise() {
@@ -48,11 +50,11 @@ void Application::run() {
 }
 
 void Application::debug() {
-    // this->_engine.parse(POSITIONS[4]);
+    this->_engine.parse(POSITIONS[0]);
 
     this->_engine.printBoard();
 
-    for (int depth = 1; depth <= 6; ++depth) {
+    for (int depth = 1; depth <= 5; ++depth) {
         this->_engine.runPerft(depth);
     }
 }

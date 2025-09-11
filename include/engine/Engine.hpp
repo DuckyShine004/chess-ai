@@ -169,11 +169,27 @@ class Engine {
 
     FORCE_INLINE void makeEnPassantMove(const engine::move::Move &move, engine::board::PieceType fromPiece, engine::board::ColourType otherSide);
 
-    FORCE_INLINE void makeCastleMove(const engine::move::Move &move, engine::board::PieceType fromPiece);
+    FORCE_INLINE void makeQueenCastleMove(const engine::move::Move &move, engine::board::PieceType fromPiece);
 
-    FORCE_INLINE void makePromotionQuietMove(const engine::move::Move &move, engine::board::PieceType fromPiece);
+    FORCE_INLINE void makeKingCastleMove(const engine::move::Move &move, engine::board::PieceType fromPiece);
 
-    FORCE_INLINE void makePromotionCaptureMove(const engine::move::Move &move, engine::move::Undo &undo, engine::board::PieceType fromPiece, engine::board::ColourType otherSide);
+    FORCE_INLINE void makePromotionQuietMove(const engine::move::Move &move);
+
+    FORCE_INLINE void makePromotionCaptureMove(const engine::move::Move &move, engine::move::Undo &undo, engine::board::ColourType otherSide);
+
+    FORCE_INLINE void unmakeQuietMove(const engine::move::Move &move, engine::board::PieceType toPiece);
+
+    FORCE_INLINE void unmakeCaptureMove(const engine::move::Move &move, const engine::move::Undo &undo, engine::board::PieceType toPiece, engine::board::ColourType otherSide);
+
+    FORCE_INLINE void unmakeEnPassantMove(const engine::move::Move &move, engine::board::PieceType toPiece, engine::board::ColourType otherSide);
+
+    FORCE_INLINE void unmakeQueenCastleMove(const engine::move::Move &move, engine::board::PieceType toPiece);
+
+    FORCE_INLINE void unmakeKingCastleMove(const engine::move::Move &move, engine::board::PieceType toPiece);
+
+    FORCE_INLINE void unmakePromotionQuietMove(const engine::move::Move &move);
+
+    FORCE_INLINE void unmakePromotionCaptureMove(const engine::move::Move &move, const engine::move::Undo &undo, engine::board::ColourType otherSide);
 
     void searchRoot(int depth);
 
