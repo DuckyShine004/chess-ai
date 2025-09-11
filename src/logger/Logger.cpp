@@ -16,9 +16,9 @@ Logger::Logger() {
 Logger::~Logger() = default;
 
 Logger &Logger::getInstance() {
-    static Logger instance;
+    static Logger *instance = new Logger();
 
-    return instance;
+    return *instance;
 }
 
 void Logger::initialise() {

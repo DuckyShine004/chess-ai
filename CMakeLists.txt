@@ -19,7 +19,7 @@ file(GLOB_RECURSE CHESS_SOURCES "${CMAKE_SOURCE_DIR}/src/*.cpp"
 
 find_package(PkgConfig REQUIRED)
 find_package(fmt REQUIRED)
-find_package(SFML REQUIRED COMPONENTS System Window Graphics Audio)
+find_package(SFML 3.0.1 REQUIRED COMPONENTS System Window Graphics)
 
 pkg_check_modules(OPENAL REQUIRED openal)
 pkg_check_modules(SNDFILE REQUIRED sndfile)
@@ -35,15 +35,19 @@ find_library(OPENAL_FRAMEWORK OpenAL)
 target_link_libraries(chess PRIVATE fmt::fmt ${OPENAL_LDFLAGS}
                                     ${SNDFILE_LDFLAGS})
 
-target_link_libraries(chess PRIVATE SFML::System SFML::Window SFML::Graphics
-                                    SFML::Audio)
+target_link_libraries(chess PRIVATE SFML::System SFML::Window SFML::Graphics)
 
 target_compile_options(
   chess PRIVATE -O3 -march=native -mtune=native -fomit-frame-pointer
-                -fno-semantic-interposition)
+                -ffunction-sections -fdata-sections)
+
+if(APPLE)
+  target_link_options(chess PRIVATE -Wl,-dead_strip -Wl,-dead_strip_dylibs)
+else()
+  target_compile_options(chess PRIVATE -fno-semantic-interposition)
+  target_link_options(chess PRIVATE -Wl,--as-needed -Wl,--gc-sections)
+endif()
 
 if(LLD_LINKER)
   target_link_options(chess PRIVATE -fuse-ld=lld)
 endif()
-
-target_link_options(chess PRIVATE -Wl,--as-needed -Wl,--gc-sections)

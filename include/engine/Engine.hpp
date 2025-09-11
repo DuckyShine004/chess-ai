@@ -11,6 +11,8 @@
 #include "engine/move/Move.hpp"
 #include "engine/move/Undo.hpp"
 
+#include "compiler/compiler.hpp"
+
 namespace engine {
 
 struct SearchResult {
@@ -159,9 +161,19 @@ class Engine {
 
     void unmakeMove(engine::move::Move &move);
 
-    void makeQuietMove(engine::move::Move &move);
+    FORCE_INLINE void makeQuietMove(const engine::move::Move &move, engine::board::PieceType fromPiece);
 
-    void makeCaptureMove(engine::move::Move &move);
+    FORCE_INLINE void makeCaptureMove(const engine::move::Move &move, engine::move::Undo &undo, engine::board::PieceType fromPiece, engine::board::ColourType otherSide);
+
+    FORCE_INLINE void makeDoublePawnMove(const engine::move::Move &move, engine::board::PieceType fromPiece);
+
+    FORCE_INLINE void makeEnPassantMove(const engine::move::Move &move, engine::board::PieceType fromPiece, engine::board::ColourType otherSide);
+
+    FORCE_INLINE void makeCastleMove(const engine::move::Move &move, engine::board::PieceType fromPiece);
+
+    FORCE_INLINE void makePromotionQuietMove(const engine::move::Move &move, engine::board::PieceType fromPiece);
+
+    FORCE_INLINE void makePromotionCaptureMove(const engine::move::Move &move, engine::move::Undo &undo, engine::board::PieceType fromPiece, engine::board::ColourType otherSide);
 
     void searchRoot(int depth);
 
