@@ -4,8 +4,6 @@
 
 #include "engine/board/Colour.hpp"
 
-#include "logger/LoggerMacros.hpp"
-
 using namespace engine;
 
 using namespace engine::board;
@@ -113,6 +111,10 @@ void Chess::handleFirstSelectedSquare(Engine &engine, Square *square, ColourType
     for (int i = 0; i < moves.size; ++i) {
         uint16_t &move = moves.moves[i];
 
+        if (!engine.isMoveLegal(move, side)) {
+            continue;
+        }
+
         int from = Move::getFrom(move);
         int to = Move::getTo(move);
 
@@ -139,7 +141,7 @@ void Chess::handleSecondSelectedSquare(Engine &engine, Square *square) {
         return;
     }
 
-    uint16_t &move = this->_activeMoves[square->getSquare()];
+    uint16_t move = this->_activeMoves[square->getSquare()];
 
     this->setPreviousSquares(this->_selectedSquare->getSquare(), square->getSquare());
 
