@@ -7,11 +7,15 @@ namespace engine::move {
 struct Undo {
     uint8_t castleRights;
 
-    int enPassantSquare;
+    int8_t enPassantSquare;
+
+    // Keep track of zobrist
+
+    uint16_t halfMove;
 
     engine::board::PieceType capturedPiece;
 
-    Undo() : enPassantSquare(-1), capturedPiece(engine::board::PieceType::EMPTY) {
+    Undo() : enPassantSquare(-1), capturedPiece(engine::board::PieceType::EMPTY), halfMove(0) {
     }
 };
 

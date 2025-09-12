@@ -45,9 +45,12 @@ void Chess::move(sf::RenderWindow &window, Engine &engine, sf::Vector2i mousePos
 
 void Chess::update(sf::RenderWindow &window, Engine &engine) {
     if (engine.getSide() != ColourType::WHITE) {
-        Move &move = engine.getMove();
+        uint16_t &move = engine.getMove();
 
-        this->setPreviousSquares(move.from, move.to);
+        int from = Move::getFrom(move);
+        int to = Move::getTo(move);
+
+        this->setPreviousSquares(from, to);
 
         engine.makeMove(move);
     }
@@ -80,7 +83,9 @@ void Chess::clearPreviousSquares() {
 
 void Chess::clearSelection() {
     for (const auto &[square, move] : this->_activeMoves) {
-        this->_board.getSquare(move.to)->setIsAttacked(false);
+        int to = Move::getTo(move);
+
+        this->_board.getSquare(to)->setIsAttacked(false);
     }
 
     this->_activeMoves.clear();
@@ -103,18 +108,21 @@ void Chess::handleFirstSelectedSquare(Engine &engine, Square *square, ColourType
         return;
     }
 
-    MoveList moves = engine.generateMoves(side);
+    Move::MoveList moves = engine.generateMoves(side);
 
     for (int i = 0; i < moves.size; ++i) {
-        Move &move = moves.moves[i];
+        uint16_t &move = moves.moves[i];
 
-        if (move.from != square->getSquare()) {
+        int from = Move::getFrom(move);
+        int to = Move::getTo(move);
+
+        if (from != square->getSquare()) {
             continue;
         }
 
-        this->_board.getSquare(move.to)->setIsAttacked(true);
+        this->_board.getSquare(to)->setIsAttacked(true);
 
-        this->_activeMoves[move.to] = move;
+        this->_activeMoves[to] = move;
     }
 
     if (!this->_activeMoves.empty()) {
@@ -131,7 +139,7 @@ void Chess::handleSecondSelectedSquare(Engine &engine, Square *square) {
         return;
     }
 
-    Move &move = this->_activeMoves[square->getSquare()];
+    uint16_t &move = this->_activeMoves[square->getSquare()];
 
     this->setPreviousSquares(this->_selectedSquare->getSquare(), square->getSquare());
 

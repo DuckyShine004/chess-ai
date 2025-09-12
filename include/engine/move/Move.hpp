@@ -4,7 +4,10 @@
 
 #include "engine/board/Piece.hpp"
 
-namespace engine::move {
+// Encoding:
+// from and to squares, 0-5,6-11
+// move type: 12-16
+namespace engine::move::Move {
 
 enum MoveType : uint8_t {
     QUIET = 0,
@@ -22,74 +25,123 @@ enum MoveType : uint8_t {
     ROOK_PROMOTION_CAPTURE = 12,
     QUEEN_PROMOTION_CAPTURE = 13,
 };
-// TODO: encode move struct to optimise memory
-struct Move {
-    int from;
-    int to;
 
-    MoveType moveType;
+inline constexpr uint16_t FROM_MASK = 0b0000000000111111;
 
-    Move() : moveType(MoveType::QUIET) {
+inline constexpr uint16_t TO_MASK = 0b0000111111000000;
+
+inline constexpr uint16_t MOVE_TYPE_MASK = 0b1111000000000000;
+
+inline constexpr int TO_OFFSET = 6;
+
+inline constexpr int MOVE_TYPE_OFFSET = 12;
+
+[[nodiscard]] inline constexpr uint16_t getMove(int from, int to, MoveType moveType);
+
+[[nodiscard]] inline constexpr int getFrom(uint16_t move);
+
+[[nodiscard]] inline constexpr int getTo(uint16_t move);
+
+[[nodiscard]] inline constexpr bool isQuiet(uint16_t move);
+
+[[nodiscard]] inline constexpr bool isCapture(uint16_t move);
+
+[[nodiscard]] inline constexpr bool isDoublePawn(uint16_t move);
+
+[[nodiscard]] inline constexpr bool isEnPassant(uint16_t move);
+
+[[nodiscard]] inline constexpr bool isQueenCastle(uint16_t move);
+
+[[nodiscard]] inline constexpr bool isKingCastle(uint16_t move);
+
+[[nodiscard]] inline constexpr bool isPromotionQuiet(uint16_t move);
+
+[[nodiscard]] inline constexpr bool isPromotionCapture(uint16_t move);
+
+[[nodiscard]] inline constexpr engine::board::PieceType getPromotionPiece(uint16_t move);
+
+[[nodiscard]] inline constexpr bool isGeneralCapture(uint16_t move);
+
+[[nodiscard]] inline constexpr uint16_t getMove(int from, int to, MoveType moveType) {
+    return from | (to << TO_OFFSET) | (moveType << MOVE_TYPE_OFFSET);
+}
+
+[[nodiscard]] inline constexpr int getFrom(uint16_t move) {
+    return move & FROM_MASK;
+}
+
+[[nodiscard]] inline constexpr int getTo(uint16_t move) {
+    return (move & TO_MASK) >> TO_OFFSET;
+}
+
+[[nodiscard]] inline constexpr bool isQuiet(uint16_t move) {
+    return (move >> MOVE_TYPE_OFFSET) == MoveType::QUIET;
+}
+
+[[nodiscard]] inline constexpr bool isCapture(uint16_t move) {
+    return (move >> MOVE_TYPE_OFFSET) == MoveType::CAPTURE;
+}
+
+[[nodiscard]] inline constexpr bool isDoublePawn(uint16_t move) {
+    return (move >> MOVE_TYPE_OFFSET) == MoveType::DOUBLE_PAWN;
+}
+
+[[nodiscard]] inline constexpr bool isEnPassant(uint16_t move) {
+    return (move >> MOVE_TYPE_OFFSET) == MoveType::EN_PASSANT;
+}
+
+[[nodiscard]] inline constexpr bool isQueenCastle(uint16_t move) {
+    return (move >> MOVE_TYPE_OFFSET) == MoveType::QUEEN_CASTLE;
+}
+
+[[nodiscard]] inline constexpr bool isKingCastle(uint16_t move) {
+    return (move >> MOVE_TYPE_OFFSET) == MoveType::KING_CASTLE;
+}
+
+[[nodiscard]] inline constexpr bool isPromotionQuiet(uint16_t move) {
+    MoveType moveType = static_cast<MoveType>(move >> MOVE_TYPE_OFFSET);
+
+    return MoveType::KNIGHT_PROMOTION <= moveType && moveType <= MoveType::QUEEN_PROMOTION;
+}
+
+[[nodiscard]] inline constexpr bool isPromotionCapture(uint16_t move) {
+    MoveType moveType = static_cast<MoveType>(move >> MOVE_TYPE_OFFSET);
+
+    return MoveType::KNIGHT_PROMOTION_CAPTURE <= moveType && moveType <= MoveType::QUEEN_PROMOTION_CAPTURE;
+}
+
+[[nodiscard]] inline constexpr engine::board::PieceType getPromotionPiece(uint16_t move) {
+    MoveType moveType = static_cast<MoveType>(move >> MOVE_TYPE_OFFSET);
+
+    if (moveType == MoveType::KNIGHT_PROMOTION || moveType == MoveType::KNIGHT_PROMOTION_CAPTURE) {
+        return engine::board::PieceType::KNIGHT;
     }
 
-    Move(int from, int to, MoveType moveType) : from(from), to(to), moveType(moveType) {
+    if (moveType == MoveType::BISHOP_PROMOTION || moveType == MoveType::BISHOP_PROMOTION_CAPTURE) {
+        return engine::board::PieceType::BISHOP;
     }
 
-    bool isQuiet() {
-        return moveType == MoveType::QUIET;
+    if (moveType == MoveType::ROOK_PROMOTION || moveType == MoveType::ROOK_PROMOTION_CAPTURE) {
+        return engine::board::PieceType::ROOK;
     }
 
-    bool isCapture() {
-        return moveType == MoveType::CAPTURE;
-    }
+    return engine::board::PieceType::QUEEN;
+}
 
-    bool isDoublePawn() {
-        return moveType == MoveType::DOUBLE_PAWN;
-    }
+[[nodiscard]] inline constexpr bool isGeneralCapture(uint16_t move) {
+    MoveType moveType = static_cast<MoveType>(move >> MOVE_TYPE_OFFSET);
 
-    bool isEnPassant() {
-        return moveType == MoveType::EN_PASSANT;
-    }
+    return moveType == MoveType::CAPTURE || moveType == MoveType::EN_PASSANT || (MoveType::KNIGHT_PROMOTION_CAPTURE <= moveType && moveType <= MoveType::QUEEN_PROMOTION_CAPTURE);
+}
 
-    bool isQueenCastle() {
-        return moveType == MoveType::QUEEN_CASTLE;
-    }
+[[nodiscard]] inline constexpr bool isGeneralPromotion(uint16_t move) {
+    MoveType moveType = static_cast<MoveType>(move >> MOVE_TYPE_OFFSET);
 
-    bool isKingCastle() {
-        return moveType == MoveType::KING_CASTLE;
-    }
-
-    bool isPromotion() {
-        return moveType >= MoveType::KNIGHT_PROMOTION && moveType <= MoveType::QUEEN_PROMOTION_CAPTURE;
-    }
-
-    bool isPromotionQuiet() {
-        return moveType >= MoveType::KNIGHT_PROMOTION && moveType <= MoveType::QUEEN_PROMOTION;
-    }
-
-    bool isPromotionCapture() {
-        return moveType >= MoveType::KNIGHT_PROMOTION_CAPTURE && moveType <= MoveType::QUEEN_PROMOTION_CAPTURE;
-    }
-
-    engine::board::PieceType getPromotionPiece() const {
-        if (moveType == MoveType::KNIGHT_PROMOTION || moveType == MoveType::KNIGHT_PROMOTION_CAPTURE) {
-            return engine::board::PieceType::KNIGHT;
-        }
-
-        if (moveType == MoveType::BISHOP_PROMOTION || moveType == MoveType::BISHOP_PROMOTION_CAPTURE) {
-            return engine::board::PieceType::BISHOP;
-        }
-
-        if (moveType == MoveType::ROOK_PROMOTION || moveType == MoveType::ROOK_PROMOTION_CAPTURE) {
-            return engine::board::PieceType::ROOK;
-        }
-
-        return engine::board::PieceType::QUEEN;
-    }
-};
+    return MoveType::KNIGHT_PROMOTION <= moveType && moveType <= MoveType::QUEEN_PROMOTION_CAPTURE;
+}
 
 struct MoveList {
-    Move moves[256];
+    uint16_t moves[256];
 
     int size;
 
@@ -97,12 +149,12 @@ struct MoveList {
     }
 
     void add(int from, int to, MoveType moveType) {
-        moves[size++] = Move(from, to, moveType);
+        moves[size++] = getMove(from, to, moveType);
     }
 
-    void add(const Move &move) {
+    void add(const uint16_t &move) {
         moves[size++] = move;
     }
 };
 
-} // namespace engine::move
+} // namespace engine::move::Move

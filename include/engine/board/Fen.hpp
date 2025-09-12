@@ -15,4 +15,6 @@ inline constexpr const char *POSITIONS[5] = {
 };
 // clang-format on
 
+inline constexpr const char *KILLER_POSITION = "6k1/3q1pp1/pp3n1p/1r6/5P2/1P4P1/PQ4BP/2R3K1 w KQkq - 0 1";
+
 } // namespace engine::board

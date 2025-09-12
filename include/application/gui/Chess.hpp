@@ -34,7 +34,7 @@ class Chess {
 
     application::gui::Square *_selectedSquare;
 
-    std::map<int, engine::move::Move> _activeMoves;
+    std::map<int, uint16_t> _activeMoves;
 
     void setPreviousSquares(int from, int to);
 
