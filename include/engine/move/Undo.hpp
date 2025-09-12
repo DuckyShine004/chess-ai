@@ -9,6 +9,10 @@ struct Undo {
 
     int enPassantSquare;
 
+    // Keep track of zobrist
+
+    // Keep track of half moves
+
     engine::board::PieceType capturedPiece;
 
     Undo() : enPassantSquare(-1), capturedPiece(engine::board::PieceType::EMPTY) {

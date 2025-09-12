@@ -4,6 +4,9 @@
 
 #include "engine/board/Piece.hpp"
 
+// Encoding:
+// from and to squares, 0-5,6-11
+// 12-(12+MoveType)
 namespace engine::move {
 
 enum MoveType : uint8_t {
@@ -22,7 +25,80 @@ enum MoveType : uint8_t {
     ROOK_PROMOTION_CAPTURE = 12,
     QUEEN_PROMOTION_CAPTURE = 13,
 };
+
+inline constexpr uint16_t FROM_MASK = 0b0000000000111111;
+
+inline constexpr uint16_t TO_MASK = 0b0000111111000000;
+
+inline constexpr uint16_t MOVE_TYPE_MASK = 0b1111000000000000;
+
+inline constexpr int TO_OFFSET = 6;
+
+inline constexpr int MOVE_TYPE_OFFSET = 12;
+
 // TODO: encode move struct to optimise memory
+inline constexpr void setFrom(uint16_t &move, int square);
+
+inline constexpr void setTo(uint16_t &move, int square);
+
+inline constexpr void setMoveType(uint16_t &move, MoveType moveType);
+
+[[nodiscard]] inline constexpr uint16_t getMove(int from, int to, MoveType moveType);
+
+[[nodiscard]] inline constexpr int getFrom(uint16_t move);
+
+[[nodiscard]] inline constexpr int getTo(uint16_t move);
+
+[[nodiscard]] inline constexpr bool isQuiet(uint16_t move);
+
+inline constexpr void setFromSquare(uint16_t &move, int square) {
+    move |= square;
+}
+
+inline constexpr void setToSquare(uint16_t &move, int square) {
+    move |= (square << TO_OFFSET);
+}
+
+inline constexpr void setMoveType(uint16_t &move, MoveType moveType) {
+    move |= (moveType << MOVE_TYPE_OFFSET);
+}
+
+[[nodiscard]] inline constexpr uint16_t getMove(int from, int to, MoveType moveType) {
+    return from | (to << TO_OFFSET) | (moveType << MOVE_TYPE_OFFSET);
+}
+
+[[nodiscard]] inline constexpr int getFrom(uint16_t move) {
+    return move & FROM_MASK;
+}
+
+[[nodiscard]] inline constexpr int getTo(uint16_t move) {
+    return (move & TO_MASK) >> TO_OFFSET;
+}
+
+[[nodiscard]] inline constexpr bool isQuiet(uint16_t move) {
+    return (move >> MOVE_TYPE_OFFSET) == MoveType::QUIET;
+}
+
+[[nodiscard]] inline constexpr bool isCapture(uint16_t move) {
+    return (move >> MOVE_TYPE_OFFSET) == MoveType::CAPTURE;
+}
+
+[[nodiscard]] inline constexpr bool isDoublePawn(uint16_t move) {
+    return (move >> MOVE_TYPE_OFFSET) == MoveType::DOUBLE_PAWN;
+}
+
+[[nodiscard]] inline constexpr bool isQueenCastle(uint16_t move) {
+    return (move >> MOVE_TYPE_OFFSET) == MoveType::QUEEN_CASTLE;
+}
+
+[[nodiscard]] inline constexpr bool isKingCastle(uint16_t move) {
+    return (move >> MOVE_TYPE_OFFSET) == MoveType::KING_CASTLE;
+}
+
+// [[nodiscard]] inline constexpr bool isPromotionQuiet(uint16_t move) {
+//     MoveType moveType (move >> MOVE_TYPE_OFFSET) == MoveType::KING_CASTLE;
+// }
+
 struct Move {
     int from;
     int to;
@@ -59,10 +135,6 @@ struct Move {
         return moveType == MoveType::KING_CASTLE;
     }
 
-    bool isPromotion() {
-        return moveType >= MoveType::KNIGHT_PROMOTION && moveType <= MoveType::QUEEN_PROMOTION_CAPTURE;
-    }
-
     bool isPromotionQuiet() {
         return moveType >= MoveType::KNIGHT_PROMOTION && moveType <= MoveType::QUEEN_PROMOTION;
     }
@@ -89,7 +161,7 @@ struct Move {
 };
 
 struct MoveList {
-    Move moves[256];
+    uint16_t moves[256];
 
     int size;
 
@@ -97,10 +169,10 @@ struct MoveList {
     }
 
     void add(int from, int to, MoveType moveType) {
-        moves[size++] = Move(from, to, moveType);
+        moves[size++] = getMove(from, to, moveType);
     }
 
-    void add(const Move &move) {
+    void add(const uint16_t &move) {
         moves[size++] = move;
     }
 };

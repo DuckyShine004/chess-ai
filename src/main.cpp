@@ -7,6 +7,8 @@ int main(int argc, char *argv[]) {
 
     // clang-format off
     #ifdef NDEBUG
+        application.initialise();
+
         application.run();
     #else
         application.debug();

@@ -15,14 +15,13 @@ using namespace application::manager;
 namespace application {
 
 Application::Application() {
+}
+
+void Application::initialise() {
     sf::VideoMode mode(sf::Vector2u(1440, 900));
 
     this->_window = sf::RenderWindow(mode, "Chess");
 
-    this->initialise();
-}
-
-void Application::initialise() {
     sf::ContextSettings settings;
 
     settings.antiAliasingLevel = 8;
