@@ -52,13 +52,13 @@ void Application::run() {
 
 void Application::debug() {
     // this->_engine.parse(POSITIONS[1]);
-
-    this->_engine.printBoard();
-
-    for (int depth = 1; depth <= 6; ++depth) {
-        this->_engine.runPerft(depth);
-    }
-    // int moves = 50;
+    //
+    // this->_engine.printBoard();
+    //
+    // for (int depth = 1; depth <= 6; ++depth) {
+    //     this->_engine.runPerft(depth);
+    // }
+    // int moves = 20;
     // long long totalElapsed = 0LL;
     // for (int i = 0; i < moves; ++i) {
     //     auto start = std::chrono::high_resolution_clock::now();
@@ -70,6 +70,13 @@ void Application::debug() {
     // }
     // LOG_DEBUG("Moves: {}", moves);
     // LOG_DEBUG("Time: {} ms", totalElapsed);
+    this->_engine.parse(KILLER_POSITION);
+
+    this->_engine.printBoard();
+
+    this->_engine.run();
+
+    this->_engine.printBoard();
 }
 
 void Application::update() {

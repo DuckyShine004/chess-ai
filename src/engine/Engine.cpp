@@ -7,6 +7,8 @@
 #include "engine/board/Castle.hpp"
 #include "engine/board/Square.hpp"
 
+#include "engine/move/Order.hpp"
+
 #include "engine/evaluation/Material.hpp"
 #include "engine/evaluation/Position.hpp"
 
@@ -271,7 +273,6 @@ void Engine::removePiece(int square, PieceType piece, ColourType side) {
     this->_occupancyBoth &= inverted_bitboard_square;
 }
 
-// TODO: Sort moves by move type
 MoveList Engine::generateMoves(ColourType side) {
     MoveList moves;
 
@@ -777,10 +778,10 @@ void Engine::makeMove(uint16_t &move) {
 
     undo.castleRights = this->_castleRights;
     undo.enPassantSquare = this->_enPassantSquare;
+    undo.halfMove = this->_halfMove;
 
     this->_enPassantSquare = -1;
 
-    // Start decoding
     int from = Move::getFrom(move);
     int to = Move::getTo(move);
     PieceType promotionPiece = Move::getPromotionPiece(move);
@@ -789,10 +790,14 @@ void Engine::makeMove(uint16_t &move) {
 
     PieceType fromPiece = BoardUtility::getPiece(this->_bitboards, from, this->_side);
 
+    bool isCapture = false;
+
     if (Move::isQuiet(move)) {
         this->makeQuietMove(from, to, fromPiece);
     } else if (Move::isCapture(move)) {
         this->makeCaptureMove(from, to, undo, fromPiece, otherSide);
+
+        isCapture = true;
     } else if (Move::isDoublePawn(move)) {
         this->makeDoublePawnMove(from, to, fromPiece);
     } else if (Move::isEnPassant(move)) {
@@ -809,6 +814,12 @@ void Engine::makeMove(uint16_t &move) {
 
     this->updateCastleRights();
 
+    if (fromPiece == PieceType::PAWN || isCapture) {
+        this->_halfMove = 0;
+    } else {
+        ++this->_halfMove;
+    }
+
     this->_undoStack.push_back(std::move(undo));
 
     this->switchSide();
@@ -820,7 +831,6 @@ void Engine::unmakeMove(uint16_t &move) {
 
     const Undo &undo = this->_undoStack.back();
 
-    // Start decoding
     int from = Move::getFrom(move);
     int to = Move::getTo(move);
     PieceType promotionPiece = Move::getPromotionPiece(move);
@@ -847,6 +857,7 @@ void Engine::unmakeMove(uint16_t &move) {
 
     this->_castleRights = undo.castleRights;
     this->_enPassantSquare = undo.enPassantSquare;
+    this->_halfMove = undo.halfMove;
 
     this->_undoStack.pop_back();
 }
@@ -993,6 +1004,46 @@ void Engine::unmakePromotionCaptureMove(int from, int to, PieceType promotionPie
     this->createPiece(to, undo.capturedPiece, otherSide);
 }
 
+// TODO: Sort moves
+// MVV-LVA [*]
+// Killer Moves []
+void Engine::orderMoves(Move::MoveList &moves, ColourType side) {
+    int scores[256];
+
+    ColourType otherSide = BoardUtility::getOtherSide(side);
+
+    for (int i = 0; i < moves.size; ++i) {
+        const uint16_t move = moves.moves[i];
+
+        int from = Move::getFrom(move);
+        int to = Move::getTo(move);
+
+        PieceType fromPiece = BoardUtility::getPiece(this->_bitboards, from, side);
+
+        scores[i] = 0;
+
+        if (Move::isGeneralCapture(move)) {
+            PieceType toPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
+
+            scores[i] += MVV_LVA[fromPiece][toPiece];
+        }
+    }
+
+    for (int i = 0; i < moves.size; ++i) {
+        int bestIndex = i;
+
+        for (int j = i + 1; j < moves.size; ++j) {
+            if (scores[j] > scores[bestIndex]) {
+                bestIndex = j;
+            }
+        }
+
+        std::swap(scores[i], scores[bestIndex]);
+
+        std::swap(moves.moves[i], moves.moves[bestIndex]);
+    }
+}
+
 void Engine::searchRoot(int depth) {
     this->_searchResult.clear();
 
@@ -1001,9 +1052,14 @@ void Engine::searchRoot(int depth) {
 
     MoveList moves = this->generateMoves(this->_side);
 
+    this->orderMoves(moves, this->_side);
+
     for (int i = 0; i < moves.size; ++i) {
-        // Move &move = moves.moves[i];
         uint16_t &move = moves.moves[i];
+
+        if (!this->isMoveLegal(move, this->_side)) {
+            continue;
+        }
 
         this->makeMove(move);
 
@@ -1046,14 +1102,24 @@ int Engine::search(int alpha, int beta, int depth) {
     //         return nullScore;
     //     }
     // }
+    //
+    // the side to move is in check
+    // the side to move has only its king and pawns remaining
+    // the side to move has a small number of pieces remaining
+    // the previous move in the search was also a null move.
 
     int bestScore = -INT_MAX;
 
     MoveList moves = this->generateMoves(this->_side);
 
+    this->orderMoves(moves, this->_side);
+
     for (int i = 0; i < moves.size; ++i) {
-        // Move &move = moves.moves[i];
         uint16_t &move = moves.moves[i];
+
+        if (!this->isMoveLegal(move, this->_side)) {
+            continue;
+        }
 
         this->makeMove(move);
 
@@ -1090,9 +1156,14 @@ int Engine::quiescence(int alpha, int beta) {
 
     MoveList captures = this->generateCaptures(this->_side);
 
+    this->orderMoves(captures, this->_side);
+
     for (int i = 0; i < captures.size; ++i) {
-        // Move &capture = captures.moves[i];
         uint16_t &capture = captures.moves[i];
+
+        if (!this->isMoveLegal(capture, this->_side)) {
+            continue;
+        }
 
         this->makeMove(capture);
 
@@ -1155,7 +1226,6 @@ int Engine::perft(int depth) {
     MoveList moves = this->generateMoves(this->_side);
 
     for (int i = 0; i < moves.size; ++i) {
-        // Move &move = moves.moves[i];
         uint16_t &move = moves.moves[i];
 
         if (!this->isMoveLegal(move, this->_side)) {

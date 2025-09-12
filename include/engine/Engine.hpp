@@ -22,13 +22,17 @@ struct SearchResult {
 
     bool isMoveFound;
 
-    SearchResult() : bestScore(-INT_MAX), isMoveFound(false) {
+    int nodes;
+
+    SearchResult() : bestScore(-INT_MAX), isMoveFound(false), nodes(0) {
     }
 
     void clear() {
         this->bestScore = -INT_MAX;
 
         this->isMoveFound = false;
+
+        this->nodes = 0;
     }
 };
 
@@ -190,6 +194,8 @@ class Engine {
     FORCE_INLINE void unmakePromotionQuietMove(int from, int to, engine::board::PieceType promotionPiece);
 
     FORCE_INLINE void unmakePromotionCaptureMove(int from, int to, engine::board::PieceType promotionPiece, const engine::move::Undo &undo, engine::board::ColourType otherSide);
+
+    void orderMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side);
 
     void searchRoot(int depth);
 

@@ -60,6 +60,8 @@ inline constexpr int MOVE_TYPE_OFFSET = 12;
 
 [[nodiscard]] inline constexpr engine::board::PieceType getPromotionPiece(uint16_t move);
 
+[[nodiscard]] inline constexpr bool isGeneralCapture(uint16_t move);
+
 [[nodiscard]] inline constexpr uint16_t getMove(int from, int to, MoveType moveType) {
     return from | (to << TO_OFFSET) | (moveType << MOVE_TYPE_OFFSET);
 }
@@ -124,6 +126,18 @@ inline constexpr int MOVE_TYPE_OFFSET = 12;
     }
 
     return engine::board::PieceType::QUEEN;
+}
+
+[[nodiscard]] inline constexpr bool isGeneralCapture(uint16_t move) {
+    MoveType moveType = static_cast<MoveType>(move >> MOVE_TYPE_OFFSET);
+
+    return moveType == MoveType::CAPTURE || moveType == MoveType::EN_PASSANT || (MoveType::KNIGHT_PROMOTION_CAPTURE <= moveType && moveType <= MoveType::QUEEN_PROMOTION_CAPTURE);
+}
+
+[[nodiscard]] inline constexpr bool isGeneralPromotion(uint16_t move) {
+    MoveType moveType = static_cast<MoveType>(move >> MOVE_TYPE_OFFSET);
+
+    return MoveType::KNIGHT_PROMOTION <= moveType && moveType <= MoveType::QUEEN_PROMOTION_CAPTURE;
 }
 
 struct MoveList {
