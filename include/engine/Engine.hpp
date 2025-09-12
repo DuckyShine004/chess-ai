@@ -18,7 +18,7 @@ namespace engine {
 struct SearchResult {
     int bestScore;
 
-    engine::move::Move bestMove;
+    uint16_t bestMove;
 
     bool isMoveFound;
 
@@ -40,7 +40,7 @@ class Engine {
 
     void run();
 
-    engine::move::Move &getMove();
+    uint16_t &getMove();
 
     void switchSide();
 
@@ -48,9 +48,9 @@ class Engine {
 
     engine::board::PieceType getPiece(int square, engine::board::ColourType side);
 
-    engine::move::MoveList generateMoves(engine::board::ColourType side);
+    engine::move::Move::MoveList generateMoves(engine::board::ColourType side);
 
-    void makeMove(engine::move::Move &move);
+    void makeMove(uint16_t &move);
 
     void runPerft(int depth);
 
@@ -117,35 +117,35 @@ class Engine {
 
     void removePiece(int square, engine::board::PieceType piece, engine::board::ColourType side);
 
-    void generatePawnMoves(engine::move::MoveList &moves, engine::board::ColourType side);
+    void generatePawnMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side);
 
-    void generateKnightMoves(engine::move::MoveList &moves, engine::board::ColourType side);
+    void generateKnightMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side);
 
-    void generateBishopMoves(engine::move::MoveList &moves, engine::board::ColourType side);
+    void generateBishopMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side);
 
-    void generateRookMoves(engine::move::MoveList &moves, engine::board::ColourType side);
+    void generateRookMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side);
 
-    void generateQueenMoves(engine::move::MoveList &moves, engine::board::ColourType side);
+    void generateQueenMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side);
 
-    void generateKingMoves(engine::move::MoveList &moves, engine::board::ColourType side);
+    void generateKingMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side);
 
-    void generateCastleMoves(engine::move::MoveList &moves, engine::board::ColourType side);
+    void generateCastleMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side);
 
-    engine::move::MoveList generateCaptures(engine::board::ColourType side);
+    engine::move::Move::MoveList generateCaptures(engine::board::ColourType side);
 
-    void generatePawnCaptures(engine::move::MoveList &captures, engine::board::ColourType side);
+    void generatePawnCaptures(engine::move::Move::MoveList &captures, engine::board::ColourType side);
 
-    void generateKnightCaptures(engine::move::MoveList &captures, engine::board::ColourType side);
+    void generateKnightCaptures(engine::move::Move::MoveList &captures, engine::board::ColourType side);
 
-    void generateBishopCaptures(engine::move::MoveList &captures, engine::board::ColourType side);
+    void generateBishopCaptures(engine::move::Move::MoveList &captures, engine::board::ColourType side);
 
-    void generateRookCaptures(engine::move::MoveList &captures, engine::board::ColourType side);
+    void generateRookCaptures(engine::move::Move::MoveList &captures, engine::board::ColourType side);
 
-    void generateQueenCaptures(engine::move::MoveList &captures, engine::board::ColourType side);
+    void generateQueenCaptures(engine::move::Move::MoveList &captures, engine::board::ColourType side);
 
-    void generateKingCaptures(engine::move::MoveList &captures, engine::board::ColourType side);
+    void generateKingCaptures(engine::move::Move::MoveList &captures, engine::board::ColourType side);
 
-    bool isMoveLegal(engine::move::Move &move, engine::board::ColourType side);
+    bool isMoveLegal(uint16_t &move, engine::board::ColourType side);
 
     bool isInCheck(engine::board::ColourType side);
 
@@ -159,37 +159,37 @@ class Engine {
 
     void updateCastleRights(engine::board::ColourType side);
 
-    void unmakeMove(engine::move::Move &move);
+    void unmakeMove(uint16_t &move);
 
-    FORCE_INLINE void makeQuietMove(const engine::move::Move &move, engine::board::PieceType fromPiece);
+    FORCE_INLINE void makeQuietMove(int from, int to, engine::board::PieceType fromPiece);
 
-    FORCE_INLINE void makeCaptureMove(const engine::move::Move &move, engine::move::Undo &undo, engine::board::PieceType fromPiece, engine::board::ColourType otherSide);
+    FORCE_INLINE void makeCaptureMove(int from, int to, engine::move::Undo &undo, engine::board::PieceType fromPiece, engine::board::ColourType otherSide);
 
-    FORCE_INLINE void makeDoublePawnMove(const engine::move::Move &move, engine::board::PieceType fromPiece);
+    FORCE_INLINE void makeDoublePawnMove(int from, int to, engine::board::PieceType fromPiece);
 
-    FORCE_INLINE void makeEnPassantMove(const engine::move::Move &move, engine::board::PieceType fromPiece, engine::board::ColourType otherSide);
+    FORCE_INLINE void makeEnPassantMove(int from, int to, engine::board::PieceType fromPiece, engine::board::ColourType otherSide);
 
-    FORCE_INLINE void makeQueenCastleMove(const engine::move::Move &move, engine::board::PieceType fromPiece);
+    FORCE_INLINE void makeQueenCastleMove(int from, int to, engine::board::PieceType fromPiece);
 
-    FORCE_INLINE void makeKingCastleMove(const engine::move::Move &move, engine::board::PieceType fromPiece);
+    FORCE_INLINE void makeKingCastleMove(int from, int to, engine::board::PieceType fromPiece);
 
-    FORCE_INLINE void makePromotionQuietMove(const engine::move::Move &move);
+    FORCE_INLINE void makePromotionQuietMove(int from, int to, engine::board::PieceType promotionPiece);
 
-    FORCE_INLINE void makePromotionCaptureMove(const engine::move::Move &move, engine::move::Undo &undo, engine::board::ColourType otherSide);
+    FORCE_INLINE void makePromotionCaptureMove(int from, int to, engine::board::PieceType promotionPiece, engine::move::Undo &undo, engine::board::ColourType otherSide);
 
-    FORCE_INLINE void unmakeQuietMove(const engine::move::Move &move, engine::board::PieceType toPiece);
+    FORCE_INLINE void unmakeQuietMove(int from, int to, engine::board::PieceType toPiece);
 
-    FORCE_INLINE void unmakeCaptureMove(const engine::move::Move &move, const engine::move::Undo &undo, engine::board::PieceType toPiece, engine::board::ColourType otherSide);
+    FORCE_INLINE void unmakeCaptureMove(int from, int to, const engine::move::Undo &undo, engine::board::PieceType toPiece, engine::board::ColourType otherSide);
 
-    FORCE_INLINE void unmakeEnPassantMove(const engine::move::Move &move, engine::board::PieceType toPiece, engine::board::ColourType otherSide);
+    FORCE_INLINE void unmakeEnPassantMove(int from, int to, engine::board::PieceType toPiece, engine::board::ColourType otherSide);
 
-    FORCE_INLINE void unmakeQueenCastleMove(const engine::move::Move &move, engine::board::PieceType toPiece);
+    FORCE_INLINE void unmakeQueenCastleMove(int from, int to, engine::board::PieceType toPiece);
 
-    FORCE_INLINE void unmakeKingCastleMove(const engine::move::Move &move, engine::board::PieceType toPiece);
+    FORCE_INLINE void unmakeKingCastleMove(int from, int to, engine::board::PieceType toPiece);
 
-    FORCE_INLINE void unmakePromotionQuietMove(const engine::move::Move &move);
+    FORCE_INLINE void unmakePromotionQuietMove(int from, int to, engine::board::PieceType promotionPiece);
 
-    FORCE_INLINE void unmakePromotionCaptureMove(const engine::move::Move &move, const engine::move::Undo &undo, engine::board::ColourType otherSide);
+    FORCE_INLINE void unmakePromotionCaptureMove(int from, int to, engine::board::PieceType promotionPiece, const engine::move::Undo &undo, engine::board::ColourType otherSide);
 
     void searchRoot(int depth);
 
