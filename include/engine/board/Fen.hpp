@@ -17,4 +17,12 @@ inline constexpr const char *POSITIONS[5] = {
 
 inline constexpr const char *KILLER_POSITION = "6k1/3q1pp1/pp3n1p/1r6/5P2/1P4P1/PQ4BP/2R3K1 w KQkq - 0 1";
 
+inline constexpr const char *TEST_POSITIONS[1] = {
+    "r1b1k2r/pppp1ppp/2n1pq2/2Q5/3PPn2/5N2/PPP2PPP/2KR1B1R b Kkq - 0 1",
+};
+
+inline constexpr const char *EN_PASSANT_POSITIONS[1] = {
+    "4n3/5P2/8/1k6/8/8/8/2K5 w - - 0 1",
+};
+
 } // namespace engine::board

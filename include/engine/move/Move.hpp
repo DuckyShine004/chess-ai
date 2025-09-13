@@ -36,7 +36,11 @@ inline constexpr int TO_OFFSET = 6;
 
 inline constexpr int MOVE_TYPE_OFFSET = 12;
 
+inline constexpr int PROMOTION_OFFSET = 5;
+
 [[nodiscard]] inline constexpr uint16_t getMove(int from, int to, MoveType moveType);
+
+[[nodiscard]] inline constexpr uint16_t getMove(int from, int to, engine::board::PieceType piece);
 
 [[nodiscard]] inline constexpr int getFrom(uint16_t move);
 
@@ -64,6 +68,12 @@ inline constexpr int MOVE_TYPE_OFFSET = 12;
 
 [[nodiscard]] inline constexpr uint16_t getMove(int from, int to, MoveType moveType) {
     return from | (to << TO_OFFSET) | (moveType << MOVE_TYPE_OFFSET);
+}
+
+[[nodiscard]] inline constexpr uint16_t getMove(int from, int to, engine::board::PieceType piece) {
+    MoveType moveType = static_cast<MoveType>(piece + PROMOTION_OFFSET);
+
+    return getMove(from, to, moveType);
 }
 
 [[nodiscard]] inline constexpr int getFrom(uint16_t move) {

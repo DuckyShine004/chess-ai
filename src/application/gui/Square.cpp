@@ -88,17 +88,15 @@ void Square::renderAttack(sf::RenderWindow &window) {
 }
 
 void Square::renderBorder(sf::RenderWindow &window) {
-    sf::RectangleShape square(sf::Vector2f(this->_size, this->_size));
+    sf::RectangleShape border = this->_square;
 
-    square.setPosition(sf::Vector2f(this->_x, this->_y));
+    border.setFillColor(sf::Color::Transparent);
 
-    square.setFillColor(sf::Color::Transparent);
+    border.setOutlineColor(BORDER_COLOUR);
 
-    square.setOutlineColor(BORDER_COLOUR);
+    border.setOutlineThickness(BORDER_THICKNESS);
 
-    square.setOutlineThickness(BORDER_THICKNESS);
-
-    window.draw(square);
+    window.draw(border);
 }
 
 void Square::render(sf::RenderWindow &window) {

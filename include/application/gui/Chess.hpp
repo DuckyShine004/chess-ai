@@ -6,6 +6,7 @@
 
 #include "application/gui/Board.hpp"
 
+#include "application/gui/Promotion.hpp"
 #include "engine/Engine.hpp"
 
 #include "engine/move/Move.hpp"
@@ -26,6 +27,8 @@ class Chess {
 
   private:
     Board _board;
+
+    Promotion _promotion;
 
     bool _isClicking;
 

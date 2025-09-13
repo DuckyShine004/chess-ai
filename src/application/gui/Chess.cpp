@@ -3,6 +3,7 @@
 #include "application/gui/Chess.hpp"
 
 #include "engine/board/Colour.hpp"
+#include "engine/move/Move.hpp"
 
 using namespace engine;
 
@@ -19,6 +20,12 @@ void Chess::move(sf::RenderWindow &window, Engine &engine, sf::Vector2i mousePos
     ColourType side = engine.getSide();
 
     if (side != ColourType::WHITE) {
+        return;
+    }
+
+    if (this->_promotion.isPromoting()) {
+        this->_promotion.makePromotionMove(engine, mousePosition);
+
         return;
     }
 
@@ -42,6 +49,8 @@ void Chess::move(sf::RenderWindow &window, Engine &engine, sf::Vector2i mousePos
 }
 
 void Chess::update(sf::RenderWindow &window, Engine &engine) {
+    this->_board.update(window, engine);
+
     if (engine.getSide() != ColourType::WHITE) {
         uint16_t &move = engine.getMove();
 
@@ -52,12 +61,12 @@ void Chess::update(sf::RenderWindow &window, Engine &engine) {
 
         engine.makeMove(move);
     }
-
-    this->_board.update(window, engine);
 }
 
 void Chess::render(sf::RenderWindow &window) {
     this->_board.render(window);
+
+    this->_promotion.render(window);
 }
 
 void Chess::setPreviousSquares(int from, int to) {
@@ -143,11 +152,18 @@ void Chess::handleSecondSelectedSquare(Engine &engine, Square *square) {
 
     uint16_t move = this->_activeMoves[square->getSquare()];
 
+    if (Move::isGeneralPromotion(move)) {
+        this->_promotion.setIsPromoting(true);
+
+        this->_promotion.setFrom(Move::getFrom(move));
+        this->_promotion.setTo(Move::getTo(move));
+    } else {
+        engine.makeMove(move);
+    }
+
     this->setPreviousSquares(this->_selectedSquare->getSquare(), square->getSquare());
 
     this->clearSelection();
-
-    engine.makeMove(move);
 }
 
 bool Chess::isOwnPiece(Square *square, ColourType side) {

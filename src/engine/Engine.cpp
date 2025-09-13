@@ -69,9 +69,9 @@ void Engine::run() {
 uint16_t &Engine::getMove() {
     this->searchRoot(this->_SEARCH_DEPTH);
 
-    if (!this->_searchResult.isMoveFound) {
-        throw std::runtime_error("Engine could not find move...");
-    }
+    // if (!this->_searchResult.isMoveFound) {
+    //     throw std::runtime_error("Engine could not find move...");
+    // }
 
     return this->_searchResult.bestMove;
 }
@@ -1065,6 +1065,12 @@ void Engine::searchRoot(int depth) {
 
         if (!this->isMoveLegal(move, this->_side)) {
             continue;
+        }
+
+        if (!this->_searchResult.isMoveFound) {
+            this->_searchResult.bestMove = move;
+
+            this->_searchResult.isMoveFound = true;
         }
 
         this->makeMove(move);
