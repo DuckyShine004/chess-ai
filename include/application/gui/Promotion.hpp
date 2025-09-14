@@ -16,7 +16,7 @@ inline constexpr float OFFSET = 300.0f;
 
 inline constexpr float PROMOTION_BORDER_THICKNESS = -2.5f;
 
-inline constexpr sf::Color PROMOTION_BORDER_COLOUR = sf::Color(22, 21, 18);
+inline constexpr sf::Color PROMOTION_BORDER_COLOUR = sf::Color(169, 169, 169);
 
 inline constexpr engine::board::PieceType PROMOTION_PIECES[4] = {
     engine::board::PieceType::QUEEN,

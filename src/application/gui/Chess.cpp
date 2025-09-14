@@ -1,9 +1,12 @@
+#include <thread>
+
 #include <SFML/Window.hpp>
 
 #include "application/gui/Chess.hpp"
 
-#include "engine/board/Colour.hpp"
 #include "engine/move/Move.hpp"
+
+#include "engine/board/Colour.hpp"
 
 using namespace engine;
 
@@ -13,7 +16,7 @@ using namespace engine::move;
 
 namespace application::gui {
 
-Chess::Chess() : _isClicking(false), _selectedSquare(nullptr), _previousFrom(-1), _previousTo(-1) {
+Chess::Chess() : _isClicking(false), _isWaitingForEngine(false), _selectedSquare(nullptr), _previousFrom(-1), _previousTo(-1) {
 }
 
 void Chess::move(sf::RenderWindow &window, Engine &engine, sf::Vector2i mousePosition) {
@@ -48,18 +51,30 @@ void Chess::move(sf::RenderWindow &window, Engine &engine, sf::Vector2i mousePos
     }
 }
 
+void Chess::makeEngineMove(Engine &engine) {
+}
+
 void Chess::update(sf::RenderWindow &window, Engine &engine) {
     this->_board.update(window, engine);
 
     if (engine.getSide() != ColourType::WHITE) {
-        uint16_t &move = engine.getMove(); // TODO: thread
+        std::thread makeEngineMoveTask(this->makeEngineMove, engine);
 
-        int from = Move::getFrom(move);
-        int to = Move::getTo(move);
+        this->_isWaitingForEngine.store(true);
 
-        this->setPreviousSquares(from, to);
+        while (!this->_isWaitingForEngine.load()) {
+            std::this_thread::yield();
+            uint16_t &move = engine.getMove(); // TODO: thread
 
-        engine.makeMove(move);
+            int from = Move::getFrom(move);
+            int to = Move::getTo(move);
+
+            this->setPreviousSquares(from, to);
+
+            engine.makeMove(move);
+
+            this->_isWaitingForEngine.store(false);
+        }
     }
 }
 

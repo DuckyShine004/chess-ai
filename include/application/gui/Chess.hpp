@@ -1,15 +1,14 @@
 #pragma once
 
 #include <map>
+#include <atomic>
 
 #include <SFML/Graphics.hpp>
 
 #include "application/gui/Board.hpp"
-
 #include "application/gui/Promotion.hpp"
-#include "engine/Engine.hpp"
 
-#include "engine/move/Move.hpp"
+#include "engine/Engine.hpp"
 
 #include "engine/board/Colour.hpp"
 
@@ -32,12 +31,16 @@ class Chess {
 
     bool _isClicking;
 
+    std::atomic<bool> _isWaitingForEngine;
+
     int _previousFrom;
     int _previousTo;
 
     application::gui::Square *_selectedSquare;
 
     std::map<int, uint16_t> _activeMoves;
+
+    static void makeEngineMove(engine::Engine &engine);
 
     void setPreviousSquares(int from, int to);
 
