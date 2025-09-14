@@ -102,6 +102,12 @@ inline constexpr int PROMOTION_CAPTURE_OFFSET = 9;
     return (move >> MOVE_TYPE_OFFSET) == MoveType::EN_PASSANT;
 }
 
+[[nodiscard]] inline constexpr bool isGeneralCastle(uint16_t move) {
+    MoveType moveType = static_cast<MoveType>(move >> MOVE_TYPE_OFFSET);
+
+    return moveType == MoveType::KING_CASTLE || moveType == MoveType::QUEEN_CASTLE;
+}
+
 [[nodiscard]] inline constexpr bool isQueenCastle(uint16_t move) {
     return (move >> MOVE_TYPE_OFFSET) == MoveType::QUEEN_CASTLE;
 }

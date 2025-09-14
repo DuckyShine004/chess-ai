@@ -8,6 +8,8 @@
 
 #include "sound/SoundSource.hpp"
 
+#include "engine/Engine.hpp"
+
 namespace application::manager {
 
 enum EffectType : int {
@@ -45,6 +47,8 @@ class SoundManager final : public Manager {
     void initialise() override;
 
     void playEffect(EffectType effectType);
+
+    void playMoveEffect(engine::Engine &engine, uint16_t move);
 
   private:
     SoundManager();

@@ -2,9 +2,13 @@
 
 #include "application/gui/Chess.hpp"
 
+#include "application/manager/SoundManager.hpp"
+
 #include "engine/move/Move.hpp"
 
 #include "engine/board/Colour.hpp"
+
+using namespace application::manager;
 
 using namespace engine;
 
@@ -85,6 +89,8 @@ void Chess::makeEngineMove(Engine &engine) {
         setPreviousSquares(from, to);
 
         engine.makeMove(move);
+
+        SoundManager::getInstance().playMoveEffect(engine, move);
 
         this->_engineMove.reset();
     }
@@ -192,6 +198,8 @@ void Chess::handleSecondSelectedSquare(Engine &engine, Square *square) {
         this->_promotion.setMove(move);
     } else {
         engine.makeMove(move);
+
+        SoundManager::getInstance().playMoveEffect(engine, move);
     }
 
     this->setPreviousSquares(this->_selectedSquare->getSquare(), square->getSquare());

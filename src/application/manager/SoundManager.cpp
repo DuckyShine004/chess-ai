@@ -2,7 +2,13 @@
 
 #include "sound/SoundBuffer.hpp"
 
+#include "engine/move/Move.hpp"
+
 using namespace sound;
+
+using namespace engine;
+
+using namespace engine::move;
 
 namespace application::manager {
 
@@ -36,6 +42,26 @@ void SoundManager::playEffect(EffectType effectType) {
     ALuint soundId = this->_effects[effectType];
 
     source.play(soundId);
+}
+
+void SoundManager::playMoveEffect(Engine &engine, uint16_t move) {
+    if (Move::isQuiet(move) || Move::isDoublePawn(move)) {
+        this->playEffect(EffectType::MOVE);
+    } else if (Move::isCapture(move) || Move::isEnPassant(move)) {
+        this->playEffect(EffectType::CAPTURE);
+    } else if (Move::isGeneralCastle(move)) {
+        this->playEffect(EffectType::CASTLE);
+    } else if (Move::isGeneralPromotion(move)) {
+        this->playEffect(EffectType::PROMOTION);
+
+        if (Move::isPromotionCapture(move)) {
+            this->playEffect(EffectType::CAPTURE);
+        }
+    }
+
+    if (engine.isInCheck()) {
+        this->playEffect(EffectType::CHECK);
+    }
 }
 
 // TODO: Handle sound source better

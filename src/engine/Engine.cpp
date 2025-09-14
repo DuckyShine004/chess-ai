@@ -694,13 +694,17 @@ bool Engine::isMoveLegal(uint16_t &move, ColourType side) {
 
     this->unmakeMove(move);
 
-    return isInCheck;
+    return !isInCheck;
+}
+
+bool Engine::isInCheck() {
+    return this->isInCheck(this->_side);
 }
 
 bool Engine::isInCheck(ColourType side) {
     int kingSquare = this->getKingSquare(side);
 
-    return !this->isSquareAttacked(kingSquare, side);
+    return this->isSquareAttacked(kingSquare, side);
 }
 
 bool Engine::isSquareAttacked(int square, ColourType side) {
