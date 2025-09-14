@@ -16,7 +16,7 @@ using namespace engine::move;
 
 namespace application::gui {
 
-Chess::Chess() : _isClicking(false), _isWaitingForEngine(false), _selectedSquare(nullptr), _previousFrom(-1), _previousTo(-1) {
+Chess::Chess() : _isClicking(false), _isEngineMakingMove(false), _selectedSquare(nullptr), _previousFrom(-1), _previousTo(-1) {
 }
 
 void Chess::move(sf::RenderWindow &window, Engine &engine, sf::Vector2i mousePosition) {
@@ -52,29 +52,53 @@ void Chess::move(sf::RenderWindow &window, Engine &engine, sf::Vector2i mousePos
 }
 
 void Chess::makeEngineMove(Engine &engine) {
+    if (!this->_isEngineMakingMove) {
+        this->_isEngineMakingMove = true;
+
+        Engine snapshot = engine;
+
+        // clang-format off
+        this->_engineFuture = std::async(std::launch::async, [snapshot = std::move(snapshot)]() mutable { 
+            return snapshot.getMove();
+        });
+        // clang-format on
+    } else {
+        if (this->_engineFuture.valid()) {
+            using namespace std::chrono_literals;
+
+            auto status = this->_engineFuture.wait_for(0ms);
+
+            if (status == std::future_status::ready) {
+                uint16_t best = _engineFuture.get();
+
+                this->_engineMove = best;
+
+                this->_isEngineMakingMove = false;
+            }
+        } else {
+            this->_isEngineMakingMove = false;
+        }
+    }
+
+    if (this->_engineMove.has_value()) {
+        uint16_t &move = this->_engineMove.value();
+
+        int from = Move::getFrom(move);
+        int to = Move::getTo(move);
+
+        setPreviousSquares(from, to);
+
+        engine.makeMove(move);
+
+        this->_engineMove.reset();
+    }
 }
 
 void Chess::update(sf::RenderWindow &window, Engine &engine) {
     this->_board.update(window, engine);
 
     if (engine.getSide() != ColourType::WHITE) {
-        std::thread makeEngineMoveTask(this->makeEngineMove, engine);
-
-        this->_isWaitingForEngine.store(true);
-
-        while (!this->_isWaitingForEngine.load()) {
-            std::this_thread::yield();
-            uint16_t &move = engine.getMove(); // TODO: thread
-
-            int from = Move::getFrom(move);
-            int to = Move::getTo(move);
-
-            this->setPreviousSquares(from, to);
-
-            engine.makeMove(move);
-
-            this->_isWaitingForEngine.store(false);
-        }
+        this->makeEngineMove(engine);
     }
 }
 
