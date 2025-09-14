@@ -64,9 +64,7 @@ void Chess::makeEngineMove(Engine &engine) {
         // clang-format on
     } else {
         if (this->_engineFuture.valid()) {
-            using namespace std::chrono_literals;
-
-            auto status = this->_engineFuture.wait_for(0ms);
+            auto status = this->_engineFuture.wait_for(std::chrono::milliseconds(0));
 
             if (status == std::future_status::ready) {
                 uint16_t best = _engineFuture.get();
