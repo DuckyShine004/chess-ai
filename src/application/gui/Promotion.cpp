@@ -27,12 +27,11 @@ bool Promotion::isPromoting() {
     return this->_isPromoting;
 }
 
-void Promotion::setFrom(int from) {
-    this->_from = from;
-}
+void Promotion::setMove(uint16_t move) {
+    this->_from = Move::getFrom(move);
+    this->_to = Move::getTo(move);
 
-void Promotion::setTo(int to) {
-    this->_to = to;
+    this->_isCapture = Move::isPromotionCapture(move);
 }
 
 void Promotion::setIsPromoting(bool isPromoting) {
@@ -48,11 +47,11 @@ void Promotion::makePromotionMove(Engine &engine, sf::Vector2i mousePosition) {
 
     PieceType promotionPiece = promotionSquare->piece.getPiece();
 
-    uint16_t promotionMove = Move::getMove(this->_from, this->_to, promotionPiece);
+    uint16_t promotionMove = Move::getPromotionMove(this->_from, this->_to, promotionPiece, this->_isCapture);
 
     engine.makeMove(promotionMove);
 
-    this->_isPromoting = false;
+    this->clear();
 }
 
 PromotionSquare *Promotion::getPromotionSquare(sf::Vector2i mousePosition) {
@@ -64,6 +63,12 @@ PromotionSquare *Promotion::getPromotionSquare(sf::Vector2i mousePosition) {
 
     return nullptr;
 }
+
+void Promotion::clear() {
+    this->_isCapture = false;
+    this->_isPromoting = false;
+}
+
 void Promotion::renderBackground(sf::RenderWindow &window) {
     window.draw(this->_background);
 }

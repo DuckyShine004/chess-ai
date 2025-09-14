@@ -73,9 +73,7 @@ class Promotion {
 
     bool isPromoting();
 
-    void setFrom(int from);
-
-    void setTo(int to);
+    void setMove(uint16_t move);
 
     void setIsPromoting(bool isPromoting);
 
@@ -87,6 +85,7 @@ class Promotion {
     int _from;
     int _to;
 
+    bool _isCapture;
     bool _isPromoting;
 
     sf::RectangleShape _background;
@@ -94,6 +93,8 @@ class Promotion {
     PromotionSquare *_promotionSquares[4];
 
     PromotionSquare *getPromotionSquare(sf::Vector2i mousePosition);
+
+    void clear();
 
     void renderBackground(sf::RenderWindow &window);
 

@@ -154,9 +154,7 @@ void Chess::handleSecondSelectedSquare(Engine &engine, Square *square) {
 
     if (Move::isGeneralPromotion(move)) {
         this->_promotion.setIsPromoting(true);
-
-        this->_promotion.setFrom(Move::getFrom(move));
-        this->_promotion.setTo(Move::getTo(move));
+        this->_promotion.setMove(move);
     } else {
         engine.makeMove(move);
     }
