@@ -95,8 +95,6 @@ class Promotion {
 
     PromotionSquare *getPromotionSquare(sf::Vector2i mousePosition);
 
-    void renderLines(sf::RenderWindow &window);
-
     void renderBackground(sf::RenderWindow &window);
 
     void renderBorder(sf::RenderWindow &window);

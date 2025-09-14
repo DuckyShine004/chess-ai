@@ -52,7 +52,7 @@ void Chess::update(sf::RenderWindow &window, Engine &engine) {
     this->_board.update(window, engine);
 
     if (engine.getSide() != ColourType::WHITE) {
-        uint16_t &move = engine.getMove();
+        uint16_t &move = engine.getMove(); // TODO: thread
 
         int from = Move::getFrom(move);
         int to = Move::getTo(move);
