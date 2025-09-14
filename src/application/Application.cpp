@@ -18,6 +18,8 @@ Application::Application() {
 }
 
 void Application::initialise() {
+    // this->_engine.parse(EN_PASSANT_POSITIONS[0]);
+
     sf::VideoMode mode(sf::Vector2u(1440, 900));
 
     this->_window = sf::RenderWindow(mode, "Chess");

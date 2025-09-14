@@ -1,14 +1,15 @@
 #pragma once
 
 #include <map>
+#include <future>
+#include <optional>
 
 #include <SFML/Graphics.hpp>
 
 #include "application/gui/Board.hpp"
+#include "application/gui/Promotion.hpp"
 
 #include "engine/Engine.hpp"
-
-#include "engine/move/Move.hpp"
 
 #include "engine/board/Colour.hpp"
 
@@ -27,10 +28,19 @@ class Chess {
   private:
     Board _board;
 
+    Promotion _promotion;
+
     bool _isClicking;
 
     int _previousFrom;
     int _previousTo;
+
+    bool _isEngineMakingMove;
+
+    std::future<uint16_t> _engineFuture;
+    std::optional<uint16_t> _engineMove;
+
+    void makeEngineMove(engine::Engine &engine);
 
     application::gui::Square *_selectedSquare;
 

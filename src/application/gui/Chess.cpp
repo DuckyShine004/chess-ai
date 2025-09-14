@@ -1,10 +1,12 @@
+#include <thread>
+
 #include <SFML/Window.hpp>
 
 #include "application/gui/Chess.hpp"
 
-#include "engine/board/Colour.hpp"
+#include "engine/move/Move.hpp"
 
-#include "logger/LoggerMacros.hpp"
+#include "engine/board/Colour.hpp"
 
 using namespace engine;
 
@@ -14,13 +16,19 @@ using namespace engine::move;
 
 namespace application::gui {
 
-Chess::Chess() : _isClicking(false), _selectedSquare(nullptr), _previousFrom(-1), _previousTo(-1) {
+Chess::Chess() : _isClicking(false), _isEngineMakingMove(false), _selectedSquare(nullptr), _previousFrom(-1), _previousTo(-1) {
 }
 
 void Chess::move(sf::RenderWindow &window, Engine &engine, sf::Vector2i mousePosition) {
     ColourType side = engine.getSide();
 
     if (side != ColourType::WHITE) {
+        return;
+    }
+
+    if (this->_promotion.isPromoting()) {
+        this->_promotion.makePromotionMove(engine, mousePosition);
+
         return;
     }
 
@@ -43,23 +51,59 @@ void Chess::move(sf::RenderWindow &window, Engine &engine, sf::Vector2i mousePos
     }
 }
 
-void Chess::update(sf::RenderWindow &window, Engine &engine) {
-    if (engine.getSide() != ColourType::WHITE) {
-        uint16_t &move = engine.getMove();
+void Chess::makeEngineMove(Engine &engine) {
+    if (!this->_isEngineMakingMove) {
+        this->_isEngineMakingMove = true;
+
+        Engine snapshot = engine;
+
+        // clang-format off
+        this->_engineFuture = std::async(std::launch::async, [snapshot = std::move(snapshot)]() mutable { 
+            return snapshot.getMove();
+        });
+        // clang-format on
+    } else {
+        if (this->_engineFuture.valid()) {
+            auto status = this->_engineFuture.wait_for(std::chrono::milliseconds(0));
+
+            if (status == std::future_status::ready) {
+                uint16_t best = _engineFuture.get();
+
+                this->_engineMove = best;
+
+                this->_isEngineMakingMove = false;
+            }
+        } else {
+            this->_isEngineMakingMove = false;
+        }
+    }
+
+    if (this->_engineMove.has_value()) {
+        uint16_t &move = this->_engineMove.value();
 
         int from = Move::getFrom(move);
         int to = Move::getTo(move);
 
-        this->setPreviousSquares(from, to);
+        setPreviousSquares(from, to);
 
         engine.makeMove(move);
-    }
 
+        this->_engineMove.reset();
+    }
+}
+
+void Chess::update(sf::RenderWindow &window, Engine &engine) {
     this->_board.update(window, engine);
+
+    if (engine.getSide() != ColourType::WHITE) {
+        this->makeEngineMove(engine);
+    }
 }
 
 void Chess::render(sf::RenderWindow &window) {
     this->_board.render(window);
+
+    this->_promotion.render(window);
 }
 
 void Chess::setPreviousSquares(int from, int to) {
@@ -113,6 +157,10 @@ void Chess::handleFirstSelectedSquare(Engine &engine, Square *square, ColourType
     for (int i = 0; i < moves.size; ++i) {
         uint16_t &move = moves.moves[i];
 
+        if (!engine.isMoveLegal(move, side)) {
+            continue;
+        }
+
         int from = Move::getFrom(move);
         int to = Move::getTo(move);
 
@@ -139,13 +187,18 @@ void Chess::handleSecondSelectedSquare(Engine &engine, Square *square) {
         return;
     }
 
-    uint16_t &move = this->_activeMoves[square->getSquare()];
+    uint16_t move = this->_activeMoves[square->getSquare()];
+
+    if (Move::isGeneralPromotion(move)) {
+        this->_promotion.setIsPromoting(true);
+        this->_promotion.setMove(move);
+    } else {
+        engine.makeMove(move);
+    }
 
     this->setPreviousSquares(this->_selectedSquare->getSquare(), square->getSquare());
 
     this->clearSelection();
-
-    engine.makeMove(move);
 }
 
 bool Chess::isOwnPiece(Square *square, ColourType side) {

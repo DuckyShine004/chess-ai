@@ -56,6 +56,8 @@ class Engine {
 
     void makeMove(uint16_t &move);
 
+    bool isMoveLegal(uint16_t &move, engine::board::ColourType side);
+
     void runPerft(int depth);
 
     engine::board::ColourType getSide();
@@ -65,7 +67,7 @@ class Engine {
   private:
     static inline constexpr uint8_t _INITIAL_CASTLE_RIGHTS = 0xF;
 
-    static inline constexpr int _SEARCH_DEPTH = 5;
+    static inline constexpr int _SEARCH_DEPTH = 7;
 
     static inline uint64_t _PAWN_ATTACKS[2][64];
     static inline uint64_t _KNIGHT_ATTACKS[64];
@@ -148,8 +150,6 @@ class Engine {
     void generateQueenCaptures(engine::move::Move::MoveList &captures, engine::board::ColourType side);
 
     void generateKingCaptures(engine::move::Move::MoveList &captures, engine::board::ColourType side);
-
-    bool isMoveLegal(uint16_t &move, engine::board::ColourType side);
 
     bool isInCheck(engine::board::ColourType side);
 

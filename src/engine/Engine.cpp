@@ -7,6 +7,8 @@
 #include "engine/board/Castle.hpp"
 #include "engine/board/Square.hpp"
 
+#include "engine/hash/Zobrist.hpp"
+
 #include "engine/move/Order.hpp"
 
 #include "engine/evaluation/Material.hpp"
@@ -26,6 +28,8 @@
 using namespace engine::board;
 
 using namespace engine::piece;
+
+using namespace engine::hash;
 
 using namespace engine::move;
 
@@ -65,9 +69,9 @@ void Engine::run() {
 uint16_t &Engine::getMove() {
     this->searchRoot(this->_SEARCH_DEPTH);
 
-    if (!this->_searchResult.isMoveFound) {
-        throw std::runtime_error("Engine could not find move...");
-    }
+    // if (!this->_searchResult.isMoveFound) {
+    //     throw std::runtime_error("Engine could not find move...");
+    // }
 
     return this->_searchResult.bestMove;
 }
@@ -107,6 +111,8 @@ void Engine::initialise() {
     Bishop::initialise();
 
     Rook::initialise();
+
+    Zobrist::initialise();
 
     for (int square = 0; square < 64; ++square) {
         this->_PAWN_ATTACKS[0][square] = Pawn::getAttacks(square, ColourType::WHITE);
@@ -1059,6 +1065,12 @@ void Engine::searchRoot(int depth) {
 
         if (!this->isMoveLegal(move, this->_side)) {
             continue;
+        }
+
+        if (!this->_searchResult.isMoveFound) {
+            this->_searchResult.bestMove = move;
+
+            this->_searchResult.isMoveFound = true;
         }
 
         this->makeMove(move);
