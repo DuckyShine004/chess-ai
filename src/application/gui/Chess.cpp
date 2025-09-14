@@ -1,5 +1,3 @@
-#include <thread>
-
 #include <SFML/Window.hpp>
 
 #include "application/gui/Chess.hpp"
