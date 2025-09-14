@@ -2,15 +2,20 @@
 
 #include "application/Application.hpp"
 
+#include "application/manager/SoundManager.hpp"
 #include "application/manager/TextureManager.hpp"
 
 #include "engine/board/Fen.hpp"
+
+#include "sound/SoundPlayer.hpp"
 
 #include "logger/LoggerMacros.hpp"
 
 using namespace engine::board;
 
 using namespace application::manager;
+
+using namespace sound;
 
 namespace application {
 
@@ -27,6 +32,10 @@ void Application::initialise() {
     sf::ContextSettings settings;
 
     settings.antiAliasingLevel = 8;
+
+    SoundPlayer::getInstance().initialise();
+
+    SoundManager::getInstance().initialise();
 
     TextureManager::getInstance().initialise();
 }
