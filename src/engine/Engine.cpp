@@ -45,6 +45,8 @@ Engine::Engine() : _ply(0) {
     this->initialise();
 
     this->parse(INITIAL_POSITION);
+
+    this->_zobrist = Zobrist::hash(this->_bitboards, this->_castleRights, this->_enPassantSquare, this->_side);
 }
 
 void Engine::parse(const char *fen) {
@@ -249,6 +251,9 @@ void Engine::createPiece(int square, PieceType piece, ColourType side) {
     this->_occupancies[side] |= bitboard_square;
 
     this->_occupancyBoth |= bitboard_square;
+
+    // PERF: Optimise if too slow
+    this->_zobrist ^= Zobrist::pieceKeys[side][piece][square];
 }
 
 void Engine::removePiece(int rank, int file, ColourType side) {
@@ -277,6 +282,9 @@ void Engine::removePiece(int square, PieceType piece, ColourType side) {
     this->_occupancies[side] &= inverted_bitboard_square;
 
     this->_occupancyBoth &= inverted_bitboard_square;
+
+    // PERF: Optimise if too slow
+    this->_zobrist ^= Zobrist::pieceKeys[side][piece][square];
 }
 
 MoveList Engine::generateMoves(ColourType side) {
@@ -790,7 +798,10 @@ void Engine::makeMove(uint16_t &move) {
     undo.enPassantSquare = this->_enPassantSquare;
     undo.halfMove = this->_halfMove;
 
-    this->_enPassantSquare = -1;
+    if (this->_enPassantSquare != -1) {
+        this->_zobrist ^= Zobrist::enPassantKeys[this->_enPassantSquare];
+        this->_enPassantSquare = -1;
+    }
 
     int from = Move::getFrom(move);
     int to = Move::getTo(move);
@@ -824,6 +835,11 @@ void Engine::makeMove(uint16_t &move) {
 
     this->updateCastleRights();
 
+    if (undo.castleRights != this->_castleRights) {
+        this->_zobrist ^= Zobrist::castleKeys[undo.castleRights];
+        this->_zobrist ^= Zobrist::castleKeys[this->_castleRights];
+    }
+
     if (fromPiece == PieceType::PAWN || isCapture) {
         this->_halfMove = 0;
     } else {
@@ -832,14 +848,21 @@ void Engine::makeMove(uint16_t &move) {
 
     this->_undoStack.push_back(std::move(undo));
 
+    this->_zobrist ^= Zobrist::sideKey;
+
     this->switchSide();
 }
 
-// Switch sides immediately since we last switched at leaf node
 void Engine::unmakeMove(uint16_t &move) {
     this->switchSide();
 
+    this->_zobrist ^= Zobrist::sideKey;
+
     const Undo &undo = this->_undoStack.back();
+
+    if (this->_enPassantSquare != -1) {
+        this->_zobrist ^= Zobrist::enPassantKeys[this->_enPassantSquare];
+    }
 
     int from = Move::getFrom(move);
     int to = Move::getTo(move);
@@ -863,6 +886,15 @@ void Engine::unmakeMove(uint16_t &move) {
         this->unmakePromotionQuietMove(from, to, promotionPiece);
     } else if (Move::isPromotionCapture(move)) {
         this->unmakePromotionCaptureMove(from, to, promotionPiece, undo, otherSide);
+    }
+
+    if (undo.enPassantSquare != -1) {
+        this->_zobrist ^= Zobrist::enPassantKeys[undo.enPassantSquare];
+    }
+
+    if (this->_castleRights != undo.castleRights) {
+        this->_zobrist ^= Zobrist::castleKeys[this->_castleRights];
+        this->_zobrist ^= Zobrist::castleKeys[undo.castleRights];
     }
 
     this->_castleRights = undo.castleRights;
@@ -894,6 +926,8 @@ void Engine::makeDoublePawnMove(int from, int to, PieceType fromPiece) {
     int fromFile = BoardUtility::getFile(from);
 
     this->_enPassantSquare = EN_PASSANT_SQUARES[this->_side][fromFile];
+
+    this->_zobrist ^= Zobrist::enPassantKeys[this->_enPassantSquare];
 
     this->removePiece(from, fromPiece, this->_side);
 

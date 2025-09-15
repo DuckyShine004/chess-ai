@@ -4,8 +4,12 @@
 
 namespace engine::piece::King {
 
-constexpr uint64_t NOT_A_FILE = 0xFEFEFEFEFEFEFEFEULL;
-constexpr uint64_t NOT_H_FILE = 0x7F7F7F7F7F7F7F7FULL;
+inline constexpr uint64_t NOT_A_FILE = 0xFEFEFEFEFEFEFEFEULL;
+inline constexpr uint64_t NOT_H_FILE = 0x7F7F7F7F7F7F7F7FULL;
+
+inline uint64_t ATTACKS[64];
+
+inline void initialise();
 
 [[nodiscard]] inline constexpr uint64_t getAttacks(int square);
 
@@ -24,6 +28,12 @@ constexpr uint64_t NOT_H_FILE = 0x7F7F7F7F7F7F7F7FULL;
 [[nodiscard]] inline constexpr uint64_t southEast(uint64_t square);
 
 [[nodiscard]] inline constexpr uint64_t southWest(uint64_t square);
+
+inline void initialise() {
+    for (int square = 0; square < 64; ++square) {
+        ATTACKS[square] = getAttacks(square);
+    }
+}
 
 [[nodiscard]] inline constexpr uint64_t north(uint64_t square) {
     return square << 8;
