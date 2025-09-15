@@ -2,9 +2,12 @@
 
 #include "application/Application.hpp"
 
+#include "application/manager/SoundManager.hpp"
 #include "application/manager/TextureManager.hpp"
 
 #include "engine/board/Fen.hpp"
+
+#include "sound/SoundPlayer.hpp"
 
 #include "logger/LoggerMacros.hpp"
 
@@ -12,14 +15,14 @@ using namespace engine::board;
 
 using namespace application::manager;
 
+using namespace sound;
+
 namespace application {
 
 Application::Application() {
 }
 
-void Application::initialise() {
-    // this->_engine.parse(EN_PASSANT_POSITIONS[0]);
-
+void Application::initialiseRenderer() {
     sf::VideoMode mode(sf::Vector2u(1440, 900));
 
     this->_window = sf::RenderWindow(mode, "Chess");
@@ -27,6 +30,16 @@ void Application::initialise() {
     sf::ContextSettings settings;
 
     settings.antiAliasingLevel = 8;
+}
+
+void Application::initialise() {
+    // this->_engine.parse(EN_PASSANT_POSITIONS[0]);
+
+    this->initialiseRenderer();
+
+    SoundPlayer::getInstance().initialise();
+
+    SoundManager::getInstance().initialise();
 
     TextureManager::getInstance().initialise();
 }
@@ -57,9 +70,9 @@ void Application::debug() {
     //
     // this->_engine.printBoard();
     //
-    // for (int depth = 1; depth <= 6; ++depth) {
-    //     this->_engine.runPerft(depth);
-    // }
+    for (int depth = 1; depth <= 6; ++depth) {
+        this->_engine.runPerft(depth);
+    }
     // int moves = 20;
     // long long totalElapsed = 0LL;
     // for (int i = 0; i < moves; ++i) {
@@ -72,13 +85,13 @@ void Application::debug() {
     // }
     // LOG_DEBUG("Moves: {}", moves);
     // LOG_DEBUG("Time: {} ms", totalElapsed);
-    this->_engine.parse(KILLER_POSITION);
+    // this->_engine.parse(KILLER_POSITION);
 
-    this->_engine.printBoard();
-
-    this->_engine.run();
-
-    this->_engine.printBoard();
+    // this->_engine.printBoard();
+    //
+    // this->_engine.run();
+    //
+    // this->_engine.printBoard();
 }
 
 void Application::update() {

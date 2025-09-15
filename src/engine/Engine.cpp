@@ -11,6 +11,7 @@
 
 #include "engine/move/Order.hpp"
 
+#include "engine/evaluation/Score.hpp"
 #include "engine/evaluation/Material.hpp"
 #include "engine/evaluation/Position.hpp"
 
@@ -41,10 +42,12 @@ using namespace utility;
 
 namespace engine {
 
-Engine::Engine() : _ply(0) {
+Engine::Engine() {
     this->initialise();
 
     this->parse(INITIAL_POSITION);
+
+    this->_zobrist = Zobrist::hash(this->_bitboards, this->_castleRights, this->_enPassantSquare, this->_side);
 }
 
 void Engine::parse(const char *fen) {
@@ -66,6 +69,7 @@ void Engine::run() {
     this->makeMove(move);
 }
 
+// FIX: Find out why there are no optimal moves even when there are
 uint16_t &Engine::getMove() {
     this->searchRoot(this->_SEARCH_DEPTH);
 
@@ -78,10 +82,6 @@ uint16_t &Engine::getMove() {
 
 void Engine::switchSide() {
     this->_side = BoardUtility::getOtherSide(this->_side);
-}
-
-int Engine::getPly() {
-    return this->_ply;
 }
 
 PieceType Engine::getPiece(int square, ColourType side) {
@@ -249,6 +249,9 @@ void Engine::createPiece(int square, PieceType piece, ColourType side) {
     this->_occupancies[side] |= bitboard_square;
 
     this->_occupancyBoth |= bitboard_square;
+
+    // PERF: Optimise if too slow
+    this->_zobrist ^= Zobrist::pieceKeys[side][piece][square];
 }
 
 void Engine::removePiece(int rank, int file, ColourType side) {
@@ -277,6 +280,9 @@ void Engine::removePiece(int square, PieceType piece, ColourType side) {
     this->_occupancies[side] &= inverted_bitboard_square;
 
     this->_occupancyBoth &= inverted_bitboard_square;
+
+    // PERF: Optimise if too slow
+    this->_zobrist ^= Zobrist::pieceKeys[side][piece][square];
 }
 
 MoveList Engine::generateMoves(ColourType side) {
@@ -694,13 +700,17 @@ bool Engine::isMoveLegal(uint16_t &move, ColourType side) {
 
     this->unmakeMove(move);
 
-    return isInCheck;
+    return !isInCheck;
+}
+
+bool Engine::isInCheck() {
+    return this->isInCheck(this->_side);
 }
 
 bool Engine::isInCheck(ColourType side) {
     int kingSquare = this->getKingSquare(side);
 
-    return !this->isSquareAttacked(kingSquare, side);
+    return this->isSquareAttacked(kingSquare, side);
 }
 
 bool Engine::isSquareAttacked(int square, ColourType side) {
@@ -779,6 +789,7 @@ void Engine::updateCastleRights(ColourType side) {
     }
 }
 
+// PERF: Make hash local variable since it's more efficient for the compiler
 void Engine::makeMove(uint16_t &move) {
     Undo undo;
 
@@ -786,7 +797,10 @@ void Engine::makeMove(uint16_t &move) {
     undo.enPassantSquare = this->_enPassantSquare;
     undo.halfMove = this->_halfMove;
 
-    this->_enPassantSquare = -1;
+    if (this->_enPassantSquare != -1) {
+        this->_zobrist ^= Zobrist::enPassantKeys[this->_enPassantSquare];
+        this->_enPassantSquare = -1;
+    }
 
     int from = Move::getFrom(move);
     int to = Move::getTo(move);
@@ -820,6 +834,11 @@ void Engine::makeMove(uint16_t &move) {
 
     this->updateCastleRights();
 
+    if (undo.castleRights != this->_castleRights) {
+        this->_zobrist ^= Zobrist::castleKeys[undo.castleRights];
+        this->_zobrist ^= Zobrist::castleKeys[this->_castleRights];
+    }
+
     if (fromPiece == PieceType::PAWN || isCapture) {
         this->_halfMove = 0;
     } else {
@@ -828,14 +847,21 @@ void Engine::makeMove(uint16_t &move) {
 
     this->_undoStack.push_back(std::move(undo));
 
+    this->_zobrist ^= Zobrist::sideKey;
+
     this->switchSide();
 }
 
-// Switch sides immediately since we last switched at leaf node
 void Engine::unmakeMove(uint16_t &move) {
     this->switchSide();
 
+    this->_zobrist ^= Zobrist::sideKey;
+
     const Undo &undo = this->_undoStack.back();
+
+    if (this->_enPassantSquare != -1) {
+        this->_zobrist ^= Zobrist::enPassantKeys[this->_enPassantSquare];
+    }
 
     int from = Move::getFrom(move);
     int to = Move::getTo(move);
@@ -859,6 +885,15 @@ void Engine::unmakeMove(uint16_t &move) {
         this->unmakePromotionQuietMove(from, to, promotionPiece);
     } else if (Move::isPromotionCapture(move)) {
         this->unmakePromotionCaptureMove(from, to, promotionPiece, undo, otherSide);
+    }
+
+    if (undo.enPassantSquare != -1) {
+        this->_zobrist ^= Zobrist::enPassantKeys[undo.enPassantSquare];
+    }
+
+    if (this->_castleRights != undo.castleRights) {
+        this->_zobrist ^= Zobrist::castleKeys[this->_castleRights];
+        this->_zobrist ^= Zobrist::castleKeys[undo.castleRights];
     }
 
     this->_castleRights = undo.castleRights;
@@ -890,6 +925,8 @@ void Engine::makeDoublePawnMove(int from, int to, PieceType fromPiece) {
     int fromFile = BoardUtility::getFile(from);
 
     this->_enPassantSquare = EN_PASSANT_SQUARES[this->_side][fromFile];
+
+    this->_zobrist ^= Zobrist::enPassantKeys[this->_enPassantSquare];
 
     this->removePiece(from, fromPiece, this->_side);
 
@@ -1056,6 +1093,10 @@ void Engine::searchRoot(int depth) {
     int alpha = -INT_MAX;
     int beta = INT_MAX;
 
+    int ply = 0;
+
+    bool isLegalMoveFound = false;
+
     MoveList moves = this->generateMoves(this->_side);
 
     this->orderMoves(moves, this->_side);
@@ -1067,6 +1108,8 @@ void Engine::searchRoot(int depth) {
             continue;
         }
 
+        isLegalMoveFound = true;
+
         if (!this->_searchResult.isMoveFound) {
             this->_searchResult.bestMove = move;
 
@@ -1075,7 +1118,7 @@ void Engine::searchRoot(int depth) {
 
         this->makeMove(move);
 
-        int score = -this->search(-beta, -alpha, depth - 1);
+        int score = -this->search(-beta, -alpha, depth - 1, ply + 1);
 
         this->unmakeMove(move);
 
@@ -1095,11 +1138,21 @@ void Engine::searchRoot(int depth) {
             break;
         }
     }
+
+    if (!isLegalMoveFound) {
+        if (this->isInCheck(this->_side)) {
+            this->_searchResult.bestScore = Score::CHECKMATE_SCORE + ply;
+        } else {
+            this->_searchResult.bestScore = 0;
+        }
+
+        this->_searchResult.isMoveFound = false;
+    }
 }
 
-int Engine::search(int alpha, int beta, int depth) {
+int Engine::search(int alpha, int beta, int depth, int ply) {
     if (depth == 0) {
-        return this->quiescence(alpha, beta);
+        return this->quiescence(alpha, beta, ply);
     }
 
     // TODO: Implement null move pruning- condition
@@ -1120,6 +1173,8 @@ int Engine::search(int alpha, int beta, int depth) {
     // the side to move has a small number of pieces remaining
     // the previous move in the search was also a null move.
 
+    bool isLegalMoveFound = false;
+
     int bestScore = -INT_MAX;
 
     MoveList moves = this->generateMoves(this->_side);
@@ -1133,9 +1188,11 @@ int Engine::search(int alpha, int beta, int depth) {
             continue;
         }
 
+        isLegalMoveFound = true;
+
         this->makeMove(move);
 
-        int score = -this->search(-beta, -alpha, depth - 1);
+        int score = -this->search(-beta, -alpha, depth - 1, ply + 1);
 
         this->unmakeMove(move);
 
@@ -1152,10 +1209,18 @@ int Engine::search(int alpha, int beta, int depth) {
         }
     }
 
+    if (!isLegalMoveFound) {
+        if (this->isInCheck(this->_side)) {
+            return Score::CHECKMATE_SCORE + ply;
+        } else {
+            return 0;
+        }
+    }
+
     return bestScore;
 }
 
-int Engine::quiescence(int alpha, int beta) {
+int Engine::quiescence(int alpha, int beta, int ply) {
     int bestScore = this->evaluate(this->_side);
 
     if (bestScore >= beta) {
@@ -1165,6 +1230,8 @@ int Engine::quiescence(int alpha, int beta) {
     if (bestScore > alpha) {
         alpha = bestScore;
     }
+
+    bool isLegalMoveFound = false;
 
     MoveList captures = this->generateCaptures(this->_side);
 
@@ -1177,9 +1244,11 @@ int Engine::quiescence(int alpha, int beta) {
             continue;
         }
 
+        isLegalMoveFound = true;
+
         this->makeMove(capture);
 
-        int score = -this->quiescence(-beta, -alpha);
+        int score = -this->quiescence(-beta, -alpha, ply + 1);
 
         this->unmakeMove(capture);
 
@@ -1194,6 +1263,10 @@ int Engine::quiescence(int alpha, int beta) {
         if (score > alpha) {
             alpha = score;
         }
+    }
+
+    if (!isLegalMoveFound && this->isInCheck(this->_side)) {
+        return Score::CHECKMATE_SCORE + ply;
     }
 
     return bestScore;

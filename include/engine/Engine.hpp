@@ -48,13 +48,13 @@ class Engine {
 
     void switchSide();
 
-    int getPly();
-
     engine::board::PieceType getPiece(int square, engine::board::ColourType side);
 
     engine::move::Move::MoveList generateMoves(engine::board::ColourType side);
 
     void makeMove(uint16_t &move);
+
+    bool isInCheck();
 
     bool isMoveLegal(uint16_t &move, engine::board::ColourType side);
 
@@ -67,7 +67,7 @@ class Engine {
   private:
     static inline constexpr uint8_t _INITIAL_CASTLE_RIGHTS = 0xF;
 
-    static inline constexpr int _SEARCH_DEPTH = 7;
+    static inline constexpr int _SEARCH_DEPTH = 4;
 
     static inline uint64_t _PAWN_ATTACKS[2][64];
     static inline uint64_t _KNIGHT_ATTACKS[64];
@@ -76,6 +76,8 @@ class Engine {
     uint64_t _bitboards[2][6];
     uint64_t _occupancies[2];
     uint64_t _occupancyBoth;
+
+    uint64_t _zobrist;
 
     uint8_t _castleRights;
 
@@ -87,7 +89,6 @@ class Engine {
     SearchResult _searchResult;
 
     int _enPassantSquare;
-    int _ply;
 
     std::vector<engine::move::Undo> _undoStack;
 
@@ -199,9 +200,9 @@ class Engine {
 
     void searchRoot(int depth);
 
-    int search(int alpha, int beta, int depth);
+    int search(int alpha, int beta, int depth, int ply);
 
-    int quiescence(int alpha, int beta);
+    int quiescence(int alpha, int beta, int ply);
 
     int evaluate(engine::board::ColourType side);
 

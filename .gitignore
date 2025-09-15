@@ -35,3 +35,6 @@ test.py
 *.autosave
 *.qmlproject.user
 CMakeLists.txt.user*
+
+# STUPID MAC FILES
+**/.DS_Store

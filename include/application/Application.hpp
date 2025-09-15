@@ -27,6 +27,8 @@ class Application {
 
     application::gui::Chess _chess;
 
+    void initialiseRenderer();
+
     void update();
 
     void render();

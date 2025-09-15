@@ -6,18 +6,22 @@
 
 namespace engine::piece::Pawn {
 
-constexpr uint64_t NOT_A_FILE = 0xFEFEFEFEFEFEFEFEULL;
-constexpr uint64_t NOT_H_FILE = 0x7F7F7F7F7F7F7F7FULL;
+inline constexpr uint64_t NOT_A_FILE = 0xFEFEFEFEFEFEFEFEULL;
+inline constexpr uint64_t NOT_H_FILE = 0x7F7F7F7F7F7F7F7FULL;
 
-constexpr uint64_t SECOND_RANK[2] = {
+inline constexpr uint64_t SECOND_RANK[2] = {
     0x000000000000FF00ULL,
     0x00FF000000000000ULL,
 };
 
-constexpr uint64_t ENEMY_BACK_RANK[2] = {
+inline constexpr uint64_t ENEMY_BACK_RANK[2] = {
     0xFF00000000000000ULL,
     0x00000000000000FFULL,
 };
+
+inline uint64_t ATTACKS[2][64];
+
+inline void initialise();
 
 [[nodiscard]] inline constexpr uint64_t north(uint64_t square);
 
@@ -48,6 +52,13 @@ constexpr uint64_t ENEMY_BACK_RANK[2] = {
 [[nodiscard]] inline constexpr uint64_t getSinglePushAll(uint64_t pawns, engine::board::ColourType side, uint64_t empty);
 
 [[nodiscard]] inline constexpr uint64_t getDoublePushAll(uint64_t pawns, engine::board::ColourType side, uint64_t empty);
+
+inline void initialise() {
+    for (int square = 0; square < 64; ++square) {
+        ATTACKS[0][square] = getAttacks(square, engine::board::ColourType::WHITE);
+        ATTACKS[1][square] = getAttacks(square, engine::board::ColourType::BLACK);
+    }
+}
 
 [[nodiscard]] inline constexpr uint64_t north(uint64_t square) {
     return square << 8;

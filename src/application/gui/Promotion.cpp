@@ -1,7 +1,11 @@
 #include "application/gui/Square.hpp"
 #include "application/gui/Promotion.hpp"
 
+#include "application/manager/SoundManager.hpp"
+
 #include "engine/move/Move.hpp"
+
+using namespace application::manager;
 
 using namespace engine;
 
@@ -50,6 +54,8 @@ void Promotion::makePromotionMove(Engine &engine, sf::Vector2i mousePosition) {
     uint16_t promotionMove = Move::getPromotionMove(this->_from, this->_to, promotionPiece, this->_isCapture);
 
     engine.makeMove(promotionMove);
+
+    SoundManager::getInstance().playMoveEffect(engine, promotionMove);
 
     this->clear();
 }
