@@ -48,8 +48,6 @@ class Engine {
 
     void switchSide();
 
-    int getPly();
-
     engine::board::PieceType getPiece(int square, engine::board::ColourType side);
 
     engine::move::Move::MoveList generateMoves(engine::board::ColourType side);
@@ -91,7 +89,6 @@ class Engine {
     SearchResult _searchResult;
 
     int _enPassantSquare;
-    int _ply;
 
     std::vector<engine::move::Undo> _undoStack;
 
@@ -203,9 +200,9 @@ class Engine {
 
     void searchRoot(int depth);
 
-    int search(int alpha, int beta, int depth);
+    int search(int alpha, int beta, int depth, int ply);
 
-    int quiescence(int alpha, int beta);
+    int quiescence(int alpha, int beta, int ply);
 
     int evaluate(engine::board::ColourType side);
 
