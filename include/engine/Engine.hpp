@@ -10,6 +10,7 @@
 
 #include "engine/move/Move.hpp"
 #include "engine/move/Undo.hpp"
+#include "engine/move/Order.hpp"
 
 #include "compiler/compiler.hpp"
 
@@ -69,7 +70,7 @@ class Engine {
 
     static inline constexpr uint8_t _INITIAL_CASTLE_RIGHTS = 0xF;
 
-    static inline constexpr int _SEARCH_DEPTH = 6;
+    static inline constexpr int _SEARCH_DEPTH = 7;
 
     uint64_t _bitboards[2][6];
     uint64_t _occupancies[2];
@@ -89,6 +90,8 @@ class Engine {
     int _enPassantSquare;
 
     std::vector<engine::move::Undo> _undoStack;
+
+    uint16_t _killerMoves[engine::move::MAX_KILLER_MOVES][engine::move::MAX_PLY];
 
     void initialise();
 
@@ -196,7 +199,9 @@ class Engine {
 
     FORCE_INLINE void unmakePromotionCaptureMove(int from, int to, engine::board::PieceType promotionPiece, const engine::move::Undo &undo, engine::board::ColourType otherSide);
 
-    void orderMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side);
+    FORCE_INLINE void storeKillerMove(uint16_t move, int ply);
+
+    void orderMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side, int ply);
 
     int seeMove(int from, int to, engine::board::PieceType toPiece, engine::board::ColourType side);
 

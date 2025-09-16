@@ -1,7 +1,12 @@
 #pragma once
 
+#include <climits>
+
 // http://paulwebster.net/mvv-lva-move-ordering/
 namespace engine::move {
+
+// inline constexpr int MVV_LVA_OFFSET = INT_MAX - 4096;
+inline constexpr int MVV_LVA_OFFSET = 10000;
 
 // clang-format off
 inline constexpr int MVV_LVA[6][6] = {
@@ -13,5 +18,10 @@ inline constexpr int MVV_LVA[6][6] = {
     {100, 200, 300, 400, 500, 600},
 };
 // clang-format on 
+
+inline constexpr int MAX_PLY = 128;
+inline constexpr int MAX_KILLER_MOVES = 2;
+// inline constexpr int KILLER_VALUE = 10;
+inline constexpr int KILLER_VALUE = 1000;
 
 } // namespace engine::evaluation

@@ -10,8 +10,6 @@
 
 #include "engine/hash/Zobrist.hpp"
 
-#include "engine/move/Order.hpp"
-
 #include "engine/evaluation/Score.hpp"
 #include "engine/evaluation/Material.hpp"
 #include "engine/evaluation/Position.hpp"
@@ -20,6 +18,7 @@
 #include "engine/evaluation/pesto/EG.hpp"
 #include "engine/evaluation/pesto/Pesto.hpp"
 
+#include "engine/move/Move.hpp"
 #include "engine/piece/Pawn.hpp"
 #include "engine/piece/Knight.hpp"
 #include "engine/piece/Bishop.hpp"
@@ -1056,10 +1055,23 @@ void Engine::unmakePromotionCaptureMove(int from, int to, PieceType promotionPie
     this->createPiece(to, undo.capturedPiece, otherSide);
 }
 
+void Engine::storeKillerMove(uint16_t move, int ply) {
+    if (!Move::isGeneralQuiet(move)) {
+        return;
+    }
+
+    if (this->_killerMoves[0][ply] == move) {
+        return;
+    }
+
+    this->_killerMoves[1][ply] = this->_killerMoves[0][ply];
+    this->_killerMoves[0][ply] = move;
+}
+
 // TODO: Sort moves
 // MVV-LVA [*]
-// Killer Moves []
-void Engine::orderMoves(Move::MoveList &moves, ColourType side) {
+// Killer Moves [*]
+void Engine::orderMoves(Move::MoveList &moves, ColourType side, int ply) {
     int scores[256];
 
     ColourType otherSide = BoardUtility::getOtherSide(side);
@@ -1072,15 +1084,31 @@ void Engine::orderMoves(Move::MoveList &moves, ColourType side) {
 
         PieceType fromPiece = BoardUtility::getPiece(this->_bitboards, from, side);
 
-        scores[i] = 0;
+        int score = 0;
 
         if (Move::isGeneralCapture(move)) {
             PieceType toPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-            scores[i] += MVV_LVA[fromPiece][toPiece];
+            score = MVV_LVA_OFFSET + MVV_LVA[fromPiece][toPiece];
             // scores[i] += (MVV_LVA[fromPiece][toPiece] << 8);
             // scores[i] += this->seeMove(from, to, toPiece, side);
+        } else {
+            // Killer moves for quiet moves
+            // int j = 0;
+            // while (j < MAX_KILLER_MOVES && scores[i]==0){
+            //    if (moves==killerMoves[i][ply]){
+            //        scores[i] += MVV_LVA_OFFSET - (j + 1) * KILLER_VALUE;
+            //    }
+            //    ++j;
+            // }
+            if (this->_killerMoves[0][ply] == move) {
+                score = MVV_LVA_OFFSET - KILLER_VALUE;
+            } else if (this->_killerMoves[1][ply] == move) {
+                score = MVV_LVA_OFFSET - (KILLER_VALUE << 1);
+            }
         }
+
+        scores[i] = score;
     }
 
     for (int i = 0; i < moves.size; ++i) {
@@ -1136,6 +1164,8 @@ int Engine::see(int to, PieceType toPiece, ColourType side) {
 void Engine::searchRoot(int depth) {
     this->_searchResult.clear();
 
+    std::memset(this->_killerMoves, 0, sizeof(this->_killerMoves));
+
     int alpha = -INT_MAX;
     int beta = INT_MAX;
 
@@ -1145,7 +1175,7 @@ void Engine::searchRoot(int depth) {
 
     MoveList moves = this->generateMoves(this->_side);
 
-    this->orderMoves(moves, this->_side);
+    this->orderMoves(moves, this->_side, ply);
 
     for (int i = 0; i < moves.size; ++i) {
         uint16_t &move = moves.moves[i];
@@ -1225,7 +1255,7 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
     MoveList moves = this->generateMoves(this->_side);
 
-    this->orderMoves(moves, this->_side);
+    this->orderMoves(moves, this->_side, ply);
 
     for (int i = 0; i < moves.size; ++i) {
         uint16_t &move = moves.moves[i];
@@ -1250,7 +1280,10 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
             }
         }
 
+        // beta cut-off store killer
         if (score >= beta) {
+            this->storeKillerMove(move, ply);
+
             break;
         }
     }
@@ -1271,7 +1304,7 @@ int Engine::quiescence(int alpha, int beta, int ply) {
     if (this->isInCheck(this->_side)) {
         Move::MoveList moves = this->generateMoves(this->_side);
 
-        this->orderMoves(moves, this->_side);
+        this->orderMoves(moves, this->_side, ply);
 
         bool isLegalMovesFound = false;
 
@@ -1307,8 +1340,8 @@ int Engine::quiescence(int alpha, int beta, int ply) {
         return alpha;
     }
 
-    // int standingPat = this->evaluate(this->_side);
-    int standingPat = this->evaluatePesto(this->_side);
+    int standingPat = this->evaluate(this->_side);
+    // int standingPat = this->evaluatePesto(this->_side);
 
     if (standingPat >= beta) {
         return standingPat;
@@ -1322,7 +1355,7 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 
     MoveList captures = this->generateCaptures(this->_side);
 
-    this->orderMoves(captures, this->_side);
+    this->orderMoves(captures, this->_side, ply);
 
     for (int i = 0; i < captures.size; ++i) {
         uint16_t &capture = captures.moves[i];
