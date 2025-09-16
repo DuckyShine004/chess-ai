@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include "engine/board/Square.hpp"
+
 namespace engine::piece::Knight {
 
 inline constexpr uint64_t NOT_A_FILE = 0xFEFEFEFEFEFEFEFEULL;
@@ -38,7 +40,7 @@ inline void initialise() {
 }
 
 [[nodiscard]] inline constexpr uint64_t getAttacks(int square) {
-    uint64_t squareU64 = 1ULL << square;
+    uint64_t squareU64 = engine::board::BITBOARD_SQUARES[square];
 
     uint64_t attacks = 0ULL;
 

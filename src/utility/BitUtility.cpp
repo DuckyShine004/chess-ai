@@ -6,7 +6,7 @@
 
 namespace utility {
 
-void printBitBoard(uint64_t bitboard) {
+inline void printBitBoard(uint64_t bitboard) {
     for (int rank = 7; rank >= 0; --rank) {
         for (int file = 0; file < 8; ++file) {
             int square = BoardUtility::getSquare(rank, file);

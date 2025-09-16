@@ -32,7 +32,7 @@ inline constexpr void clearBit(uint8_t &value, int position);
 
 [[nodiscard]] inline constexpr uint64_t getOccupancy(int indices, int bits, uint64_t rays);
 
-extern void printBitBoard(uint64_t bitboard);
+extern inline void printBitBoard(uint64_t bitboard);
 
 [[nodiscard]] inline constexpr bool isBitSet(uint64_t value, int rank, int file) {
     return isBitSet(value, BoardUtility::getSquare(rank, file));

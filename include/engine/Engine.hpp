@@ -65,13 +65,11 @@ class Engine {
     void printBoard();
 
   private:
+    static inline constexpr engine::board::ColourType _INITIAL_SIDE = engine::board::ColourType::WHITE;
+
     static inline constexpr uint8_t _INITIAL_CASTLE_RIGHTS = 0xF;
 
-    static inline constexpr int _SEARCH_DEPTH = 4;
-
-    static inline uint64_t _PAWN_ATTACKS[2][64];
-    static inline uint64_t _KNIGHT_ATTACKS[64];
-    static inline uint64_t _KING_ATTACKS[64];
+    static inline constexpr int _SEARCH_DEPTH = 8;
 
     uint64_t _bitboards[2][6];
     uint64_t _occupancies[2];
@@ -133,6 +131,8 @@ class Engine {
     void generateRookMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side);
 
     void generateQueenMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side);
+
+    engine::move::Move::MoveList generateKingMove(engine::board::ColourType side);
 
     void generateKingMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side);
 
@@ -197,6 +197,10 @@ class Engine {
     FORCE_INLINE void unmakePromotionCaptureMove(int from, int to, engine::board::PieceType promotionPiece, const engine::move::Undo &undo, engine::board::ColourType otherSide);
 
     void orderMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side);
+
+    int seeMove(int from, int to, engine::board::PieceType toPiece, engine::board::ColourType side);
+
+    int see(int to, engine::board::PieceType toPiece, engine::board::ColourType side);
 
     void searchRoot(int depth);
 
