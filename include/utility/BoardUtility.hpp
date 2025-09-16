@@ -8,6 +8,11 @@
 
 namespace utility::BoardUtility {
 
+inline constexpr engine::board::ColourType OTHER_SIDE[2] = {
+    engine::board::ColourType::BLACK,
+    engine::board::ColourType::WHITE,
+};
+
 [[nodiscard]] inline constexpr int getSquare(int rank, int file);
 
 [[nodiscard]] inline constexpr int getRank(int square);
@@ -84,7 +89,7 @@ inline void printBoard(uint64_t board[2][6]);
 }
 
 [[nodiscard]] inline constexpr engine::board::ColourType getOtherSide(engine::board::ColourType side) {
-    return static_cast<engine::board::ColourType>(side ^ 1);
+    return OTHER_SIDE[side];
 }
 
 inline void printBoard(uint64_t board[2][6]) {

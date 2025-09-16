@@ -18,7 +18,7 @@ inline uint64_t sideKey;
 
 inline void initialise();
 
-[[nodiscard]] inline uint64_t constexpr hash(const uint64_t bitboards[2][6], uint8_t castleRights, int enPassantSquare, engine::board::ColourType side);
+[[nodiscard]] inline uint64_t hash(const uint64_t bitboards[2][6], uint8_t castleRights, int enPassantSquare, engine::board::ColourType side);
 
 inline void initialise() {
     for (int sideIndex = 0; sideIndex < 2; ++sideIndex) {
@@ -40,7 +40,7 @@ inline void initialise() {
     sideKey = utility::RandomUtility::getRandomU64();
 }
 
-[[nodiscard]] inline constexpr uint64_t hash(const uint64_t bitboards[2][6], uint8_t castleRights, int enPassantSquare, engine::board::ColourType side) {
+[[nodiscard]] inline uint64_t hash(const uint64_t bitboards[2][6], uint8_t castleRights, int enPassantSquare, engine::board::ColourType side) {
     uint64_t hash = 0ULL;
 
     for (int sideIndex = 0; sideIndex < 2; ++sideIndex) {

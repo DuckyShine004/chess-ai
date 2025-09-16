@@ -1,5 +1,6 @@
 #include <chrono>
 #include <cstring>
+#include <functional>
 
 #include "engine/Engine.hpp"
 
@@ -9,12 +10,15 @@
 
 #include "engine/hash/Zobrist.hpp"
 
-#include "engine/move/Order.hpp"
-
 #include "engine/evaluation/Score.hpp"
 #include "engine/evaluation/Material.hpp"
 #include "engine/evaluation/Position.hpp"
 
+#include "engine/evaluation/pesto/MG.hpp"
+#include "engine/evaluation/pesto/EG.hpp"
+#include "engine/evaluation/pesto/Pesto.hpp"
+
+#include "engine/move/Move.hpp"
 #include "engine/piece/Pawn.hpp"
 #include "engine/piece/Knight.hpp"
 #include "engine/piece/Bishop.hpp"
@@ -24,6 +28,7 @@
 
 #include "utility/BitUtility.hpp"
 #include "utility/BoardUtility.hpp"
+#include "utility/AttackUtility.hpp"
 #include "utility/StringUtility.hpp"
 
 using namespace engine::board;
@@ -37,6 +42,8 @@ using namespace engine::move;
 using namespace engine::move::Move;
 
 using namespace engine::evaluation;
+
+using namespace engine::evaluation::pesto;
 
 using namespace utility;
 
@@ -108,20 +115,13 @@ void Engine::printBoard() {
 }
 
 void Engine::initialise() {
+    Pawn::initialise();
+    Knight::initialise();
     Bishop::initialise();
-
     Rook::initialise();
+    King::initialise();
 
     Zobrist::initialise();
-
-    for (int square = 0; square < 64; ++square) {
-        this->_PAWN_ATTACKS[0][square] = Pawn::getAttacks(square, ColourType::WHITE);
-        this->_PAWN_ATTACKS[1][square] = Pawn::getAttacks(square, ColourType::BLACK);
-
-        this->_KNIGHT_ATTACKS[square] = Knight::getAttacks(square);
-
-        this->_KING_ATTACKS[square] = King::getAttacks(square);
-    }
 }
 
 void Engine::parseFenPosition(std::string &position) {
@@ -327,7 +327,7 @@ void Engine::generatePawnMoves(MoveList &moves, ColourType side) {
             moves.add(from, to, MoveType::DOUBLE_PAWN);
         }
 
-        uint64_t captureMoves = this->_PAWN_ATTACKS[side][from] & this->_occupancies[otherSide];
+        uint64_t captureMoves = Pawn::ATTACKS[side][from] & this->_occupancies[otherSide];
 
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
@@ -343,7 +343,7 @@ void Engine::generatePawnMoves(MoveList &moves, ColourType side) {
         }
 
         if (this->_enPassantSquare != -1) {
-            uint64_t enPassantMoves = this->_PAWN_ATTACKS[side][from] & BITBOARD_SQUARES[this->_enPassantSquare];
+            uint64_t enPassantMoves = Pawn::ATTACKS[side][from] & BITBOARD_SQUARES[this->_enPassantSquare];
 
             while (enPassantMoves) {
                 int to = BitUtility::popLSB(enPassantMoves);
@@ -364,7 +364,7 @@ void Engine::generateKnightMoves(MoveList &moves, ColourType side) {
     while (knights) {
         int from = BitUtility::popLSB(knights);
 
-        uint64_t quietMoves = this->_KNIGHT_ATTACKS[from] & empty;
+        uint64_t quietMoves = Knight::ATTACKS[from] & empty;
 
         while (quietMoves) {
             int to = BitUtility::popLSB(quietMoves);
@@ -372,7 +372,7 @@ void Engine::generateKnightMoves(MoveList &moves, ColourType side) {
             moves.add(from, to, MoveType::QUIET);
         }
 
-        uint64_t captureMoves = this->_KNIGHT_ATTACKS[from] & this->_occupancies[otherSide];
+        uint64_t captureMoves = Knight::ATTACKS[from] & this->_occupancies[otherSide];
 
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
@@ -472,6 +472,14 @@ void Engine::generateQueenMoves(MoveList &moves, ColourType side) {
     }
 }
 
+Move::MoveList Engine::generateKingMoves(ColourType side) {
+    Move::MoveList moves;
+
+    this->generateKingMoves(moves, side);
+
+    return moves;
+}
+
 void Engine::generateKingMoves(MoveList &moves, ColourType side) {
     ColourType otherSide = BoardUtility::getOtherSide(side);
 
@@ -482,7 +490,7 @@ void Engine::generateKingMoves(MoveList &moves, ColourType side) {
     while (kings) {
         int from = BitUtility::popLSB(kings);
 
-        uint64_t quietMoves = this->_KING_ATTACKS[from] & empty;
+        uint64_t quietMoves = King::ATTACKS[from] & empty;
 
         while (quietMoves) {
             int to = BitUtility::popLSB(quietMoves);
@@ -490,7 +498,7 @@ void Engine::generateKingMoves(MoveList &moves, ColourType side) {
             moves.add(from, to, MoveType::QUIET);
         }
 
-        uint64_t captureMoves = this->_KING_ATTACKS[from] & this->_occupancies[otherSide];
+        uint64_t captureMoves = King::ATTACKS[from] & this->_occupancies[otherSide];
 
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
@@ -560,7 +568,7 @@ void Engine::generatePawnCaptures(MoveList &captures, ColourType side) {
     while (pawns) {
         int from = BitUtility::popLSB(pawns);
 
-        uint64_t captureMoves = this->_PAWN_ATTACKS[side][from] & this->_occupancies[otherSide];
+        uint64_t captureMoves = Pawn::ATTACKS[side][from] & this->_occupancies[otherSide];
 
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
@@ -576,7 +584,7 @@ void Engine::generatePawnCaptures(MoveList &captures, ColourType side) {
         }
 
         if (this->_enPassantSquare != -1) {
-            uint64_t enPassantMoves = this->_PAWN_ATTACKS[side][from] & BITBOARD_SQUARES[this->_enPassantSquare];
+            uint64_t enPassantMoves = Pawn::ATTACKS[side][from] & BITBOARD_SQUARES[this->_enPassantSquare];
 
             while (enPassantMoves) {
                 int to = BitUtility::popLSB(enPassantMoves);
@@ -597,7 +605,7 @@ void Engine::generateKnightCaptures(MoveList &captures, ColourType side) {
     while (knights) {
         int from = BitUtility::popLSB(knights);
 
-        uint64_t captureMoves = this->_KNIGHT_ATTACKS[from] & this->_occupancies[otherSide];
+        uint64_t captureMoves = Knight::ATTACKS[from] & this->_occupancies[otherSide];
 
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
@@ -683,7 +691,7 @@ void Engine::generateKingCaptures(MoveList &captures, ColourType side) {
     while (kings) {
         int from = BitUtility::popLSB(kings);
 
-        uint64_t captureMoves = this->_KING_ATTACKS[from] & this->_occupancies[otherSide];
+        uint64_t captureMoves = King::ATTACKS[from] & this->_occupancies[otherSide];
 
         while (captureMoves) {
             int to = BitUtility::popLSB(captureMoves);
@@ -716,15 +724,15 @@ bool Engine::isInCheck(ColourType side) {
 bool Engine::isSquareAttacked(int square, ColourType side) {
     ColourType otherSide = BoardUtility::getOtherSide(side);
 
-    if (this->_PAWN_ATTACKS[side][square] & this->_bitboards[otherSide][PieceType::PAWN]) {
+    if (Pawn::ATTACKS[side][square] & this->_bitboards[otherSide][PieceType::PAWN]) {
         return true;
     }
 
-    if (this->_KNIGHT_ATTACKS[square] & this->_bitboards[otherSide][PieceType::KNIGHT]) {
+    if (Knight::ATTACKS[square] & this->_bitboards[otherSide][PieceType::KNIGHT]) {
         return true;
     }
 
-    if (this->_KING_ATTACKS[square] & this->_bitboards[otherSide][PieceType::KING]) {
+    if (King::ATTACKS[square] & this->_bitboards[otherSide][PieceType::KING]) {
         return true;
     }
 
@@ -1047,10 +1055,24 @@ void Engine::unmakePromotionCaptureMove(int from, int to, PieceType promotionPie
     this->createPiece(to, undo.capturedPiece, otherSide);
 }
 
+void Engine::storeKillerMove(uint16_t move, int ply) {
+    if (!Move::isGeneralQuiet(move)) {
+        return;
+    }
+
+    if (this->_killerMoves[0][ply] == move) {
+        return;
+    }
+
+    this->_killerMoves[1][ply] = this->_killerMoves[0][ply];
+    this->_killerMoves[0][ply] = move;
+}
+
 // TODO: Sort moves
 // MVV-LVA [*]
-// Killer Moves []
-void Engine::orderMoves(Move::MoveList &moves, ColourType side) {
+// Killer Moves [*]
+// History [-]
+void Engine::orderMoves(Move::MoveList &moves, ColourType side, int ply) {
     int scores[256];
 
     ColourType otherSide = BoardUtility::getOtherSide(side);
@@ -1063,13 +1085,24 @@ void Engine::orderMoves(Move::MoveList &moves, ColourType side) {
 
         PieceType fromPiece = BoardUtility::getPiece(this->_bitboards, from, side);
 
-        scores[i] = 0;
+        int score = 0;
 
         if (Move::isGeneralCapture(move)) {
             PieceType toPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-            scores[i] += MVV_LVA[fromPiece][toPiece];
+            score = MVV_LVA[fromPiece][toPiece] + MVV_LVA_OFFSET;
+            // scores[i] += this->seeMove(from, to, toPiece, side);
+        } else {
+            if (this->_killerMoves[0][ply] == move) {
+                score = MVV_LVA_OFFSET - KILLER_VALUE;
+            } else if (this->_killerMoves[1][ply] == move) {
+                score = MVV_LVA_OFFSET - (KILLER_VALUE << 1);
+            } else {
+                // history
+            }
         }
+
+        scores[i] = score;
     }
 
     for (int i = 0; i < moves.size; ++i) {
@@ -1087,11 +1120,50 @@ void Engine::orderMoves(Move::MoveList &moves, ColourType side) {
     }
 }
 
+int Engine::seeMove(int from, int to, PieceType toPiece, ColourType side) {
+    return this->see(to, toPiece, side);
+}
+
+int Engine::see(int to, PieceType toPiece, ColourType side) {
+    uint64_t bitboards[2][6];
+
+    uint64_t occupancyBoth = this->_occupancyBoth;
+
+    std::memcpy(bitboards, this->_bitboards, sizeof(this->_bitboards));
+
+    std::function<int(int, uint64_t[2][6], uint64_t, ColourType, int)> seeUtil = [&](int _square, uint64_t _bitboards[2][6], uint64_t _occupancyBoth, ColourType _side, int _seeScore) -> int {
+        int _from;
+
+        PieceType _fromPiece;
+
+        if (!AttackUtility::getLeastValuableAttacker(_square, _bitboards, _occupancyBoth, _side, _from, _fromPiece)) {
+            return 0;
+        }
+
+        const uint64_t invertedFromMask = INVERTED_BITBOARD_SQUARES[_from];
+
+        _bitboards[_side][_fromPiece] &= invertedFromMask;
+        _occupancyBoth &= invertedFromMask;
+
+        ColourType otherSide = BoardUtility::getOtherSide(_side);
+
+        int gain = _seeScore - seeUtil(_square, _bitboards, _occupancyBoth, otherSide, MATERIAL_TABLE[_fromPiece]);
+
+        return (gain > 0) ? gain : 0;
+    };
+
+    return seeUtil(to, bitboards, occupancyBoth, side, MATERIAL_TABLE[toPiece]);
+}
+
 void Engine::searchRoot(int depth) {
     this->_searchResult.clear();
 
-    int alpha = -INT_MAX;
-    int beta = INT_MAX;
+    std::memset(this->_killerMoves, 0, sizeof(this->_killerMoves));
+
+    // int alpha = -INT_MAX;
+    // int beta = INT_MAX;
+    int alpha = -Score::INF;
+    int beta = Score::INF;
 
     int ply = 0;
 
@@ -1099,7 +1171,7 @@ void Engine::searchRoot(int depth) {
 
     MoveList moves = this->generateMoves(this->_side);
 
-    this->orderMoves(moves, this->_side);
+    this->orderMoves(moves, this->_side, ply);
 
     for (int i = 0; i < moves.size; ++i) {
         uint16_t &move = moves.moves[i];
@@ -1135,13 +1207,15 @@ void Engine::searchRoot(int depth) {
         }
 
         if (score >= beta) {
+            this->storeKillerMove(move, ply);
+
             break;
         }
     }
 
     if (!isLegalMoveFound) {
         if (this->isInCheck(this->_side)) {
-            this->_searchResult.bestScore = Score::CHECKMATE_SCORE + ply;
+            this->_searchResult.bestScore = Score::getCheckMateScore(ply);
         } else {
             this->_searchResult.bestScore = 0;
         }
@@ -1175,11 +1249,11 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
     bool isLegalMoveFound = false;
 
-    int bestScore = -INT_MAX;
+    int bestScore = -Score::INF;
 
     MoveList moves = this->generateMoves(this->_side);
 
-    this->orderMoves(moves, this->_side);
+    this->orderMoves(moves, this->_side, ply);
 
     for (int i = 0; i < moves.size; ++i) {
         uint16_t &move = moves.moves[i];
@@ -1204,14 +1278,17 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
             }
         }
 
+        // beta cut-off store killer
         if (score >= beta) {
+            this->storeKillerMove(move, ply);
+
             break;
         }
     }
 
     if (!isLegalMoveFound) {
         if (this->isInCheck(this->_side)) {
-            return Score::CHECKMATE_SCORE + ply;
+            return Score::getCheckMateScore(ply);
         } else {
             return 0;
         }
@@ -1221,21 +1298,62 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 }
 
 int Engine::quiescence(int alpha, int beta, int ply) {
-    int bestScore = this->evaluate(this->_side);
+    // Standing pat is illegal if king is in check
+    if (this->isInCheck(this->_side)) {
+        Move::MoveList moves = this->generateMoves(this->_side);
 
-    if (bestScore >= beta) {
-        return bestScore;
+        this->orderMoves(moves, this->_side, ply);
+
+        bool isLegalMovesFound = false;
+
+        for (int i = 0; i < moves.size; ++i) {
+            uint16_t move = moves.moves[i];
+
+            if (!this->isMoveLegal(move, this->_side)) {
+                continue;
+            }
+
+            isLegalMovesFound = true;
+
+            this->makeMove(move);
+
+            int score = -this->quiescence(-beta, -alpha, ply + 1);
+
+            this->unmakeMove(move);
+
+            if (score >= beta) {
+                return score;
+            }
+
+            if (score > alpha) {
+                alpha = score;
+            }
+        }
+
+        // Must be checkmate
+        if (!isLegalMovesFound) {
+            return Score::getCheckMateScore(ply);
+        }
+
+        return alpha;
     }
 
-    if (bestScore > alpha) {
-        alpha = bestScore;
+    int standingPat = this->evaluate(this->_side);
+    // int standingPat = this->evaluatePesto(this->_side);
+
+    if (standingPat >= beta) {
+        return standingPat;
+    }
+
+    if (standingPat > alpha) {
+        alpha = standingPat;
     }
 
     bool isLegalMoveFound = false;
 
     MoveList captures = this->generateCaptures(this->_side);
 
-    this->orderMoves(captures, this->_side);
+    this->orderMoves(captures, this->_side, ply);
 
     for (int i = 0; i < captures.size; ++i) {
         uint16_t &capture = captures.moves[i];
@@ -1256,20 +1374,12 @@ int Engine::quiescence(int alpha, int beta, int ply) {
             return score;
         }
 
-        if (score > bestScore) {
-            bestScore = score;
-        }
-
         if (score > alpha) {
             alpha = score;
         }
     }
 
-    if (!isLegalMoveFound && this->isInCheck(this->_side)) {
-        return Score::CHECKMATE_SCORE + ply;
-    }
-
-    return bestScore;
+    return alpha;
 }
 
 // TODO: implement mobility score
@@ -1301,6 +1411,47 @@ int Engine::evaluate(ColourType side) {
     return (side == ColourType::WHITE) ? score : -score;
 }
 
+int Engine::evaluatePesto(ColourType side) {
+    int scoreMG = 0;
+    int scoreEG = 0;
+
+    int phaseMG = 0;
+
+    for (uint8_t piece = PieceType::PAWN; piece <= PieceType::KING; ++piece) {
+        uint64_t whitePieces = this->_bitboards[ColourType::WHITE][piece];
+
+        while (whitePieces) {
+            int square = BitUtility::popLSB(whitePieces);
+
+            scoreMG += MG::MATERIAL_VALUES[piece] + MG::POSITION_VALUES[piece][square];
+            scoreEG += EG::MATERIAL_VALUES[piece] + EG::POSITION_VALUES[piece][square];
+
+            phaseMG += Pesto::GAME_PHASE_VALUES[piece];
+        }
+
+        uint64_t blackPieces = this->_bitboards[ColourType::BLACK][piece];
+
+        while (blackPieces) {
+            int square = BitUtility::popLSB(blackPieces);
+
+            scoreMG -= MG::MATERIAL_VALUES[piece] + MG::POSITION_VALUES[piece][MIRROR[square]];
+            scoreEG -= EG::MATERIAL_VALUES[piece] + EG::POSITION_VALUES[piece][MIRROR[square]];
+
+            phaseMG += Pesto::GAME_PHASE_VALUES[piece];
+        }
+    }
+
+    if (phaseMG > 24) {
+        phaseMG = 24;
+    }
+
+    int phaseEG = 24 - phaseMG;
+
+    int score = (scoreMG * phaseMG + scoreEG * phaseEG) / 24;
+
+    return (side == ColourType::WHITE) ? score : -score;
+}
+
 int Engine::perft(int depth) {
     if (depth == 0) {
         return 1;
@@ -1328,13 +1479,13 @@ int Engine::perft(int depth) {
 }
 
 void Engine::reset() {
-    memset(this->_bitboards, 0ULL, sizeof(this->_bitboards));
+    std::memset(this->_bitboards, 0ULL, sizeof(this->_bitboards));
 
-    memset(this->_occupancies, 0ULL, sizeof(this->_occupancies));
+    std::memset(this->_occupancies, 0ULL, sizeof(this->_occupancies));
 
     this->_occupancyBoth = 0ULL;
     this->_castleRights = this->_INITIAL_CASTLE_RIGHTS;
-    this->_side = ColourType::WHITE;
+    this->_side = this->_INITIAL_SIDE;
     this->_enPassantSquare = -1;
 }
 

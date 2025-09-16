@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include "engine/board/Colour.hpp"
+#include "engine/board/Square.hpp"
 
 namespace engine::piece::Pawn {
 
@@ -93,7 +94,7 @@ inline void initialise() {
 }
 
 [[nodiscard]] inline constexpr uint64_t getAttacks(int square, engine::board::ColourType side) {
-    uint64_t squareU64 = 1ULL << square;
+    uint64_t squareU64 = engine::board::BITBOARD_SQUARES[square];
 
     uint64_t attacks = 0ULL;
 
@@ -109,7 +110,7 @@ inline void initialise() {
 }
 
 [[nodiscard]] inline constexpr bool canSinglePush(int square, engine::board::ColourType side, uint64_t empty) {
-    uint64_t squareU64 = 1ULL << square;
+    uint64_t squareU64 = engine::board::BITBOARD_SQUARES[square];
 
     return (side == engine::board::ColourType::WHITE) ? north(squareU64) & empty : south(squareU64) & empty;
 }
@@ -119,7 +120,7 @@ inline void initialise() {
         return false;
     }
 
-    uint64_t squareU64 = 1ULL << square;
+    uint64_t squareU64 = engine::board::BITBOARD_SQUARES[square];
 
     squareU64 &= SECOND_RANK[side];
 
