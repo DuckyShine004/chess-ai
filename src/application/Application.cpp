@@ -33,7 +33,7 @@ void Application::initialiseRenderer() {
 }
 
 void Application::initialise() {
-    // this->_engine.parse(EN_PASSANT_POSITIONS[0]);
+    this->_engine.parse(PROMOTION_POSITIONS[0]);
 
     this->initialiseRenderer();
 

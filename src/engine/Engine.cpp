@@ -16,6 +16,10 @@
 #include "engine/evaluation/Material.hpp"
 #include "engine/evaluation/Position.hpp"
 
+#include "engine/evaluation/pesto/MG.hpp"
+#include "engine/evaluation/pesto/EG.hpp"
+#include "engine/evaluation/pesto/Pesto.hpp"
+
 #include "engine/piece/Pawn.hpp"
 #include "engine/piece/Knight.hpp"
 #include "engine/piece/Bishop.hpp"
@@ -39,6 +43,8 @@ using namespace engine::move;
 using namespace engine::move::Move;
 
 using namespace engine::evaluation;
+
+using namespace engine::evaluation::pesto;
 
 using namespace utility;
 
@@ -465,6 +471,14 @@ void Engine::generateQueenMoves(MoveList &moves, ColourType side) {
             moves.add(from, to, MoveType::CAPTURE);
         }
     }
+}
+
+Move::MoveList Engine::generateKingMoves(ColourType side) {
+    Move::MoveList moves;
+
+    this->generateKingMoves(moves, side);
+
+    return moves;
 }
 
 void Engine::generateKingMoves(MoveList &moves, ColourType side) {
@@ -1173,7 +1187,7 @@ void Engine::searchRoot(int depth) {
 
     if (!isLegalMoveFound) {
         if (this->isInCheck(this->_side)) {
-            this->_searchResult.bestScore = Score::CHECKMATE_SCORE + ply;
+            this->_searchResult.bestScore = Score::getCheckMateScore(ply);
         } else {
             this->_searchResult.bestScore = 0;
         }
@@ -1243,7 +1257,7 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
     if (!isLegalMoveFound) {
         if (this->isInCheck(this->_side)) {
-            return Score::CHECKMATE_SCORE + ply;
+            return Score::getCheckMateScore(ply);
         } else {
             return 0;
         }
@@ -1253,14 +1267,55 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 }
 
 int Engine::quiescence(int alpha, int beta, int ply) {
-    int bestScore = this->evaluate(this->_side);
+    // Standing pat is illegal if king is in check
+    if (this->isInCheck(this->_side)) {
+        Move::MoveList moves = this->generateMoves(this->_side);
 
-    if (bestScore >= beta) {
-        return bestScore;
+        this->orderMoves(moves, this->_side);
+
+        bool isLegalMovesFound = false;
+
+        for (int i = 0; i < moves.size; ++i) {
+            uint16_t move = moves.moves[i];
+
+            if (!this->isMoveLegal(move, this->_side)) {
+                continue;
+            }
+
+            isLegalMovesFound = true;
+
+            this->makeMove(move);
+
+            int score = -this->quiescence(-beta, -alpha, ply + 1);
+
+            this->unmakeMove(move);
+
+            if (score >= beta) {
+                return score;
+            }
+
+            if (score > alpha) {
+                alpha = score;
+            }
+        }
+
+        // Must be checkmate
+        if (!isLegalMovesFound) {
+            return Score::getCheckMateScore(ply);
+        }
+
+        return alpha;
     }
 
-    if (bestScore > alpha) {
-        alpha = bestScore;
+    // int standingPat = this->evaluate(this->_side);
+    int standingPat = this->evaluatePesto(this->_side);
+
+    if (standingPat >= beta) {
+        return standingPat;
+    }
+
+    if (standingPat > alpha) {
+        alpha = standingPat;
     }
 
     bool isLegalMoveFound = false;
@@ -1288,20 +1343,12 @@ int Engine::quiescence(int alpha, int beta, int ply) {
             return score;
         }
 
-        if (score > bestScore) {
-            bestScore = score;
-        }
-
         if (score > alpha) {
             alpha = score;
         }
     }
 
-    if (!isLegalMoveFound && this->isInCheck(this->_side)) {
-        return Score::CHECKMATE_SCORE + ply;
-    }
-
-    return bestScore;
+    return alpha;
 }
 
 // TODO: implement mobility score
@@ -1329,6 +1376,47 @@ int Engine::evaluate(ColourType side) {
 
         score += MATERIAL_TABLE[piece] * materialDifference;
     }
+
+    return (side == ColourType::WHITE) ? score : -score;
+}
+
+int Engine::evaluatePesto(ColourType side) {
+    int scoreMG = 0;
+    int scoreEG = 0;
+
+    int phaseMG = 0;
+
+    for (uint8_t piece = PieceType::PAWN; piece <= PieceType::KING; ++piece) {
+        uint64_t whitePieces = this->_bitboards[ColourType::WHITE][piece];
+
+        while (whitePieces) {
+            int square = BitUtility::popLSB(whitePieces);
+
+            scoreMG += MG::MATERIAL_VALUES[piece] + MG::POSITION_VALUES[piece][square];
+            scoreEG += EG::MATERIAL_VALUES[piece] + EG::POSITION_VALUES[piece][square];
+
+            phaseMG += Pesto::GAME_PHASE_VALUES[piece];
+        }
+
+        uint64_t blackPieces = this->_bitboards[ColourType::BLACK][piece];
+
+        while (blackPieces) {
+            int square = BitUtility::popLSB(blackPieces);
+
+            scoreMG -= MG::MATERIAL_VALUES[piece] + MG::POSITION_VALUES[piece][MIRROR[square]];
+            scoreEG -= EG::MATERIAL_VALUES[piece] + EG::POSITION_VALUES[piece][MIRROR[square]];
+
+            phaseMG += Pesto::GAME_PHASE_VALUES[piece];
+        }
+    }
+
+    if (phaseMG > 24) {
+        phaseMG = 24;
+    }
+
+    int phaseEG = 24 - phaseMG;
+
+    int score = (scoreMG * phaseMG + scoreEG * phaseEG) / 24;
 
     return (side == ColourType::WHITE) ? score : -score;
 }

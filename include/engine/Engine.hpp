@@ -69,7 +69,7 @@ class Engine {
 
     static inline constexpr uint8_t _INITIAL_CASTLE_RIGHTS = 0xF;
 
-    static inline constexpr int _SEARCH_DEPTH = 8;
+    static inline constexpr int _SEARCH_DEPTH = 6;
 
     uint64_t _bitboards[2][6];
     uint64_t _occupancies[2];
@@ -132,7 +132,7 @@ class Engine {
 
     void generateQueenMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side);
 
-    engine::move::Move::MoveList generateKingMove(engine::board::ColourType side);
+    engine::move::Move::MoveList generateKingMoves(engine::board::ColourType side);
 
     void generateKingMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side);
 
@@ -209,6 +209,8 @@ class Engine {
     int quiescence(int alpha, int beta, int ply);
 
     int evaluate(engine::board::ColourType side);
+
+    int evaluatePesto(engine::board::ColourType side);
 
     int perft(int depth);
 
