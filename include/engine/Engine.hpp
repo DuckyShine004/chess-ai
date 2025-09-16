@@ -12,6 +12,8 @@
 #include "engine/move/Undo.hpp"
 #include "engine/move/Order.hpp"
 
+#include "engine/evaluation/Score.hpp"
+
 #include "compiler/compiler.hpp"
 
 namespace engine {
@@ -25,11 +27,14 @@ struct SearchResult {
 
     int nodes;
 
-    SearchResult() : bestScore(-INT_MAX), isMoveFound(false), nodes(0) {
+    // SearchResult() : bestScore(-INT_MAX), isMoveFound(false), nodes(0) {
+    // }
+    SearchResult() : bestScore(-engine::evaluation::Score::INF), isMoveFound(false), nodes(0) {
     }
 
     void clear() {
-        this->bestScore = -INT_MAX;
+        // this->bestScore = -INT_MAX;
+        this->bestScore = -engine::evaluation::Score::INF;
 
         this->isMoveFound = false;
 
@@ -70,7 +75,7 @@ class Engine {
 
     static inline constexpr uint8_t _INITIAL_CASTLE_RIGHTS = 0xF;
 
-    static inline constexpr int _SEARCH_DEPTH = 7;
+    static inline constexpr int _SEARCH_DEPTH = 8;
 
     uint64_t _bitboards[2][6];
     uint64_t _occupancies[2];

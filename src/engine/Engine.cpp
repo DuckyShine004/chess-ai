@@ -1071,6 +1071,7 @@ void Engine::storeKillerMove(uint16_t move, int ply) {
 // TODO: Sort moves
 // MVV-LVA [*]
 // Killer Moves [*]
+// History [-]
 void Engine::orderMoves(Move::MoveList &moves, ColourType side, int ply) {
     int scores[256];
 
@@ -1089,22 +1090,15 @@ void Engine::orderMoves(Move::MoveList &moves, ColourType side, int ply) {
         if (Move::isGeneralCapture(move)) {
             PieceType toPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
 
-            score = MVV_LVA_OFFSET + MVV_LVA[fromPiece][toPiece];
-            // scores[i] += (MVV_LVA[fromPiece][toPiece] << 8);
+            score = MVV_LVA[fromPiece][toPiece] + MVV_LVA_OFFSET;
             // scores[i] += this->seeMove(from, to, toPiece, side);
         } else {
-            // Killer moves for quiet moves
-            // int j = 0;
-            // while (j < MAX_KILLER_MOVES && scores[i]==0){
-            //    if (moves==killerMoves[i][ply]){
-            //        scores[i] += MVV_LVA_OFFSET - (j + 1) * KILLER_VALUE;
-            //    }
-            //    ++j;
-            // }
             if (this->_killerMoves[0][ply] == move) {
                 score = MVV_LVA_OFFSET - KILLER_VALUE;
             } else if (this->_killerMoves[1][ply] == move) {
                 score = MVV_LVA_OFFSET - (KILLER_VALUE << 1);
+            } else {
+                // history
             }
         }
 
@@ -1166,8 +1160,10 @@ void Engine::searchRoot(int depth) {
 
     std::memset(this->_killerMoves, 0, sizeof(this->_killerMoves));
 
-    int alpha = -INT_MAX;
-    int beta = INT_MAX;
+    // int alpha = -INT_MAX;
+    // int beta = INT_MAX;
+    int alpha = -Score::INF;
+    int beta = Score::INF;
 
     int ply = 0;
 
@@ -1211,6 +1207,8 @@ void Engine::searchRoot(int depth) {
         }
 
         if (score >= beta) {
+            this->storeKillerMove(move, ply);
+
             break;
         }
     }
@@ -1251,7 +1249,7 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
     bool isLegalMoveFound = false;
 
-    int bestScore = -INT_MAX;
+    int bestScore = -Score::INF;
 
     MoveList moves = this->generateMoves(this->_side);
 

@@ -19,7 +19,7 @@ inline constexpr int MVV_LVA[6][6] = {
 };
 // clang-format on 
 
-inline constexpr int MAX_PLY = 128;
+inline constexpr int MAX_PLY = 64;
 inline constexpr int MAX_KILLER_MOVES = 2;
 // inline constexpr int KILLER_VALUE = 10;
 inline constexpr int KILLER_VALUE = 1000;
