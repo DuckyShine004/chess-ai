@@ -1211,7 +1211,7 @@ void Engine::searchIterative(int depth) {
 
         this->orderMoves(moves, this->_side, ply);
 
-        this->_searchResult.nodes = 1;
+        this->_searchResult.nodes = 0;
 
         for (int i = 0; i < moves.size; ++i) {
             uint16_t &move = moves.moves[i];
@@ -1234,24 +1234,16 @@ void Engine::searchIterative(int depth) {
 
             this->unmakeMove(move);
 
-            if (score > this->_searchResult.bestScore) {
-                this->_searchResult.bestScore = score;
+            if (score > alpha) {
+                this->storeHistoryMove(move, this->_side, currentDepth);
 
-                // this->_searchResult.bestMove = move;
+                this->storePVMove(move, ply);
 
-                this->_searchResult.isMoveFound = true;
+                alpha = score;
 
-                if (score > alpha) {
-                    this->storeHistoryMove(move, this->_side, currentDepth);
-
-                    alpha = score;
-
-                    this->storePVMove(move, ply);
+                if (score >= beta) {
+                    break;
                 }
-            }
-
-            if (score >= beta) {
-                break;
             }
         }
 
@@ -1288,7 +1280,7 @@ void Engine::searchRoot(int depth) {
 
     this->orderMoves(moves, this->_side, ply);
 
-    this->_searchResult.nodes = 1;
+    this->_searchResult.nodes = 0;
 
     for (int i = 0; i < moves.size; ++i) {
         uint16_t &move = moves.moves[i];
@@ -1311,24 +1303,16 @@ void Engine::searchRoot(int depth) {
 
         this->unmakeMove(move);
 
-        if (score > this->_searchResult.bestScore) {
-            this->_searchResult.bestScore = score;
+        if (score > alpha) {
+            this->storeHistoryMove(move, this->_side, depth);
 
-            // this->_searchResult.bestMove = move;
+            this->storePVMove(move, ply);
 
-            this->_searchResult.isMoveFound = true;
+            alpha = score;
 
-            if (score > alpha) {
-                this->storeHistoryMove(move, this->_side, depth);
-
-                alpha = score;
-
-                this->storePVMove(move, ply);
+            if (score >= beta) {
+                break;
             }
-        }
-
-        if (score >= beta) {
-            break;
         }
     }
 
@@ -1375,8 +1359,6 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
     bool isLegalMoveFound = false;
 
-    int bestScore = -Score::INF;
-
     MoveList moves = this->generateMoves(this->_side);
 
     this->orderMoves(moves, this->_side, ply);
@@ -1396,26 +1378,18 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
         this->unmakeMove(move);
 
-        if (score > bestScore) {
-            bestScore = score;
+        if (score > alpha) {
+            this->storeHistoryMove(move, this->_side, depth);
 
-            // TODO: PV nodes
-            if (score > alpha) {
-                this->storeHistoryMove(move, this->_side, depth);
+            this->storePVMove(move, ply);
 
-                alpha = score;
+            alpha = score;
 
-                this->storePVMove(move, ply);
+            if (score >= beta) {
+                this->storeKillerMove(move, ply);
 
-                this->_pvTable[ply][ply] = move;
+                return beta;
             }
-        }
-
-        // beta cut-off store killer
-        if (score >= beta) {
-            this->storeKillerMove(move, ply);
-
-            break;
         }
     }
 
@@ -1427,7 +1401,7 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
         }
     }
 
-    return bestScore;
+    return alpha;
 }
 
 int Engine::quiescence(int alpha, int beta, int ply) {
@@ -1454,12 +1428,12 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 
             this->unmakeMove(move);
 
-            if (score >= beta) {
-                return score;
-            }
-
             if (score > alpha) {
                 alpha = score;
+
+                if (score >= beta) {
+                    return beta;
+                }
             }
         }
 
@@ -1474,7 +1448,7 @@ int Engine::quiescence(int alpha, int beta, int ply) {
     // int standingPat = this->evaluatePesto(this->_side);
 
     if (standingPat >= beta) {
-        return standingPat;
+        return beta;
     }
 
     if (standingPat > alpha) {
@@ -1502,12 +1476,12 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 
         this->unmakeMove(capture);
 
-        if (score >= beta) {
-            return score;
-        }
-
         if (score > alpha) {
             alpha = score;
+
+            if (score >= beta) {
+                return beta;
+            }
         }
     }
 
