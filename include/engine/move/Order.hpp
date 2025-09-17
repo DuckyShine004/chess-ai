@@ -5,6 +5,8 @@
 // http://paulwebster.net/mvv-lva-move-ordering/
 namespace engine::move {
 
+inline constexpr int PV_VALUE = 20000;
+
 // inline constexpr int MVV_LVA_OFFSET = INT_MAX - 4096;
 inline constexpr int MVV_LVA_OFFSET = 10000;
 

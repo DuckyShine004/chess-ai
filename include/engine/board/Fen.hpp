@@ -25,8 +25,11 @@ inline constexpr const char *TEST_POSITIONS[1] = {
     "r1b1k2r/pppp1ppp/2n1pq2/2Q5/3PPn2/5N2/PPP2PPP/2KR1B1R b Kkq - 0 1",
 };
 
-inline constexpr const char *EN_PASSANT_POSITIONS[1] = {
-    "4n3/5P2/8/1k6/8/8/8/2K5 w - - 0 1",
+inline constexpr const char *EN_PASSANT_POSITIONS[] = {
+    "7k/K7/8/8/5p2/8/4P3/8 w - - 0 1",
 };
-
+// inline constexpr const char *EN_PASSANT_POSITIONS[1] = {
+//     "4n3/5P2/8/1k6/8/8/8/2K5 w - - 0 1",
+// };
+//
 } // namespace engine::board

@@ -78,7 +78,10 @@ void Engine::run() {
 
 // FIX: Find out why there are no optimal moves even when there are
 uint16_t &Engine::getMove() {
-    this->searchRoot(this->_SEARCH_DEPTH);
+    // LOG_INFO("Performing root search");
+    // this->searchRoot(this->_SEARCH_DEPTH);
+    // LOG_INFO("Performing iterative root search");
+    this->searchIterative(this->_SEARCH_DEPTH);
 
     // if (!this->_searchResult.isMoveFound) {
     //     throw std::runtime_error("Engine could not find move...");
@@ -1055,8 +1058,8 @@ void Engine::unmakePromotionCaptureMove(int from, int to, PieceType promotionPie
     this->createPiece(to, undo.capturedPiece, otherSide);
 }
 
-void Engine::storeKillerMove(uint16_t move, int ply) {
-    if (!Move::isGeneralQuiet(move)) {
+void Engine::storeKillerMove(const uint16_t move, int ply) {
+    if (!Move::isKiller(move)) {
         return;
     }
 
@@ -1068,14 +1071,40 @@ void Engine::storeKillerMove(uint16_t move, int ply) {
     this->_killerMoves[0][ply] = move;
 }
 
+void Engine::storeHistoryMove(const uint16_t move, ColourType side, int depth) {
+    if (!Move::isHistory(move)) {
+        return;
+    }
+
+    int from = Move::getFrom(move);
+    int to = Move::getTo(move);
+
+    PieceType fromPiece = BoardUtility::getPiece(this->_bitboards, from, side);
+
+    this->_historyMoves[side][fromPiece][to] += depth;
+}
+
+void Engine::storePVMove(const uint16_t move, int ply) {
+    this->_pvTable[ply][ply] = move;
+
+    for (int nextPly = ply + 1; nextPly < this->_pvLength[ply + 1]; ++nextPly) {
+        this->_pvTable[ply][nextPly] = this->_pvTable[ply + 1][nextPly];
+    }
+
+    this->_pvLength[ply] = this->_pvLength[ply + 1];
+}
+
 // TODO: Sort moves
-// MVV-LVA [*]
+// PV moves [*]
+// MVV-LVA captures + (SEE?) [*]
 // Killer Moves [*]
-// History [-]
+// History [*]
 void Engine::orderMoves(Move::MoveList &moves, ColourType side, int ply) {
     int scores[256];
 
     ColourType otherSide = BoardUtility::getOtherSide(side);
+
+    uint16_t pvMove = this->_pvTable[0][ply];
 
     for (int i = 0; i < moves.size; ++i) {
         const uint16_t move = moves.moves[i];
@@ -1087,8 +1116,15 @@ void Engine::orderMoves(Move::MoveList &moves, ColourType side, int ply) {
 
         int score = 0;
 
-        if (Move::isGeneralCapture(move)) {
+        if (pvMove == move) {
+            score = PV_VALUE;
+        } else if (Move::isGeneralCapture(move)) {
             PieceType toPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
+
+            // Has to be en passant if empty, since we expect to square to be a piece
+            if (toPiece == PieceType::EMPTY) {
+                toPiece = PieceType::PAWN;
+            }
 
             score = MVV_LVA[fromPiece][toPiece] + MVV_LVA_OFFSET;
             // scores[i] += this->seeMove(from, to, toPiece, side);
@@ -1098,7 +1134,7 @@ void Engine::orderMoves(Move::MoveList &moves, ColourType side, int ply) {
             } else if (this->_killerMoves[1][ply] == move) {
                 score = MVV_LVA_OFFSET - (KILLER_VALUE << 1);
             } else {
-                // history
+                score = this->_historyMoves[side][fromPiece][to];
             }
         }
 
@@ -1155,13 +1191,84 @@ int Engine::see(int to, PieceType toPiece, ColourType side) {
     return seeUtil(to, bitboards, occupancyBoth, side, MATERIAL_TABLE[toPiece]);
 }
 
+void Engine::searchIterative(int depth) {
+    this->_searchResult.clear();
+
+    std::memset(this->_killerMoves, 0, sizeof(this->_killerMoves));
+    std::memset(this->_historyMoves, 0, sizeof(this->_historyMoves));
+    std::memset(this->_pvLength, 0, sizeof(this->_pvLength));
+    std::memset(this->_pvTable, 0, sizeof(this->_pvTable));
+
+    for (int currentDepth = 1; currentDepth <= depth; ++currentDepth) {
+        int alpha = -Score::INF;
+        int beta = Score::INF;
+
+        int ply = 0;
+
+        bool isLegalMoveFound = false;
+
+        MoveList moves = this->generateMoves(this->_side);
+
+        this->orderMoves(moves, this->_side, ply);
+
+        this->_searchResult.nodes = 0;
+
+        for (int i = 0; i < moves.size; ++i) {
+            uint16_t &move = moves.moves[i];
+
+            if (!this->isMoveLegal(move, this->_side)) {
+                continue;
+            }
+
+            isLegalMoveFound = true;
+
+            if (!this->_searchResult.isMoveFound) {
+                this->_searchResult.bestMove = move;
+
+                this->_searchResult.isMoveFound = true;
+            }
+
+            this->makeMove(move);
+
+            int score = -this->search(-beta, -alpha, currentDepth - 1, ply + 1);
+
+            this->unmakeMove(move);
+
+            if (score > alpha) {
+                this->storeHistoryMove(move, this->_side, currentDepth);
+
+                this->storePVMove(move, ply);
+
+                alpha = score;
+
+                if (score >= beta) {
+                    break;
+                }
+            }
+        }
+
+        if (!isLegalMoveFound) {
+            if (this->isInCheck(this->_side)) {
+                this->_searchResult.bestScore = Score::getCheckMateScore(ply);
+            } else {
+                this->_searchResult.bestScore = 0;
+            }
+        }
+
+        this->_searchResult.bestMove = this->_pvTable[0][0];
+
+        LOG_INFO("Number of nodes: {}", this->_searchResult.nodes);
+    }
+}
+
 void Engine::searchRoot(int depth) {
     this->_searchResult.clear();
 
     std::memset(this->_killerMoves, 0, sizeof(this->_killerMoves));
+    std::memset(this->_historyMoves, 0, sizeof(this->_historyMoves));
+    std::memset(this->_pvLength, 0, sizeof(this->_pvLength));
+    std::memset(this->_pvTable, 0, sizeof(this->_pvTable));
 
-    // int alpha = -INT_MAX;
-    // int beta = INT_MAX;
     int alpha = -Score::INF;
     int beta = Score::INF;
 
@@ -1172,6 +1279,8 @@ void Engine::searchRoot(int depth) {
     MoveList moves = this->generateMoves(this->_side);
 
     this->orderMoves(moves, this->_side, ply);
+
+    this->_searchResult.nodes = 0;
 
     for (int i = 0; i < moves.size; ++i) {
         uint16_t &move = moves.moves[i];
@@ -1194,22 +1303,16 @@ void Engine::searchRoot(int depth) {
 
         this->unmakeMove(move);
 
-        if (score > this->_searchResult.bestScore) {
-            this->_searchResult.bestScore = score;
+        if (score > alpha) {
+            this->storeHistoryMove(move, this->_side, depth);
 
-            this->_searchResult.bestMove = move;
+            this->storePVMove(move, ply);
 
-            this->_searchResult.isMoveFound = true;
+            alpha = score;
 
-            if (score > alpha) {
-                alpha = score;
+            if (score >= beta) {
+                break;
             }
-        }
-
-        if (score >= beta) {
-            this->storeKillerMove(move, ply);
-
-            break;
         }
     }
 
@@ -1219,12 +1322,19 @@ void Engine::searchRoot(int depth) {
         } else {
             this->_searchResult.bestScore = 0;
         }
-
-        this->_searchResult.isMoveFound = false;
     }
+
+    this->_searchResult.bestMove = this->_pvTable[0][0];
+
+    LOG_INFO("Number of nodes: {}", this->_searchResult.nodes);
 }
 
 int Engine::search(int alpha, int beta, int depth, int ply) {
+    // Initialise pv length
+    this->_pvLength[ply] = ply;
+
+    ++this->_searchResult.nodes;
+
     if (depth == 0) {
         return this->quiescence(alpha, beta, ply);
     }
@@ -1249,8 +1359,6 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
     bool isLegalMoveFound = false;
 
-    int bestScore = -Score::INF;
-
     MoveList moves = this->generateMoves(this->_side);
 
     this->orderMoves(moves, this->_side, ply);
@@ -1270,19 +1378,18 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
         this->unmakeMove(move);
 
-        if (score > bestScore) {
-            bestScore = score;
+        if (score > alpha) {
+            this->storeHistoryMove(move, this->_side, depth);
 
-            if (score > alpha) {
-                alpha = score;
+            this->storePVMove(move, ply);
+
+            alpha = score;
+
+            if (score >= beta) {
+                this->storeKillerMove(move, ply);
+
+                return beta;
             }
-        }
-
-        // beta cut-off store killer
-        if (score >= beta) {
-            this->storeKillerMove(move, ply);
-
-            break;
         }
     }
 
@@ -1294,7 +1401,7 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
         }
     }
 
-    return bestScore;
+    return alpha;
 }
 
 int Engine::quiescence(int alpha, int beta, int ply) {
@@ -1321,16 +1428,15 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 
             this->unmakeMove(move);
 
-            if (score >= beta) {
-                return score;
-            }
-
             if (score > alpha) {
                 alpha = score;
+
+                if (score >= beta) {
+                    return beta;
+                }
             }
         }
 
-        // Must be checkmate
         if (!isLegalMovesFound) {
             return Score::getCheckMateScore(ply);
         }
@@ -1342,7 +1448,7 @@ int Engine::quiescence(int alpha, int beta, int ply) {
     // int standingPat = this->evaluatePesto(this->_side);
 
     if (standingPat >= beta) {
-        return standingPat;
+        return beta;
     }
 
     if (standingPat > alpha) {
@@ -1370,12 +1476,12 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 
         this->unmakeMove(capture);
 
-        if (score >= beta) {
-            return score;
-        }
-
         if (score > alpha) {
             alpha = score;
+
+            if (score >= beta) {
+                return beta;
+            }
         }
     }
 
