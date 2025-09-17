@@ -27,13 +27,10 @@ struct SearchResult {
 
     int nodes;
 
-    // SearchResult() : bestScore(-INT_MAX), isMoveFound(false), nodes(0) {
-    // }
     SearchResult() : bestScore(-engine::evaluation::Score::INF), isMoveFound(false), nodes(0) {
     }
 
     void clear() {
-        // this->bestScore = -INT_MAX;
         this->bestScore = -engine::evaluation::Score::INF;
 
         this->isMoveFound = false;
@@ -97,6 +94,10 @@ class Engine {
     std::vector<engine::move::Undo> _undoStack;
 
     uint16_t _killerMoves[engine::move::MAX_KILLER_MOVES][engine::move::MAX_PLY];
+    uint16_t _historyMoves[2][6][64];
+
+    int _pvLength[64];
+    uint16_t _pvTable[engine::move::MAX_PLY][engine::move::MAX_PLY];
 
     void initialise();
 
@@ -204,13 +205,19 @@ class Engine {
 
     FORCE_INLINE void unmakePromotionCaptureMove(int from, int to, engine::board::PieceType promotionPiece, const engine::move::Undo &undo, engine::board::ColourType otherSide);
 
-    FORCE_INLINE void storeKillerMove(uint16_t move, int ply);
+    FORCE_INLINE void storeKillerMove(const uint16_t move, int ply);
+
+    FORCE_INLINE void storeHistoryMove(const uint16_t move, engine::board::ColourType side, int depth);
+
+    FORCE_INLINE void storePVMove(const uint16_t move, int ply);
 
     void orderMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side, int ply);
 
     int seeMove(int from, int to, engine::board::PieceType toPiece, engine::board::ColourType side);
 
     int see(int to, engine::board::PieceType toPiece, engine::board::ColourType side);
+
+    void searchIterative(int depth);
 
     void searchRoot(int depth);
 

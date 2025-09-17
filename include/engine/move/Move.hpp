@@ -66,7 +66,9 @@ inline constexpr int PROMOTION_CAPTURE_OFFSET = 9;
 
 [[nodiscard]] inline constexpr engine::board::PieceType getPromotionPiece(uint16_t move);
 
-[[nodiscard]] inline constexpr bool isGeneralQuiet(uint16_t move);
+[[nodiscard]] inline constexpr bool isKiller(uint16_t move);
+
+[[nodiscard]] inline constexpr bool isHistory(uint16_t move);
 
 [[nodiscard]] inline constexpr bool isGeneralCapture(uint16_t move);
 
@@ -148,10 +150,16 @@ inline constexpr int PROMOTION_CAPTURE_OFFSET = 9;
     return engine::board::PieceType::QUEEN;
 }
 
-[[nodiscard]] inline constexpr bool isGeneralQuiet(uint16_t move) {
+[[nodiscard]] inline constexpr bool isKiller(uint16_t move) {
     MoveType moveType = static_cast<MoveType>(move >> MOVE_TYPE_OFFSET);
 
     return moveType == MoveType::QUIET || moveType == MoveType::DOUBLE_PAWN || moveType == MoveType::KING_CASTLE || moveType == MoveType::QUEEN_CASTLE || (MoveType::KNIGHT_PROMOTION <= moveType && moveType <= MoveType::QUEEN_PROMOTION);
+}
+
+[[nodiscard]] inline constexpr bool isHistory(uint16_t move) {
+    MoveType moveType = static_cast<MoveType>(move >> MOVE_TYPE_OFFSET);
+
+    return moveType == MoveType::QUIET || moveType == MoveType::DOUBLE_PAWN || moveType == MoveType::KING_CASTLE || moveType == MoveType::QUEEN_CASTLE;
 }
 
 [[nodiscard]] inline constexpr bool isGeneralCapture(uint16_t move) {
