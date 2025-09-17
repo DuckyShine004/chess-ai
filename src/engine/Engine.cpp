@@ -78,9 +78,9 @@ void Engine::run() {
 
 // FIX: Find out why there are no optimal moves even when there are
 uint16_t &Engine::getMove() {
-    LOG_INFO("Performing root search");
-    this->searchRoot(this->_SEARCH_DEPTH);
-    LOG_INFO("Performing iterative root search");
+    // LOG_INFO("Performing root search");
+    // this->searchRoot(this->_SEARCH_DEPTH);
+    // LOG_INFO("Performing iterative root search");
     this->searchIterative(this->_SEARCH_DEPTH);
 
     // if (!this->_searchResult.isMoveFound) {
