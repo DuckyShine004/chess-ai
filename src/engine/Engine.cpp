@@ -1244,16 +1244,21 @@ bool Engine::isLMR(const uint16_t move, bool isPVNode, bool isParentInCheck) {
 }
 
 void Engine::searchIterative(int depth) {
-    this->_searchResult.clear();
-
     std::memset(this->_killerMoves, 0, sizeof(this->_killerMoves));
     std::memset(this->_historyMoves, 0, sizeof(this->_historyMoves));
     std::memset(this->_pvLength, 0, sizeof(this->_pvLength));
     std::memset(this->_pvTable, 0, sizeof(this->_pvTable));
 
-    for (int currentDepth = 1; currentDepth <= depth; ++currentDepth) {
-        int alpha = -Score::INF;
-        int beta = Score::INF;
+    int alpha = -Score::INF;
+    int beta = Score::INF;
+
+    int currentDepth = 1;
+
+    while (currentDepth <= depth) {
+        this->_searchResult.clear();
+
+        const int previousAlpha = alpha;
+        const int previousBeta = beta;
 
         int ply = 0;
 
@@ -1266,8 +1271,6 @@ void Engine::searchIterative(int depth) {
         MoveList moves = this->generateMoves(this->_side);
 
         this->orderMoves(moves, this->_side, ply);
-
-        this->_searchResult.nodes = 0;
 
         for (int i = 0; i < moves.size; ++i) {
             uint16_t &move = moves.moves[i];
@@ -1286,6 +1289,7 @@ void Engine::searchIterative(int depth) {
 
             this->makeMove(move);
 
+            // PERF: LMR could be used at the start but could be tricky ~+-20 elo
             int score;
 
             if (i == 0) {
@@ -1308,6 +1312,10 @@ void Engine::searchIterative(int depth) {
 
             this->unmakeMove(move);
 
+            if (score > this->_searchResult.bestScore) {
+                this->_searchResult.bestScore = score;
+            }
+
             if (score > alpha) {
                 this->storeHistoryMove(move, this->_side, currentDepth);
 
@@ -1321,6 +1329,7 @@ void Engine::searchIterative(int depth) {
             }
         }
 
+        // Check if there was a beta cut-off
         if (!isLegalMoveFound) {
             if (this->isInCheck(this->_side)) {
                 this->_searchResult.bestScore = Score::getCheckMateScore(ply);
@@ -1329,9 +1338,30 @@ void Engine::searchIterative(int depth) {
             }
         }
 
+        if (this->_searchResult.bestScore == -Score::INF) {
+            this->_searchResult.bestScore = previousAlpha;
+        }
+
+        // Adjust aspiration window after the search
+        // Best move was likely not found, so we search again with full window
+        if ((this->_searchResult.bestScore <= previousAlpha) || (this->_searchResult.bestScore >= previousBeta)) {
+            LOG_INFO("Re-searching depth {} again for alpha: {} beta: {} best score: {}", currentDepth, previousAlpha, previousBeta, this->_searchResult.bestScore);
+            alpha = -Score::INF;
+            beta = Score::INF;
+
+            continue;
+        }
+
+        // Otherwise, we adjust the aspiration window for the next search
+        alpha = this->_searchResult.bestScore - this->_ASPIRATION_WINDOW_VALUE;
+        beta = this->_searchResult.bestScore + this->_ASPIRATION_WINDOW_VALUE;
+
+        // TODO: Update the best move at each depth for time control
         this->_searchResult.bestMove = this->_pvTable[0][0];
 
-        LOG_INFO("Number of nodes: {}", this->_searchResult.nodes);
+        LOG_INFO("Number of nodes at depth {}: {}", currentDepth, this->_searchResult.nodes);
+
+        ++currentDepth;
     }
 }
 

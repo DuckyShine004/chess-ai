@@ -80,7 +80,10 @@ class Engine {
     // NMP
     static inline constexpr int _NMP_REDUCTION = 2;
 
-    static inline constexpr int _SEARCH_DEPTH = 9;
+    static inline constexpr int _SEARCH_DEPTH = 8;
+
+    // Aspiration Window
+    static inline constexpr int _ASPIRATION_WINDOW_VALUE = 50;
 
     uint64_t _bitboards[2][6];
     uint64_t _occupancies[2];
