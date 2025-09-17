@@ -1104,6 +1104,7 @@ void Engine::orderMoves(Move::MoveList &moves, ColourType side, int ply) {
 
     ColourType otherSide = BoardUtility::getOtherSide(side);
 
+    // WARN: Potential bug [ply][ply] or [0][ply]
     uint16_t pvMove = this->_pvTable[0][ply];
 
     for (int i = 0; i < moves.size; ++i) {
@@ -1191,6 +1192,14 @@ int Engine::see(int to, PieceType toPiece, ColourType side) {
     return seeUtil(to, bitboards, occupancyBoth, side, MATERIAL_TABLE[toPiece]);
 }
 
+// Assume called after move is made
+// DO NOT reduce if we are in check, or we are giving checks or move is tactical
+bool Engine::isLMR(const uint16_t move, bool isPVNode, bool isParentInCheck) {
+    bool isChildInCheck = this->isInCheck(this->_side);
+
+    return !(isPVNode || isParentInCheck || isChildInCheck || Move::isLMR(move));
+}
+
 void Engine::searchIterative(int depth) {
     this->_searchResult.clear();
 
@@ -1204,6 +1213,10 @@ void Engine::searchIterative(int depth) {
         int beta = Score::INF;
 
         int ply = 0;
+
+        bool isPVNode = (beta - alpha > 1);
+
+        bool isParentInCheck = this->isInCheck(this->_side);
 
         bool isLegalMoveFound = false;
 
@@ -1230,7 +1243,27 @@ void Engine::searchIterative(int depth) {
 
             this->makeMove(move);
 
-            int score = -this->search(-beta, -alpha, currentDepth - 1, ply + 1);
+            int score;
+
+            if (i == 0) {
+                score = -this->search(-beta, -alpha, currentDepth - 1, ply + 1);
+            } else {
+                if (i >= this->_FULL_DEPTH && currentDepth >= this->_REDUCTION_LIMIT && this->isLMR(move, isPVNode, isParentInCheck)) {
+                    score = -this->search(-alpha - 1, -alpha, currentDepth - this->_REDUCTION_DEPTH, ply + 1);
+                } else {
+                    score = alpha + 1;
+                }
+
+                if (score > alpha) {
+                    score = -this->search(-alpha - 1, -alpha, currentDepth - 1, ply + 1);
+
+                    if ((score > alpha) && (score < beta)) {
+                        score = -this->search(-beta, -alpha, currentDepth - 1, ply + 1);
+                    }
+                }
+            }
+
+            // int score = -this->search(-beta, -alpha, currentDepth - 1, ply + 1);
 
             this->unmakeMove(move);
 
@@ -1273,6 +1306,8 @@ void Engine::searchRoot(int depth) {
     int beta = Score::INF;
 
     int ply = 0;
+
+    bool isInCheck = this->isInCheck(this->_side);
 
     bool isLegalMoveFound = false;
 
@@ -1357,6 +1392,10 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
     // the side to move has a small number of pieces remaining
     // the previous move in the search was also a null move.
 
+    bool isPVNode = (beta - alpha > 1);
+
+    bool isParentInCheck = this->isInCheck(this->_side);
+
     bool isLegalMoveFound = false;
 
     MoveList moves = this->generateMoves(this->_side);
@@ -1374,7 +1413,31 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
         this->makeMove(move);
 
-        int score = -this->search(-beta, -alpha, depth - 1, ply + 1);
+        int score;
+
+        // Full search first (number of moves searched = i)
+        if (i == 0) {
+            score = -this->search(-beta, -alpha, depth - 1, ply + 1);
+        } else {
+            // PERF: LMR tuning
+            if (i >= this->_FULL_DEPTH && depth >= this->_REDUCTION_LIMIT && this->isLMR(move, isPVNode, isParentInCheck)) {
+                score = -this->search(-alpha - 1, -alpha, depth - this->_REDUCTION_DEPTH, ply + 1);
+            } else {
+                score = alpha + 1;
+            }
+
+            // PERF: Bruce mo's bad move proof
+            if (score > alpha) {
+                score = -this->search(-alpha - 1, -alpha, depth - 1, ply + 1);
+
+                // PV node cannot both be between alpha and beta
+                if ((score > alpha) && (score < beta)) {
+                    score = -this->search(-beta, -alpha, depth - 1, ply + 1);
+                }
+            }
+        }
+
+        // int score = -this->search(-beta, -alpha, depth - 1, ply + 1);
 
         this->unmakeMove(move);
 

@@ -72,6 +72,10 @@ class Engine {
 
     static inline constexpr uint8_t _INITIAL_CASTLE_RIGHTS = 0xF;
 
+    static inline constexpr int _FULL_DEPTH = 4;
+    static inline constexpr int _REDUCTION_DEPTH = 1;
+    static inline constexpr int _REDUCTION_LIMIT = 3;
+
     static inline constexpr int _SEARCH_DEPTH = 8;
 
     uint64_t _bitboards[2][6];
@@ -216,6 +220,8 @@ class Engine {
     int seeMove(int from, int to, engine::board::PieceType toPiece, engine::board::ColourType side);
 
     int see(int to, engine::board::PieceType toPiece, engine::board::ColourType side);
+
+    FORCE_INLINE bool isLMR(const uint16_t move, bool isPVNode, bool isParentInCheck);
 
     void searchIterative(int depth);
 
