@@ -26,6 +26,13 @@ inline constexpr const char *PUZZLE_POSITIONS[] = {
     "4k3/8/3K4/8/7r/1r6/8/8 w - - 0 1",
     "3qk3/8/8/8/8/8/8/4K3 w - - 0 1",
 };
+
+// Tricky king and pawn endgame [+]
+// Tricky mate in one [-]
+inline constexpr const char* NMP_POSITIONS[] = {
+    "8/8/8/8/8/3k4/2p5/2K5 w - - 0 1",
+    "6k1/pp6/2p5/3p4/3Pp1p1/2P1PpPq/PPQ2P2/3R2K1 w - - 0 1",
+};
 // clang-format on
 
 inline constexpr const char *KILLER_POSITION = "6k1/3q1pp1/pp3n1p/1r6/5P2/1P4P1/PQ4BP/2R3K1 w KQkq - 0 1";

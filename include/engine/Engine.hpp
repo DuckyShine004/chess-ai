@@ -72,11 +72,15 @@ class Engine {
 
     static inline constexpr uint8_t _INITIAL_CASTLE_RIGHTS = 0xF;
 
+    // LMR
     static inline constexpr int _FULL_DEPTH = 4;
     static inline constexpr int _REDUCTION_DEPTH = 1;
     static inline constexpr int _REDUCTION_LIMIT = 3;
 
-    static inline constexpr int _SEARCH_DEPTH = 8;
+    // NMP
+    static inline constexpr int _NMP_REDUCTION = 2;
+
+    static inline constexpr int _SEARCH_DEPTH = 9;
 
     uint64_t _bitboards[2][6];
     uint64_t _occupancies[2];
@@ -179,6 +183,10 @@ class Engine {
 
     void unmakeMove(uint16_t &move);
 
+    void makeNullMove();
+
+    void unmakeNullMove();
+
     FORCE_INLINE void makeQuietMove(int from, int to, engine::board::PieceType fromPiece);
 
     FORCE_INLINE void makeCaptureMove(int from, int to, engine::move::Undo &undo, engine::board::PieceType fromPiece, engine::board::ColourType otherSide);
@@ -220,6 +228,8 @@ class Engine {
     int seeMove(int from, int to, engine::board::PieceType toPiece, engine::board::ColourType side);
 
     int see(int to, engine::board::PieceType toPiece, engine::board::ColourType side);
+
+    FORCE_INLINE bool isNMP(bool isPVNode, bool isParentInCheck, int depth, int ply);
 
     FORCE_INLINE bool isLMR(const uint16_t move, bool isPVNode, bool isParentInCheck);
 

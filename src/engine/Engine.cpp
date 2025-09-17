@@ -863,6 +863,45 @@ void Engine::makeMove(uint16_t &move) {
     this->switchSide();
 }
 
+void Engine::makeNullMove() {
+    // TODO: remember to update zobrist if we have TT
+    Undo undo;
+
+    // Only need to copy the en passant square
+    undo.enPassantSquare = this->_enPassantSquare;
+
+    if (this->_enPassantSquare != -1) {
+        this->_zobrist ^= Zobrist::enPassantKeys[this->_enPassantSquare];
+        this->_enPassantSquare = -1;
+    }
+
+    this->_undoStack.push_back(std::move(undo));
+
+    this->_zobrist ^= Zobrist::sideKey;
+
+    this->switchSide();
+}
+
+void Engine::unmakeNullMove() {
+    this->switchSide();
+
+    this->_zobrist ^= Zobrist::sideKey;
+
+    const Undo &undo = this->_undoStack.back();
+
+    if (this->_enPassantSquare != -1) {
+        this->_zobrist ^= Zobrist::enPassantKeys[this->_enPassantSquare];
+    }
+
+    if (undo.enPassantSquare != -1) {
+        this->_zobrist ^= Zobrist::enPassantKeys[undo.enPassantSquare];
+    }
+
+    this->_enPassantSquare = undo.enPassantSquare;
+
+    this->_undoStack.pop_back();
+}
+
 void Engine::unmakeMove(uint16_t &move) {
     this->switchSide();
 
@@ -1192,6 +1231,10 @@ int Engine::see(int to, PieceType toPiece, ColourType side) {
     return seeUtil(to, bitboards, occupancyBoth, side, MATERIAL_TABLE[toPiece]);
 }
 
+bool Engine::isNMP(bool isPVNode, bool isParentInCheck, int depth, int ply) {
+    return depth >= 3 && !isPVNode && !isParentInCheck && ply > 0;
+}
+
 // Assume called after move is made
 // DO NOT reduce if we are in check, or we are giving checks or move is tactical
 bool Engine::isLMR(const uint16_t move, bool isPVNode, bool isParentInCheck) {
@@ -1262,8 +1305,6 @@ void Engine::searchIterative(int depth) {
                     }
                 }
             }
-
-            // int score = -this->search(-beta, -alpha, currentDepth - 1, ply + 1);
 
             this->unmakeMove(move);
 
@@ -1374,27 +1415,29 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
         return this->quiescence(alpha, beta, ply);
     }
 
-    // TODO: Implement null move pruning- condition
-    // if (1) {
-    //     int reduction = 2; // NMP reduction
-
-    //     // Make null move
-    //     int nullScore = -this->search(-beta, -beta + 1, depth - reduction);
-    //     // Undo null move
-
-    //     if (nullScore >= beta) {
-    //         return nullScore;
-    //     }
-    // }
-    //
-    // the side to move is in check
-    // the side to move has only its king and pawns remaining
-    // the side to move has a small number of pieces remaining
-    // the previous move in the search was also a null move.
-
     bool isPVNode = (beta - alpha > 1);
 
     bool isParentInCheck = this->isInCheck(this->_side);
+
+    // BUG: zugzwang positions may still arise, atp, NMP will likely fail
+    // To potentially avoid this, we could do another full window search
+    // TODO: Implement null move pruning- conditions to NOT use NMP:
+    // the side to move is in check [+]
+    // the side to move has only its king and pawns remaining
+    // the side to move has a small number of pieces remaining
+    // the previous move in the search was also a null move.
+    // DO NOT use nmp in endgames, it'll result in zugzwang cases (having to move results in a loss)
+    if (this->isNMP(isPVNode, isParentInCheck, depth, ply)) {
+        this->makeNullMove();
+
+        int score = -this->search(-beta, -beta + 1, depth - 1 - this->_NMP_REDUCTION, ply + 1);
+
+        this->unmakeNullMove();
+
+        if (score >= beta) {
+            return beta;
+        }
+    }
 
     bool isLegalMoveFound = false;
 
@@ -1436,8 +1479,6 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
                 }
             }
         }
-
-        // int score = -this->search(-beta, -alpha, depth - 1, ply + 1);
 
         this->unmakeMove(move);
 
