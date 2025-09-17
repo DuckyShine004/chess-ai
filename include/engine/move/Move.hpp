@@ -72,6 +72,10 @@ inline constexpr int PROMOTION_CAPTURE_OFFSET = 9;
 
 [[nodiscard]] inline constexpr bool isGeneralCapture(uint16_t move);
 
+[[nodiscard]] inline constexpr bool isTactical(uint16_t move);
+
+[[nodiscard]] inline constexpr bool isLMR(uint16_t move);
+
 [[nodiscard]] inline constexpr uint16_t getMove(int from, int to, MoveType moveType) {
     return from | (to << TO_OFFSET) | (moveType << MOVE_TYPE_OFFSET);
 }
@@ -172,6 +176,18 @@ inline constexpr int PROMOTION_CAPTURE_OFFSET = 9;
     MoveType moveType = static_cast<MoveType>(move >> MOVE_TYPE_OFFSET);
 
     return MoveType::KNIGHT_PROMOTION <= moveType && moveType <= MoveType::QUEEN_PROMOTION_CAPTURE;
+}
+
+[[nodiscard]] inline constexpr bool isTactical(uint16_t move) {
+    MoveType moveType = static_cast<MoveType>(move >> MOVE_TYPE_OFFSET);
+
+    return moveType == MoveType::CAPTURE || moveType == MoveType::EN_PASSANT || (MoveType::KNIGHT_PROMOTION <= moveType && moveType <= MoveType::QUEEN_PROMOTION_CAPTURE);
+}
+
+[[nodiscard]] inline constexpr bool isLMR(uint16_t move) {
+    MoveType moveType = static_cast<MoveType>(move >> MOVE_TYPE_OFFSET);
+
+    return !(moveType == MoveType::CAPTURE || moveType == MoveType::EN_PASSANT || moveType == MoveType::KING_CASTLE || moveType == MoveType::QUEEN_CASTLE || (MoveType::KNIGHT_PROMOTION <= moveType && moveType <= MoveType::QUEEN_PROMOTION_CAPTURE));
 }
 
 struct MoveList {

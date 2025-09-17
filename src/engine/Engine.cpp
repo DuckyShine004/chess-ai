@@ -863,6 +863,45 @@ void Engine::makeMove(uint16_t &move) {
     this->switchSide();
 }
 
+void Engine::makeNullMove() {
+    // TODO: remember to update zobrist if we have TT
+    Undo undo;
+
+    // Only need to copy the en passant square
+    undo.enPassantSquare = this->_enPassantSquare;
+
+    if (this->_enPassantSquare != -1) {
+        this->_zobrist ^= Zobrist::enPassantKeys[this->_enPassantSquare];
+        this->_enPassantSquare = -1;
+    }
+
+    this->_undoStack.push_back(std::move(undo));
+
+    this->_zobrist ^= Zobrist::sideKey;
+
+    this->switchSide();
+}
+
+void Engine::unmakeNullMove() {
+    this->switchSide();
+
+    this->_zobrist ^= Zobrist::sideKey;
+
+    const Undo &undo = this->_undoStack.back();
+
+    if (this->_enPassantSquare != -1) {
+        this->_zobrist ^= Zobrist::enPassantKeys[this->_enPassantSquare];
+    }
+
+    if (undo.enPassantSquare != -1) {
+        this->_zobrist ^= Zobrist::enPassantKeys[undo.enPassantSquare];
+    }
+
+    this->_enPassantSquare = undo.enPassantSquare;
+
+    this->_undoStack.pop_back();
+}
+
 void Engine::unmakeMove(uint16_t &move) {
     this->switchSide();
 
@@ -1104,6 +1143,7 @@ void Engine::orderMoves(Move::MoveList &moves, ColourType side, int ply) {
 
     ColourType otherSide = BoardUtility::getOtherSide(side);
 
+    // WARN: Potential bug [ply][ply] or [0][ply]
     uint16_t pvMove = this->_pvTable[0][ply];
 
     for (int i = 0; i < moves.size; ++i) {
@@ -1191,6 +1231,18 @@ int Engine::see(int to, PieceType toPiece, ColourType side) {
     return seeUtil(to, bitboards, occupancyBoth, side, MATERIAL_TABLE[toPiece]);
 }
 
+bool Engine::isNMP(bool isPVNode, bool isParentInCheck, int depth, int ply) {
+    return depth >= 3 && !isPVNode && !isParentInCheck && ply > 0;
+}
+
+// Assume called after move is made
+// DO NOT reduce if we are in check, or we are giving checks or move is tactical
+bool Engine::isLMR(const uint16_t move, bool isPVNode, bool isParentInCheck) {
+    bool isChildInCheck = this->isInCheck(this->_side);
+
+    return !(isPVNode || isParentInCheck || isChildInCheck || Move::isLMR(move));
+}
+
 void Engine::searchIterative(int depth) {
     this->_searchResult.clear();
 
@@ -1204,6 +1256,10 @@ void Engine::searchIterative(int depth) {
         int beta = Score::INF;
 
         int ply = 0;
+
+        bool isPVNode = (beta - alpha > 1);
+
+        bool isParentInCheck = this->isInCheck(this->_side);
 
         bool isLegalMoveFound = false;
 
@@ -1230,7 +1286,25 @@ void Engine::searchIterative(int depth) {
 
             this->makeMove(move);
 
-            int score = -this->search(-beta, -alpha, currentDepth - 1, ply + 1);
+            int score;
+
+            if (i == 0) {
+                score = -this->search(-beta, -alpha, currentDepth - 1, ply + 1);
+            } else {
+                if (i >= this->_FULL_DEPTH && currentDepth >= this->_REDUCTION_LIMIT && this->isLMR(move, isPVNode, isParentInCheck)) {
+                    score = -this->search(-alpha - 1, -alpha, currentDepth - this->_REDUCTION_DEPTH, ply + 1);
+                } else {
+                    score = alpha + 1;
+                }
+
+                if (score > alpha) {
+                    score = -this->search(-alpha - 1, -alpha, currentDepth - 1, ply + 1);
+
+                    if ((score > alpha) && (score < beta)) {
+                        score = -this->search(-beta, -alpha, currentDepth - 1, ply + 1);
+                    }
+                }
+            }
 
             this->unmakeMove(move);
 
@@ -1273,6 +1347,8 @@ void Engine::searchRoot(int depth) {
     int beta = Score::INF;
 
     int ply = 0;
+
+    bool isInCheck = this->isInCheck(this->_side);
 
     bool isLegalMoveFound = false;
 
@@ -1339,23 +1415,29 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
         return this->quiescence(alpha, beta, ply);
     }
 
-    // TODO: Implement null move pruning- condition
-    // if (1) {
-    //     int reduction = 2; // NMP reduction
+    bool isPVNode = (beta - alpha > 1);
 
-    //     // Make null move
-    //     int nullScore = -this->search(-beta, -beta + 1, depth - reduction);
-    //     // Undo null move
+    bool isParentInCheck = this->isInCheck(this->_side);
 
-    //     if (nullScore >= beta) {
-    //         return nullScore;
-    //     }
-    // }
-    //
-    // the side to move is in check
+    // BUG: zugzwang positions may still arise, atp, NMP will likely fail
+    // To potentially avoid this, we could do another full window search
+    // TODO: Implement null move pruning- conditions to NOT use NMP:
+    // the side to move is in check [+]
     // the side to move has only its king and pawns remaining
     // the side to move has a small number of pieces remaining
     // the previous move in the search was also a null move.
+    // DO NOT use nmp in endgames, it'll result in zugzwang cases (having to move results in a loss)
+    if (this->isNMP(isPVNode, isParentInCheck, depth, ply)) {
+        this->makeNullMove();
+
+        int score = -this->search(-beta, -beta + 1, depth - 1 - this->_NMP_REDUCTION, ply + 1);
+
+        this->unmakeNullMove();
+
+        if (score >= beta) {
+            return beta;
+        }
+    }
 
     bool isLegalMoveFound = false;
 
@@ -1374,7 +1456,29 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
         this->makeMove(move);
 
-        int score = -this->search(-beta, -alpha, depth - 1, ply + 1);
+        int score;
+
+        // Full search first (number of moves searched = i)
+        if (i == 0) {
+            score = -this->search(-beta, -alpha, depth - 1, ply + 1);
+        } else {
+            // PERF: LMR tuning
+            if (i >= this->_FULL_DEPTH && depth >= this->_REDUCTION_LIMIT && this->isLMR(move, isPVNode, isParentInCheck)) {
+                score = -this->search(-alpha - 1, -alpha, depth - this->_REDUCTION_DEPTH, ply + 1);
+            } else {
+                score = alpha + 1;
+            }
+
+            // PERF: Bruce mo's bad move proof
+            if (score > alpha) {
+                score = -this->search(-alpha - 1, -alpha, depth - 1, ply + 1);
+
+                // PV node cannot both be between alpha and beta
+                if ((score > alpha) && (score < beta)) {
+                    score = -this->search(-beta, -alpha, depth - 1, ply + 1);
+                }
+            }
+        }
 
         this->unmakeMove(move);
 
