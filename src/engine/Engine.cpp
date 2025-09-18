@@ -1245,7 +1245,7 @@ bool Engine::isLMR(const uint16_t move, bool isPVNode, bool isParentInCheck) {
 
 // PERF: performing large mod operations could be costly, use fast mod if needed
 int Engine::probeTranspositionTable(int alpha, int beta, int depth) {
-    int index = this->_zobrist % Transposition::TRANSPOSITION_TABLE_SIZE;
+    const size_t index = this->_zobrist & Transposition::TRANSPOSITION_TABLE_MASK;
 
     Transposition::Entry *entry = &this->_transpositionTable[index];
 
@@ -1264,6 +1264,19 @@ int Engine::probeTranspositionTable(int alpha, int beta, int depth) {
     }
 
     return -1;
+}
+
+void Engine::recordTranspositionTableEntry(int score, int depth, Transposition::NodeType nodeType) {
+    const size_t index = this->_zobrist & Transposition::TRANSPOSITION_TABLE_MASK;
+
+    Transposition::Entry *entry = &this->_transpositionTable[index];
+
+    entry->zobrist = this->_zobrist;
+
+    entry->score = score;
+    entry->depth = depth;
+
+    entry->nodeType = nodeType;
 }
 
 void Engine::searchIterative(int depth) {
@@ -1309,6 +1322,14 @@ void Engine::searchIterative(int depth) {
 int Engine::search(int alpha, int beta, int depth, int ply) {
     // Initialise pv length
     this->_pvLength[ply] = ply;
+
+    Transposition::NodeType transpositionTableNodeType = Transposition::NodeType::ALPHA;
+
+    const int transpositionTableScore = this->probeTranspositionTable(alpha, beta, depth);
+
+    if (transpositionTableScore != -1) {
+        return transpositionTableScore;
+    }
 
     if (depth == 0) {
         return this->quiescence(alpha, beta, ply);
@@ -1378,6 +1399,8 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
         if (score >= beta) {
             this->storeKillerMove(move, ply);
 
+            this->recordTranspositionTableEntry(score, depth, Transposition::NodeType::BETA);
+
             return beta;
         }
 
@@ -1385,6 +1408,8 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
             this->storeHistoryMove(move, this->_side, depth);
 
             this->storePVMove(move, ply);
+
+            transpositionTableNodeType = Transposition::NodeType::EXACT;
 
             alpha = score;
         }
@@ -1397,6 +1422,8 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
             return 0;
         }
     }
+
+    this->recordTranspositionTableEntry(alpha, depth, transpositionTableNodeType);
 
     return alpha;
 }

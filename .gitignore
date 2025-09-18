@@ -16,6 +16,7 @@
 # Profiling
 *.data
 *.data.*
+vgcore.*
 
 # Build Files
 build/
