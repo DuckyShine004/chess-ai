@@ -78,8 +78,6 @@ void Engine::run() {
 
 // FIX: Find out why there are no optimal moves even when there are
 uint16_t &Engine::getMove() {
-    // LOG_INFO("Performing root search");
-    // this->searchRoot(this->_SEARCH_DEPTH);
     // LOG_INFO("Performing iterative root search");
     this->searchIterative(this->_SEARCH_DEPTH);
 
@@ -1257,205 +1255,46 @@ void Engine::searchIterative(int depth) {
     while (currentDepth <= depth) {
         this->_searchResult.clear();
 
-        const int previousAlpha = alpha;
-        const int previousBeta = beta;
+        int score = -this->search(alpha, beta, currentDepth, 0);
 
-        int ply = 0;
+        if ((score <= alpha) || (score >= beta)) {
+            LOG_INFO("Re-searching depth {} again for alpha: {} beta: {} best score: {}", currentDepth, alpha, beta, score);
 
-        bool isPVNode = (beta - alpha > 1);
-
-        bool isParentInCheck = this->isInCheck(this->_side);
-
-        bool isLegalMoveFound = false;
-
-        MoveList moves = this->generateMoves(this->_side);
-
-        this->orderMoves(moves, this->_side, ply);
-
-        for (int i = 0; i < moves.size; ++i) {
-            uint16_t &move = moves.moves[i];
-
-            if (!this->isMoveLegal(move, this->_side)) {
-                continue;
-            }
-
-            isLegalMoveFound = true;
-
-            if (!this->_searchResult.isMoveFound) {
-                this->_searchResult.bestMove = move;
-
-                this->_searchResult.isMoveFound = true;
-            }
-
-            this->makeMove(move);
-
-            // PERF: LMR could be used at the start but could be tricky ~+-20 elo
-            int score;
-
-            if (i == 0) {
-                score = -this->search(-beta, -alpha, currentDepth - 1, ply + 1);
-            } else {
-                if (i >= this->_FULL_DEPTH && currentDepth >= this->_REDUCTION_LIMIT && this->isLMR(move, isPVNode, isParentInCheck)) {
-                    score = -this->search(-alpha - 1, -alpha, currentDepth - this->_REDUCTION_DEPTH, ply + 1);
-                } else {
-                    score = alpha + 1;
-                }
-
-                if (score > alpha) {
-                    score = -this->search(-alpha - 1, -alpha, currentDepth - 1, ply + 1);
-
-                    if ((score > alpha) && (score < beta)) {
-                        score = -this->search(-beta, -alpha, currentDepth - 1, ply + 1);
-                    }
-                }
-            }
-
-            this->unmakeMove(move);
-
-            if (score > this->_searchResult.bestScore) {
-                this->_searchResult.bestScore = score;
-            }
-
-            if (score > alpha) {
-                this->storeHistoryMove(move, this->_side, currentDepth);
-
-                this->storePVMove(move, ply);
-
-                alpha = score;
-
-                if (score >= beta) {
-                    break;
-                }
-            }
-        }
-
-        // Check if there was a beta cut-off
-        if (!isLegalMoveFound) {
-            if (this->isInCheck(this->_side)) {
-                this->_searchResult.bestScore = Score::getCheckMateScore(ply);
-            } else {
-                this->_searchResult.bestScore = 0;
-            }
-        }
-
-        if (this->_searchResult.bestScore == -Score::INF) {
-            this->_searchResult.bestScore = previousAlpha;
-        }
-
-        // Adjust aspiration window after the search
-        // Best move was likely not found, so we search again with full window
-        if ((this->_searchResult.bestScore <= previousAlpha) || (this->_searchResult.bestScore >= previousBeta)) {
-            LOG_INFO("Re-searching depth {} again for alpha: {} beta: {} best score: {}", currentDepth, previousAlpha, previousBeta, this->_searchResult.bestScore);
             alpha = -Score::INF;
             beta = Score::INF;
 
             continue;
         }
 
-        // Otherwise, we adjust the aspiration window for the next search
-        alpha = this->_searchResult.bestScore - this->_ASPIRATION_WINDOW_VALUE;
-        beta = this->_searchResult.bestScore + this->_ASPIRATION_WINDOW_VALUE;
-
-        this->_searchResult.bestMove = this->_pvTable[0][0];
+        alpha = score - this->_ASPIRATION_WINDOW_VALUE;
+        beta = score + this->_ASPIRATION_WINDOW_VALUE;
 
         LOG_INFO("Number of nodes at depth {}: {}", currentDepth, this->_searchResult.nodes);
 
         ++currentDepth;
     }
-}
-
-void Engine::searchRoot(int depth) {
-    this->_searchResult.clear();
-
-    std::memset(this->_killerMoves, 0, sizeof(this->_killerMoves));
-    std::memset(this->_historyMoves, 0, sizeof(this->_historyMoves));
-    std::memset(this->_pvLength, 0, sizeof(this->_pvLength));
-    std::memset(this->_pvTable, 0, sizeof(this->_pvTable));
-
-    int alpha = -Score::INF;
-    int beta = Score::INF;
-
-    int ply = 0;
-
-    bool isInCheck = this->isInCheck(this->_side);
-
-    bool isLegalMoveFound = false;
-
-    MoveList moves = this->generateMoves(this->_side);
-
-    this->orderMoves(moves, this->_side, ply);
-
-    this->_searchResult.nodes = 0;
-
-    for (int i = 0; i < moves.size; ++i) {
-        uint16_t &move = moves.moves[i];
-
-        if (!this->isMoveLegal(move, this->_side)) {
-            continue;
-        }
-
-        isLegalMoveFound = true;
-
-        if (!this->_searchResult.isMoveFound) {
-            this->_searchResult.bestMove = move;
-
-            this->_searchResult.isMoveFound = true;
-        }
-
-        this->makeMove(move);
-
-        int score = -this->search(-beta, -alpha, depth - 1, ply + 1);
-
-        this->unmakeMove(move);
-
-        if (score > alpha) {
-            this->storeHistoryMove(move, this->_side, depth);
-
-            this->storePVMove(move, ply);
-
-            alpha = score;
-
-            if (score >= beta) {
-                break;
-            }
-        }
-    }
-
-    if (!isLegalMoveFound) {
-        if (this->isInCheck(this->_side)) {
-            this->_searchResult.bestScore = Score::getCheckMateScore(ply);
-        } else {
-            this->_searchResult.bestScore = 0;
-        }
-    }
 
     this->_searchResult.bestMove = this->_pvTable[0][0];
 
-    LOG_INFO("Number of nodes: {}", this->_searchResult.nodes);
+    if (this->_searchResult.bestMove == 0U) {
+        throw std::runtime_error("Engine could not find move...");
+    }
 }
 
 int Engine::search(int alpha, int beta, int depth, int ply) {
     // Initialise pv length
     this->_pvLength[ply] = ply;
 
-    ++this->_searchResult.nodes;
-
     if (depth == 0) {
         return this->quiescence(alpha, beta, ply);
     }
+
+    ++this->_searchResult.nodes;
 
     bool isPVNode = (beta - alpha > 1);
 
     bool isParentInCheck = this->isInCheck(this->_side);
 
-    // BUG: zugzwang positions may still arise, atp, NMP will likely fail
-    // To potentially avoid this, we could do another full window search
-    // TODO: Implement null move pruning- conditions to NOT use NMP:
-    // the side to move is in check [+]
-    // the side to move has only its king and pawns remaining
-    // the side to move has a small number of pieces remaining
-    // the previous move in the search was also a null move.
-    // DO NOT use nmp in endgames, it'll result in zugzwang cases (having to move results in a loss)
     if (this->isNMP(isPVNode, isParentInCheck, depth, ply)) {
         this->makeNullMove();
 
@@ -1511,18 +1350,18 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
         this->unmakeMove(move);
 
+        if (score >= beta) {
+            this->storeKillerMove(move, ply);
+
+            return beta;
+        }
+
         if (score > alpha) {
             this->storeHistoryMove(move, this->_side, depth);
 
             this->storePVMove(move, ply);
 
             alpha = score;
-
-            if (score >= beta) {
-                this->storeKillerMove(move, ply);
-
-                return beta;
-            }
         }
     }
 
@@ -1538,6 +1377,8 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 }
 
 int Engine::quiescence(int alpha, int beta, int ply) {
+    ++this->_searchResult.nodes;
+
     // Standing pat is illegal if king is in check
     if (this->isInCheck(this->_side)) {
         Move::MoveList moves = this->generateMoves(this->_side);
@@ -1561,12 +1402,12 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 
             this->unmakeMove(move);
 
+            if (score >= beta) {
+                return beta;
+            }
+
             if (score > alpha) {
                 alpha = score;
-
-                if (score >= beta) {
-                    return beta;
-                }
             }
         }
 
@@ -1609,12 +1450,12 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 
         this->unmakeMove(capture);
 
+        if (score >= beta) {
+            return beta;
+        }
+
         if (score > alpha) {
             alpha = score;
-
-            if (score >= beta) {
-                return beta;
-            }
         }
     }
 

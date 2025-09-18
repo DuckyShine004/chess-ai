@@ -78,9 +78,9 @@ class Engine {
     static inline constexpr int _REDUCTION_LIMIT = 3;
 
     // NMP
-    static inline constexpr int _NMP_REDUCTION = 2;
+    static inline constexpr int _NMP_REDUCTION = 1;
 
-    static inline constexpr int _SEARCH_DEPTH = 8;
+    static inline constexpr int _SEARCH_DEPTH = 9;
 
     // Aspiration Window
     static inline constexpr int _ASPIRATION_WINDOW_VALUE = 50;
