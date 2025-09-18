@@ -9,6 +9,7 @@
 #include "engine/board/Square.hpp"
 
 #include "engine/hash/Zobrist.hpp"
+#include "engine/hash/Transposition.hpp"
 
 #include "engine/evaluation/Score.hpp"
 #include "engine/evaluation/Material.hpp"
@@ -19,6 +20,7 @@
 #include "engine/evaluation/pesto/Pesto.hpp"
 
 #include "engine/move/Move.hpp"
+
 #include "engine/piece/Pawn.hpp"
 #include "engine/piece/Knight.hpp"
 #include "engine/piece/Bishop.hpp"
@@ -1239,6 +1241,29 @@ bool Engine::isLMR(const uint16_t move, bool isPVNode, bool isParentInCheck) {
     bool isChildInCheck = this->isInCheck(this->_side);
 
     return !(isPVNode || isParentInCheck || isChildInCheck || Move::isLMR(move));
+}
+
+// PERF: performing large mod operations could be costly, use fast mod if needed
+int Engine::probeTranspositionTable(int alpha, int beta, int depth) {
+    int index = this->_zobrist % Transposition::TRANSPOSITION_TABLE_SIZE;
+
+    Transposition::Entry *entry = &this->_transpositionTable[index];
+
+    if (entry->zobrist == this->_zobrist && entry->depth >= depth) {
+        if (entry->nodeType == Transposition::NodeType::EXACT) {
+            return entry->score;
+        }
+
+        if (entry->nodeType == Transposition::NodeType::ALPHA && entry->score <= alpha) {
+            return alpha;
+        }
+
+        if (entry->nodeType == Transposition::NodeType::BETA && entry->score >= beta) {
+            return beta;
+        }
+    }
+
+    return -1;
 }
 
 void Engine::searchIterative(int depth) {

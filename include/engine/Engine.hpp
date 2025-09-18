@@ -3,7 +3,6 @@
 #include <vector>
 #include <string>
 #include <cstdint>
-#include <climits>
 
 #include "engine/board/Piece.hpp"
 #include "engine/board/Colour.hpp"
@@ -11,6 +10,8 @@
 #include "engine/move/Move.hpp"
 #include "engine/move/Undo.hpp"
 #include "engine/move/Order.hpp"
+
+#include "engine/hash/Transposition.hpp"
 
 #include "engine/evaluation/Score.hpp"
 
@@ -84,6 +85,8 @@ class Engine {
 
     // Aspiration Window
     static inline constexpr int _ASPIRATION_WINDOW_VALUE = 50;
+
+    engine::hash::Transposition::Entry _transpositionTable[engine::hash::Transposition::TRANSPOSITION_TABLE_SIZE];
 
     uint64_t _bitboards[2][6];
     uint64_t _occupancies[2];
@@ -235,6 +238,8 @@ class Engine {
     FORCE_INLINE bool isNMP(bool isPVNode, bool isParentInCheck, int depth, int ply);
 
     FORCE_INLINE bool isLMR(const uint16_t move, bool isPVNode, bool isParentInCheck);
+
+    FORCE_INLINE int probeTranspositionTable(int alpha, int beta, int depth);
 
     void searchIterative(int depth);
 
