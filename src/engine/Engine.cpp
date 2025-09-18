@@ -1356,7 +1356,6 @@ void Engine::searchIterative(int depth) {
         alpha = this->_searchResult.bestScore - this->_ASPIRATION_WINDOW_VALUE;
         beta = this->_searchResult.bestScore + this->_ASPIRATION_WINDOW_VALUE;
 
-        // TODO: Update the best move at each depth for time control
         this->_searchResult.bestMove = this->_pvTable[0][0];
 
         LOG_INFO("Number of nodes at depth {}: {}", currentDepth, this->_searchResult.nodes);
