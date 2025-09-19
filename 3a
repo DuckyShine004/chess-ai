@@ -1246,7 +1246,6 @@ bool Engine::isLMR(const uint16_t move, bool isPVNode, bool isParentInCheck) {
 // PERF: performing large mod operations could be costly, use fast mod if needed
 int Engine::probeTranspositionTable(int alpha, int beta, int depth, int ply) {
     const size_t index = this->_zobrist & Transposition::TRANSPOSITION_TABLE_MASK;
-    // const size_t index = this->_zobrist % Transposition::TRANSPOSITION_TABLE_ENTRIES;
 
     Transposition::Entry *entry = &this->_transpositionTable[index];
 
@@ -1258,7 +1257,7 @@ int Engine::probeTranspositionTable(int alpha, int beta, int depth, int ply) {
             score -= ply;
         }
 
-        if (score < -Score::CHECKMATE_THRESHOLD) {
+        if (score > Score::CHECKMATE_THRESHOLD) {
             score += ply;
         }
 
@@ -1278,10 +1277,8 @@ int Engine::probeTranspositionTable(int alpha, int beta, int depth, int ply) {
     return -1;
 }
 
-// PERF: Try deeper replacement policy
 void Engine::recordTranspositionTableEntry(int score, int depth, Transposition::NodeType nodeType, int ply) {
     const size_t index = this->_zobrist & Transposition::TRANSPOSITION_TABLE_MASK;
-    // const size_t index = this->_zobrist % Transposition::TRANSPOSITION_TABLE_ENTRIES;
 
     Transposition::Entry *entry = &this->_transpositionTable[index];
 
@@ -1343,12 +1340,11 @@ void Engine::searchIterative(int depth) {
     }
 }
 
-// WARN: Always probing the TT
 int Engine::search(int alpha, int beta, int depth, int ply) {
     // Initialise pv length
     this->_pvLength[ply] = ply;
 
-    int transpositionTableScore = this->probeTranspositionTable(alpha, beta, depth, ply);
+    const int transpositionTableScore = this->probeTranspositionTable(alpha, beta, depth, ply);
 
     if (transpositionTableScore != -1) {
         return transpositionTableScore;
@@ -1444,16 +1440,10 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
     if (!isLegalMoveFound) {
         if (this->isInCheck(this->_side)) {
-            int checkMateScore = Score::getCheckMateScore(ply);
-
-            this->recordTranspositionTableEntry(checkMateScore, depth, Transposition::NodeType::EXACT, ply);
-
-            return checkMateScore;
+            return Score::getCheckMateScore(ply);
+        } else {
+            return 0;
         }
-
-        this->recordTranspositionTableEntry(0, depth, Transposition::NodeType::EXACT, ply);
-
-        return 0;
     }
 
     this->recordTranspositionTableEntry(alpha, depth, transpositionTableNodeType, ply);
@@ -1464,7 +1454,7 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 int Engine::quiescence(int alpha, int beta, int ply) {
     ++this->_searchResult.nodes;
 
-    int transpositionTableScore = this->probeTranspositionTable(alpha, beta, 0, ply);
+    const int transpositionTableScore = this->probeTranspositionTable(alpha, beta, 0, ply);
 
     if (transpositionTableScore != -1) {
         return transpositionTableScore;
@@ -1509,11 +1499,7 @@ int Engine::quiescence(int alpha, int beta, int ply) {
         }
 
         if (!isLegalMovesFound) {
-            int checkMateScore = Score::getCheckMateScore(ply);
-
-            this->recordTranspositionTableEntry(checkMateScore, 0, Transposition::NodeType::EXACT, ply);
-
-            return checkMateScore;
+            return Score::getCheckMateScore(ply);
         }
 
         this->recordTranspositionTableEntry(alpha, 0, transpositionTableNodeType, ply);
@@ -1536,6 +1522,8 @@ int Engine::quiescence(int alpha, int beta, int ply) {
         alpha = standingPat;
     }
 
+    bool isLegalMoveFound = false;
+
     MoveList captures = this->generateCaptures(this->_side);
 
     this->orderMoves(captures, this->_side, ply);
@@ -1546,6 +1534,8 @@ int Engine::quiescence(int alpha, int beta, int ply) {
         if (!this->isMoveLegal(capture, this->_side)) {
             continue;
         }
+
+        isLegalMoveFound = true;
 
         this->makeMove(capture);
 

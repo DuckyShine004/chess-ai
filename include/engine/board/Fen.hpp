@@ -15,8 +15,8 @@ inline constexpr const char *POSITIONS[5] = {
 };
 
 // Two bishops [-]
-// Two knights [-]
-// One rook [-]
+// Two knights [+]
+// One rook [+]
 // Two rooks [+]
 // One queen [+]
 inline constexpr const char *PUZZLE_POSITIONS[] = {

@@ -81,12 +81,13 @@ class Engine {
     // NMP
     static inline constexpr int _NMP_REDUCTION = 1;
 
-    static inline constexpr int _SEARCH_DEPTH = 9;
+    static inline constexpr int _SEARCH_DEPTH = 10;
 
     // Aspiration Window
     static inline constexpr int _ASPIRATION_WINDOW_VALUE = 50;
 
     engine::hash::Transposition::Entry _transpositionTable[engine::hash::Transposition::TRANSPOSITION_TABLE_ENTRIES];
+
     uint64_t _bitboards[2][6];
     uint64_t _occupancies[2];
     uint64_t _occupancyBoth;
@@ -238,9 +239,9 @@ class Engine {
 
     FORCE_INLINE bool isLMR(const uint16_t move, bool isPVNode, bool isParentInCheck);
 
-    FORCE_INLINE int probeTranspositionTable(int alpha, int beta, int depth);
+    FORCE_INLINE int probeTranspositionTable(int alpha, int beta, int depth, int ply);
 
-    FORCE_INLINE void recordTranspositionTableEntry(int score, int depth, engine::hash::Transposition::NodeType nodeType);
+    FORCE_INLINE void recordTranspositionTableEntry(int score, int depth, engine::hash::Transposition::NodeType nodeType, int ply);
 
     void searchIterative(int depth);
 
