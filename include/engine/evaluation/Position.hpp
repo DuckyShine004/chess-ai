@@ -132,6 +132,4 @@ inline constexpr int POSITION_TABLES[6][64] = {
 // };
 // clang-format on
 
-inline constexpr int DRAW_VALUE = 0;
-
 } // namespace engine::evaluation

@@ -15,8 +15,8 @@ inline constexpr const char *POSITIONS[5] = {
 };
 
 // Two bishops [-]
-// Two knights [-]
-// One rook [-]
+// Two knights [+]
+// One rook [+]
 // Two rooks [+]
 // One queen [+]
 inline constexpr const char *PUZZLE_POSITIONS[] = {
@@ -29,9 +29,11 @@ inline constexpr const char *PUZZLE_POSITIONS[] = {
 
 // Tricky king and pawn endgame [+]
 // Tricky mate in one [-]
+// Tricky endgame with possible checkmate [-]
 inline constexpr const char* NMP_POSITIONS[] = {
     "8/8/8/8/8/3k4/2p5/2K5 w - - 0 1",
     "6k1/pp6/2p5/3p4/3Pp1p1/2P1PpPq/PPQ2P2/3R2K1 w - - 0 1",
+    "8/6pp/p2p4/2k1p3/4n3/1r5N/7K/8 b - - 0 1",
 };
 // clang-format on
 
