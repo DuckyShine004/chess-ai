@@ -55,8 +55,6 @@ Engine::Engine() {
     this->initialise();
 
     this->parse(INITIAL_POSITION);
-
-    this->_zobrist = Zobrist::hash(this->_bitboards, this->_castleRights, this->_enPassantSquare, this->_side);
 }
 
 void Engine::parse(const char *fen) {
@@ -70,6 +68,10 @@ void Engine::parse(const char *fen) {
     this->parseFenEnPassantSquare(states[3]);
     this->parseFenHalfMove(states[4]);
     this->parseFenFullMove(states[5]);
+
+    this->_zobrist = Zobrist::hash(this->_bitboards, this->_castleRights, this->_enPassantSquare, this->_side);
+
+    this->_repetitionTable[0] = this->_zobrist;
 }
 
 void Engine::run() {
@@ -99,14 +101,17 @@ PieceType Engine::getPiece(int square, ColourType side) {
 }
 
 void Engine::runPerft(int depth) {
+    this->_searchResult.nodes = 0;
+
     auto start = std::chrono::high_resolution_clock::now();
 
     int nodes = this->perft(depth);
 
     auto end = std::chrono::high_resolution_clock::now();
+
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-    std::cout << "Time: " << elapsed.count() << " ms | Nodes: " << nodes << '\n';
+    LOG_INFO("Time: {} ms\nNodes: {}", elapsed.count(), nodes);
 }
 
 ColourType Engine::getSide() {
@@ -1135,6 +1140,7 @@ void Engine::storePVMove(const uint16_t move, int ply) {
 
 // TODO: Sort moves
 // PV moves [*]
+// Refutation Table [-]
 // MVV-LVA captures + (SEE?) [*]
 // Killer Moves [*]
 // History [*]
@@ -1303,11 +1309,37 @@ void Engine::recordTranspositionTableEntry(int score, int depth, Transposition::
     entry->nodeType = nodeType;
 }
 
+bool Engine::isRepetition(int ply) {
+    if (this->_halfMove >= 100) {
+        return true;
+    }
+
+    int repetitions = 0;
+
+    int start = std::max(0, ply - this->_halfMove);
+
+    // Check if the same zobrist has been reached more than three times before in the last
+    for (int i = start; i < ply; ++i) {
+        if (this->_repetitionTable[i] == this->_zobrist && ++repetitions >= 2) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// TODO: Search extension
+// Low mobility [-]
+// In-check [-]
+// Last move is capturing [-]
+// Current best score is much lower than the value of previous ply [-]
 void Engine::searchIterative(int depth) {
     std::memset(this->_killerMoves, 0, sizeof(this->_killerMoves));
     std::memset(this->_historyMoves, 0, sizeof(this->_historyMoves));
     std::memset(this->_pvLength, 0, sizeof(this->_pvLength));
     std::memset(this->_pvTable, 0, sizeof(this->_pvTable));
+
+    this->_repetitionTable[0] = this->_zobrist;
 
     int alpha = -Score::INF;
     int beta = Score::INF;
@@ -1315,7 +1347,7 @@ void Engine::searchIterative(int depth) {
     int currentDepth = 1;
 
     while (currentDepth <= depth) {
-        this->_searchResult.clear();
+        this->_searchResult.nodes = 0;
 
         int score = -this->search(alpha, beta, currentDepth, 0);
 
@@ -1348,17 +1380,28 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
     // Initialise pv length
     this->_pvLength[ply] = ply;
 
+    // TODO: Return contempt
+    if (this->isRepetition(ply)) {
+        this->recordTranspositionTableEntry(0, depth, Transposition::NodeType::EXACT, ply);
+
+        ++this->_searchResult.nodes;
+
+        return 0;
+    }
+
     int transpositionTableScore = this->probeTranspositionTable(alpha, beta, depth, ply);
 
     if (transpositionTableScore != -1) {
+        ++this->_searchResult.nodes;
+
         return transpositionTableScore;
     }
 
     if (depth == 0) {
+        ++this->_searchResult.nodes;
+
         return this->quiescence(alpha, beta, ply);
     }
-
-    ++this->_searchResult.nodes;
 
     bool isPVNode = (beta - alpha > 1);
 
@@ -1367,12 +1410,16 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
     if (this->isNMP(isPVNode, isParentInCheck, depth, ply)) {
         this->makeNullMove();
 
+        this->_repetitionTable[ply + 1] = this->_zobrist;
+
         int score = -this->search(-beta, -beta + 1, depth - 1 - this->_NMP_REDUCTION, ply + 1);
 
         this->unmakeNullMove();
 
         if (score >= beta) {
             this->recordTranspositionTableEntry(beta, depth, Transposition::NodeType::BETA, ply);
+
+            ++this->_searchResult.nodes;
 
             return beta;
         }
@@ -1396,6 +1443,8 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
         isLegalMoveFound = true;
 
         this->makeMove(move);
+
+        this->_repetitionTable[ply + 1] = this->_zobrist;
 
         int score;
 
@@ -1428,6 +1477,8 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
             this->recordTranspositionTableEntry(beta, depth, Transposition::NodeType::BETA, ply);
 
+            ++this->_searchResult.nodes;
+
             return beta;
         }
 
@@ -1448,10 +1499,14 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
             this->recordTranspositionTableEntry(checkMateScore, depth, Transposition::NodeType::EXACT, ply);
 
+            ++this->_searchResult.nodes;
+
             return checkMateScore;
         }
 
         this->recordTranspositionTableEntry(0, depth, Transposition::NodeType::EXACT, ply);
+
+        ++this->_searchResult.nodes;
 
         return 0;
     }
@@ -1464,6 +1519,14 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 int Engine::quiescence(int alpha, int beta, int ply) {
     ++this->_searchResult.nodes;
 
+    if (this->isRepetition(ply)) {
+        this->recordTranspositionTableEntry(0, 0, Transposition::NodeType::EXACT, ply);
+
+        ++this->_searchResult.nodes;
+
+        return 0;
+    }
+
     int transpositionTableScore = this->probeTranspositionTable(alpha, beta, 0, ply);
 
     if (transpositionTableScore != -1) {
@@ -1474,6 +1537,7 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 
     // Standing pat is illegal if king is in check
     if (this->isInCheck(this->_side)) {
+
         bool isLegalMovesFound = false;
 
         Move::MoveList moves = this->generateMoves(this->_side);
@@ -1491,12 +1555,16 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 
             this->makeMove(move);
 
+            this->_repetitionTable[ply + 1] = this->_zobrist;
+
             int score = -this->quiescence(-beta, -alpha, ply + 1);
 
             this->unmakeMove(move);
 
             if (score >= beta) {
                 this->recordTranspositionTableEntry(beta, 0, Transposition::NodeType::BETA, ply);
+
+                ++this->_searchResult.nodes;
 
                 return beta;
             }
@@ -1513,6 +1581,8 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 
             this->recordTranspositionTableEntry(checkMateScore, 0, Transposition::NodeType::EXACT, ply);
 
+            ++this->_searchResult.nodes;
+
             return checkMateScore;
         }
 
@@ -1526,6 +1596,8 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 
     if (standingPat >= beta) {
         this->recordTranspositionTableEntry(beta, 0, Transposition::NodeType::BETA, ply);
+
+        ++this->_searchResult.nodes;
 
         return beta;
     }
@@ -1549,12 +1621,16 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 
         this->makeMove(capture);
 
+        this->_repetitionTable[ply + 1] = this->_zobrist;
+
         int score = -this->quiescence(-beta, -alpha, ply + 1);
 
         this->unmakeMove(capture);
 
         if (score >= beta) {
             this->recordTranspositionTableEntry(beta, 0, Transposition::NodeType::BETA, ply);
+
+            ++this->_searchResult.nodes;
 
             return beta;
         }
@@ -1646,9 +1722,9 @@ int Engine::perft(int depth) {
         return 1;
     }
 
-    int nodes = 0;
-
     MoveList moves = this->generateMoves(this->_side);
+
+    int nodes = 0;
 
     for (int i = 0; i < moves.size; ++i) {
         uint16_t &move = moves.moves[i];
@@ -1672,10 +1748,14 @@ void Engine::reset() {
 
     std::memset(this->_occupancies, 0ULL, sizeof(this->_occupancies));
 
+    std::memset(this->_repetitionTable, 0ULL, sizeof(this->_repetitionTable));
+
     this->_occupancyBoth = 0ULL;
     this->_castleRights = this->_INITIAL_CASTLE_RIGHTS;
     this->_side = this->_INITIAL_SIDE;
     this->_enPassantSquare = -1;
+
+    this->_undoStack.clear();
 }
 
 } // namespace engine

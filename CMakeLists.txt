@@ -38,14 +38,8 @@ target_link_libraries(chess PRIVATE fmt::fmt ${OPENAL_LDFLAGS}
 target_link_libraries(chess PRIVATE SFML::System SFML::Window SFML::Graphics)
 
 target_compile_options(
-  chess
-  PRIVATE -O3
-          -march=native
-          -mtune=native
-          -fomit-frame-pointer
-          -ffunction-sections
-          -fdata-sections
-          -fsanitize=address)
+  chess PRIVATE -O3 -march=native -mtune=native -fomit-frame-pointer
+                -ffunction-sections -fdata-sections)
 
 if(APPLE)
   target_link_options(chess PRIVATE -Wl,-dead_strip -Wl,-dead_strip_dylibs)
