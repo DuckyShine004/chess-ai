@@ -38,6 +38,7 @@ void Application::initialise() {
     // this->_engine.parse(EN_PASSANT_POSITIONS[0]);
     // this->_engine.parse(PUZZLE_POSITIONS[1]);
     // this->_engine.parse(NMP_POSITIONS[2]);
+    // this->_engine.parse(REPETITION_POSITIONS[0]);
 
     this->initialiseRenderer();
 

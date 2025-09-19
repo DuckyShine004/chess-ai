@@ -83,7 +83,7 @@ class Engine {
     // NMP
     static inline constexpr int _NMP_REDUCTION = 2;
 
-    static inline constexpr int _SEARCH_DEPTH = 8;
+    static inline constexpr int _SEARCH_DEPTH = 10;
 
     // Aspiration Window
     static inline constexpr int _ASPIRATION_WINDOW_VALUE = 50;
@@ -115,7 +115,8 @@ class Engine {
     int _pvLength[64];
     uint16_t _pvTable[engine::move::MAX_PLY][engine::move::MAX_PLY];
 
-    uint64_t _repetitionTable[engine::move::MAX_PLY + 2];
+    int _repetitionIndex;
+    uint64_t _repetitionTable[1000];
 
     void initialise();
 
