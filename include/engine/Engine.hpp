@@ -73,13 +73,15 @@ class Engine {
 
     static inline constexpr uint8_t _INITIAL_CASTLE_RIGHTS = 0xF;
 
+    static inline constexpr int _MAX_HALF_MOVES = 50;
+
     // LMR
     static inline constexpr int _FULL_DEPTH = 4;
     static inline constexpr int _REDUCTION_DEPTH = 1;
     static inline constexpr int _REDUCTION_LIMIT = 3;
 
     // NMP
-    static inline constexpr int _NMP_REDUCTION = 1;
+    static inline constexpr int _NMP_REDUCTION = 2;
 
     static inline constexpr int _SEARCH_DEPTH = 10;
 
@@ -112,6 +114,9 @@ class Engine {
 
     int _pvLength[64];
     uint16_t _pvTable[engine::move::MAX_PLY][engine::move::MAX_PLY];
+
+    int _repetitionIndex;
+    uint64_t _repetitionTable[1000];
 
     void initialise();
 
@@ -242,6 +247,8 @@ class Engine {
     FORCE_INLINE int probeTranspositionTable(int alpha, int beta, int depth, int ply);
 
     FORCE_INLINE void recordTranspositionTableEntry(int score, int depth, engine::hash::Transposition::NodeType nodeType, int ply);
+
+    FORCE_INLINE bool isRepetition(int ply);
 
     void searchIterative(int depth);
 

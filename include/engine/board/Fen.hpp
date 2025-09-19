@@ -50,6 +50,10 @@ inline constexpr const char *TEST_POSITIONS[1] = {
 inline constexpr const char *EN_PASSANT_POSITIONS[] = {
     "7k/K7/8/8/5p2/8/4P3/8 w - - 0 1",
 };
+
+inline constexpr const char *REPETITION_POSITIONS[] = {
+    "2r3k1/R7/8/1R6/8/8/P4KPP/8 w - - 0 40",
+};
 // inline constexpr const char *EN_PASSANT_POSITIONS[1] = {
 //     "4n3/5P2/8/1k6/8/8/8/2K5 w - - 0 1",
 // };
