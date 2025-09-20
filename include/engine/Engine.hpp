@@ -232,7 +232,7 @@ class Engine {
 
     FORCE_INLINE void storePVMove(const uint16_t move, int ply);
 
-    void orderMoves(engine::move::Move::MoveList &moves, engine::board::ColourType side, int ply);
+    void orderMoves(engine::move::Move::MoveList &moves, uint16_t ttMove, engine::board::ColourType side, int ply);
 
     int seeMove(int from, int to, engine::board::PieceType toPiece, engine::board::ColourType side);
 
@@ -242,9 +242,9 @@ class Engine {
 
     FORCE_INLINE bool isLMR(const uint16_t move, bool isPVNode, bool isParentInCheck);
 
-    FORCE_INLINE int probeTranspositionTable(int alpha, int beta, int depth, int ply);
+    FORCE_INLINE int probeTranspositionTable(int alpha, int beta, int depth, int ply, uint16_t &bestMove);
 
-    FORCE_INLINE void recordTranspositionTableEntry(int score, int depth, engine::hash::Transposition::NodeType nodeType, int ply);
+    FORCE_INLINE void recordTranspositionTableEntry(int score, int depth, engine::hash::Transposition::NodeType nodeType, int ply, uint16_t bestMove);
 
     FORCE_INLINE bool isRepetition(int ply);
 

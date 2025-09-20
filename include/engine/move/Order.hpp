@@ -1,9 +1,9 @@
 #pragma once
 
-#include <climits>
-
 // http://paulwebster.net/mvv-lva-move-ordering/
 namespace engine::move {
+
+inline constexpr int TT_VALUE = 30000;
 
 inline constexpr int PV_VALUE = 20000;
 

@@ -1141,12 +1141,13 @@ void Engine::storePVMove(const uint16_t move, int ply) {
 }
 
 // TODO: Sort moves
-// PV moves [*]
+// TT hash moves [+]
+// PV moves [+]
 // Refutation Table [-]
-// MVV-LVA captures + (SEE?) [*]
-// Killer Moves [*]
-// History [*]
-void Engine::orderMoves(Move::MoveList &moves, ColourType side, int ply) {
+// MVV-LVA captures + (SEE?) [+][-]
+// Killer Moves [+]
+// History [+]
+void Engine::orderMoves(Move::MoveList &moves, uint16_t ttMove, ColourType side, int ply) {
     int scores[256];
 
     ColourType otherSide = BoardUtility::getOtherSide(side);
@@ -1164,7 +1165,9 @@ void Engine::orderMoves(Move::MoveList &moves, ColourType side, int ply) {
 
         int score = 0;
 
-        if (pvMove == move) {
+        if (ttMove == move) {
+            score = TT_VALUE;
+        } else if (pvMove == move) {
             score = PV_VALUE;
         } else if (Move::isGeneralCapture(move)) {
             PieceType toPiece = BoardUtility::getPiece(this->_bitboards, to, otherSide);
@@ -1252,42 +1255,46 @@ bool Engine::isLMR(const uint16_t move, bool isPVNode, bool isParentInCheck) {
 }
 
 // PERF: performing large mod operations could be costly, use fast mod if needed
-int Engine::probeTranspositionTable(int alpha, int beta, int depth, int ply) {
+int Engine::probeTranspositionTable(int alpha, int beta, int depth, int ply, uint16_t &bestMove) {
     const size_t index = this->_zobrist & Transposition::TRANSPOSITION_TABLE_MASK;
     // const size_t index = this->_zobrist % Transposition::TRANSPOSITION_TABLE_ENTRIES;
 
     Transposition::Entry *entry = &this->_transpositionTable[index];
 
-    if (entry->zobrist == this->_zobrist && entry->depth >= depth) {
-        int score = entry->score;
+    if (entry->zobrist == this->_zobrist) {
+        if (entry->depth >= depth) {
+            int score = entry->score;
 
-        // Decode the mate score
-        if (score > Score::CHECKMATE_THRESHOLD) {
-            score -= ply;
+            // Decode the mate score
+            if (score > Score::CHECKMATE_THRESHOLD) {
+                score -= ply;
+            }
+
+            if (score < -Score::CHECKMATE_THRESHOLD) {
+                score += ply;
+            }
+
+            if (entry->nodeType == Transposition::NodeType::EXACT) {
+                return score;
+            }
+
+            if (entry->nodeType == Transposition::NodeType::ALPHA && score <= alpha) {
+                return alpha;
+            }
+
+            if (entry->nodeType == Transposition::NodeType::BETA && score >= beta) {
+                return beta;
+            }
         }
 
-        if (score < -Score::CHECKMATE_THRESHOLD) {
-            score += ply;
-        }
-
-        if (entry->nodeType == Transposition::NodeType::EXACT) {
-            return score;
-        }
-
-        if (entry->nodeType == Transposition::NodeType::ALPHA && score <= alpha) {
-            return alpha;
-        }
-
-        if (entry->nodeType == Transposition::NodeType::BETA && score >= beta) {
-            return beta;
-        }
+        bestMove = entry->bestMove;
     }
 
     return -1;
 }
 
 // PERF: Try deeper replacement policy
-void Engine::recordTranspositionTableEntry(int score, int depth, Transposition::NodeType nodeType, int ply) {
+void Engine::recordTranspositionTableEntry(int score, int depth, Transposition::NodeType nodeType, int ply, uint16_t bestMove) {
     const size_t index = this->_zobrist & Transposition::TRANSPOSITION_TABLE_MASK;
     // const size_t index = this->_zobrist % Transposition::TRANSPOSITION_TABLE_ENTRIES;
 
@@ -1307,6 +1314,8 @@ void Engine::recordTranspositionTableEntry(int score, int depth, Transposition::
 
     entry->score = score;
     entry->depth = depth;
+
+    entry->bestMove = bestMove;
 
     entry->nodeType = nodeType;
 }
@@ -1409,11 +1418,13 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
     //     return 0;
     // }
 
-    int transpositionTableScore = this->probeTranspositionTable(alpha, beta, depth, ply);
+    uint16_t ttMove = 0U;
 
-    // if (transpositionTableScore != -1) {
-    //     return transpositionTableScore;
-    // }
+    int transpositionTableScore = this->probeTranspositionTable(alpha, beta, depth, ply, ttMove);
+
+    if (transpositionTableScore != -1) {
+        return transpositionTableScore;
+    }
 
     if (depth == 0) {
         return this->quiescence(alpha, beta, ply);
@@ -1435,7 +1446,7 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
         --this->_repetitionIndex;
 
         if (score >= beta) {
-            this->recordTranspositionTableEntry(beta, depth, Transposition::NodeType::BETA, ply);
+            // this->recordTranspositionTableEntry(beta, depth, Transposition::NodeType::BETA, ply, ttMove);
 
             return beta;
         }
@@ -1447,7 +1458,7 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
     Transposition::NodeType transpositionTableNodeType = Transposition::NodeType::ALPHA;
 
-    this->orderMoves(moves, this->_side, ply);
+    this->orderMoves(moves, ttMove, this->_side, ply);
 
     for (int i = 0; i < moves.size; ++i) {
         uint16_t &move = moves.moves[i];
@@ -1493,7 +1504,7 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
         if (score >= beta) {
             this->storeKillerMove(move, ply);
 
-            this->recordTranspositionTableEntry(beta, depth, Transposition::NodeType::BETA, ply);
+            this->recordTranspositionTableEntry(beta, depth, Transposition::NodeType::BETA, ply, ttMove);
 
             return beta;
         }
@@ -1505,6 +1516,8 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
             transpositionTableNodeType = Transposition::NodeType::EXACT;
 
+            ttMove = move;
+
             alpha = score;
         }
     }
@@ -1513,21 +1526,22 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
         if (this->isInCheck(this->_side)) {
             int checkMateScore = Score::getCheckMateScore(ply);
 
-            this->recordTranspositionTableEntry(checkMateScore, depth, Transposition::NodeType::EXACT, ply);
+            // this->recordTranspositionTableEntry(checkMateScore, depth, Transposition::NodeType::EXACT, ply, ttMove);
 
             return checkMateScore;
         }
 
-        this->recordTranspositionTableEntry(0, depth, Transposition::NodeType::EXACT, ply);
+        // this->recordTranspositionTableEntry(0, depth, Transposition::NodeType::EXACT, ply, ttMove);
 
         return 0;
     }
 
-    this->recordTranspositionTableEntry(alpha, depth, transpositionTableNodeType, ply);
+    this->recordTranspositionTableEntry(alpha, depth, transpositionTableNodeType, ply, ttMove);
 
     return alpha;
 }
 
+// WARN: Don't use TT in quiescence? Cannot prove
 int Engine::quiescence(int alpha, int beta, int ply) {
     ++this->_searchResult.nodes;
 
@@ -1537,13 +1551,13 @@ int Engine::quiescence(int alpha, int beta, int ply) {
     //     return 0;
     // }
 
-    int transpositionTableScore = this->probeTranspositionTable(alpha, beta, 0, ply);
+    // int transpositionTableScore = this->probeTranspositionTable(alpha, beta, 0, ply);
 
     // if (transpositionTableScore != -1) {
     //     return transpositionTableScore;
     // }
 
-    Transposition::NodeType transpositionTableNodeType = Transposition::NodeType::ALPHA;
+    // Transposition::NodeType transpositionTableNodeType = Transposition::NodeType::ALPHA;
 
     // Standing pat is illegal if king is in check
     if (this->isInCheck(this->_side)) {
@@ -1551,7 +1565,7 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 
         Move::MoveList moves = this->generateMoves(this->_side);
 
-        this->orderMoves(moves, this->_side, ply);
+        this->orderMoves(moves, 0U, this->_side, ply);
 
         for (int i = 0; i < moves.size; ++i) {
             uint16_t move = moves.moves[i];
@@ -1579,7 +1593,7 @@ int Engine::quiescence(int alpha, int beta, int ply) {
             }
 
             if (score > alpha) {
-                transpositionTableNodeType = Transposition::NodeType::EXACT;
+                // transpositionTableNodeType = Transposition::NodeType::EXACT;
 
                 alpha = score;
             }
@@ -1608,14 +1622,14 @@ int Engine::quiescence(int alpha, int beta, int ply) {
     }
 
     if (standingPat > alpha) {
-        transpositionTableNodeType = Transposition::NodeType::EXACT;
+        // transpositionTableNodeType = Transposition::NodeType::EXACT;
 
         alpha = standingPat;
     }
 
     MoveList captures = this->generateCaptures(this->_side);
 
-    this->orderMoves(captures, this->_side, ply);
+    this->orderMoves(captures, 0U, this->_side, ply);
 
     for (int i = 0; i < captures.size; ++i) {
         uint16_t &capture = captures.moves[i];
@@ -1641,7 +1655,7 @@ int Engine::quiescence(int alpha, int beta, int ply) {
         }
 
         if (score > alpha) {
-            transpositionTableNodeType = Transposition::NodeType::EXACT;
+            // transpositionTableNodeType = Transposition::NodeType::EXACT;
 
             alpha = score;
         }
@@ -1816,6 +1830,7 @@ int Engine::evaluate(ColourType side) {
 }
 
 // s = (so * gps + se * (ops - gps)) / ops
+// NOTE: CMK Pesto implementation
 int Engine::evaluatePesto(ColourType side) {
     GamePhase gamePhase = GamePhase::MIDDLEGAME;
 
