@@ -1688,6 +1688,7 @@ int Engine::evaluate(ColourType side) {
             if (piece == PieceType::KNIGHT) {
                 score += BitUtility::popCount(Knight::ATTACKS[square]);
             }
+
             // Check bishop mobility
             if (piece == PieceType::BISHOP) {
                 score += BitUtility::popCount(Bishop::getAttacks(square, this->_occupancyBoth));
@@ -1828,6 +1829,11 @@ int Engine::evaluatePesto(ColourType side) {
 
     const int gamePhaseScoreDifference = OPENING_SCORE - gamePhaseScore;
 
+    const uint64_t whitePawns = this->_bitboards[ColourType::WHITE][PieceType::PAWN];
+    const uint64_t blackPawns = this->_bitboards[ColourType::BLACK][PieceType::PAWN];
+
+    const uint64_t bothPawns = whitePawns | blackPawns;
+
     int scoreOpening = 0;
     int scoreEndgame = 0;
 
@@ -1842,6 +1848,85 @@ int Engine::evaluatePesto(ColourType side) {
 
             scoreOpening += POSITION_VALUES[GamePhase::OPENING][piece][square];
             scoreEndgame += POSITION_VALUES[GamePhase::ENDGAME][piece][square];
+
+            int file = FILE_FROM_SQUARE[square];
+            int rank = RANK_FROM_SQUARE[square];
+
+            // Pawn penalties and bonuses
+            if (piece == PieceType::PAWN) {
+                // Check if pawn on file is isolated
+                if ((whitePawns & ISOLATED_FILE_MASKS[file]) == 0ULL) {
+                    scoreOpening += ISOLATED_PAWN_PENALTY_PESTO[GamePhase::OPENING];
+                    scoreEndgame += ISOLATED_PAWN_PENALTY_PESTO[GamePhase::ENDGAME];
+                }
+
+                // Check if black pawns blocking path
+                if ((blackPawns & PASSED_PAWN_MASKS[ColourType::WHITE][square]) == 0ULL) {
+                    scoreOpening += PASSED_PAWN_BONUS_PESTO[rank];
+                    scoreEndgame += PASSED_PAWN_BONUS_PESTO[rank];
+                }
+
+                // Check stacked pawns
+                const uint64_t stackedPawns = whitePawns & FILE_MASKS[file];
+
+                int numberOfStackedPawns = BitUtility::popCount(stackedPawns);
+
+                // Penalty is < 0 so should be fine just adding- white stacked pawns
+                if (numberOfStackedPawns > 1) {
+                    scoreOpening += (numberOfStackedPawns - 1) * STACKED_PAWN_PENALTY_PESTO[GamePhase::OPENING];
+                    scoreEndgame += (numberOfStackedPawns - 1) * STACKED_PAWN_PENALTY_PESTO[GamePhase::ENDGAME];
+                }
+            }
+
+            // Check bishop mobility
+            if (piece == PieceType::BISHOP) {
+                int bishopAttackValue = BitUtility::popCount(Bishop::getAttacks(square, this->_occupancyBoth)) - BISHOP_OFFSET_VALUE;
+
+                scoreOpening += bishopAttackValue * BISHOP_MOBILITY_WEIGHT[GamePhase::OPENING];
+                scoreEndgame += bishopAttackValue * BISHOP_MOBILITY_WEIGHT[GamePhase::ENDGAME];
+            }
+
+            // Check rook semi and full open files
+            if (piece == PieceType::ROOK) {
+                if ((whitePawns & FILE_MASKS[file]) == 0ULL) {
+                    scoreOpening += SEMI_OPEN_FILE_SCORE_PESTO;
+                    scoreEndgame += SEMI_OPEN_FILE_SCORE_PESTO;
+                }
+
+                if ((bothPawns & FILE_MASKS[file]) == 0ULL) {
+                    scoreOpening += OPEN_FILE_SCORE_PESTO;
+                    scoreEndgame += OPEN_FILE_SCORE_PESTO;
+                }
+            }
+
+            // Check queen mobility
+            if (piece == PieceType::QUEEN) {
+                int queenAttackValue = BitUtility::popCount(Queen::getAttacks(square, this->_occupancyBoth)) - QUEEN_OFFSET_VALUE;
+
+                scoreOpening += queenAttackValue * QUEEN_MOBILITY_WEIGHT[GamePhase::OPENING];
+                scoreEndgame += queenAttackValue * QUEEN_MOBILITY_WEIGHT[GamePhase::ENDGAME];
+            }
+
+            // We don't want king open files apply penalty
+            if (piece == PieceType::KING) {
+                if ((whitePawns & FILE_MASKS[file]) == 0ULL) {
+                    scoreOpening -= SEMI_OPEN_FILE_SCORE_PESTO;
+                    scoreEndgame -= SEMI_OPEN_FILE_SCORE_PESTO;
+                }
+
+                if ((bothPawns & FILE_MASKS[file]) == 0ULL) {
+                    scoreOpening -= OPEN_FILE_SCORE_PESTO;
+                    scoreEndgame -= OPEN_FILE_SCORE_PESTO;
+                }
+
+                // Apply king safety factor
+                int kingAttacks = BitUtility::popCount(King::ATTACKS[square] & this->_occupancies[ColourType::WHITE]);
+
+                int kingSafetyBonus = KING_SAFETY_WEIGHT_PESTO * kingAttacks;
+
+                scoreOpening += kingSafetyBonus;
+                scoreEndgame += kingSafetyBonus;
+            }
         }
 
         uint64_t blackPieces = this->_bitboards[ColourType::BLACK][piece];
@@ -1856,6 +1941,76 @@ int Engine::evaluatePesto(ColourType side) {
 
             scoreOpening -= POSITION_VALUES[GamePhase::OPENING][piece][mirrorSquare];
             scoreEndgame -= POSITION_VALUES[GamePhase::ENDGAME][piece][mirrorSquare];
+
+            int file = FILE_FROM_SQUARE[mirrorSquare];
+            int rank = RANK_FROM_SQUARE[mirrorSquare];
+
+            if (piece == PieceType::PAWN) {
+                if ((blackPawns & ISOLATED_FILE_MASKS[file]) == 0ULL) {
+                    scoreOpening -= ISOLATED_PAWN_PENALTY_PESTO[GamePhase::OPENING];
+                    scoreEndgame -= ISOLATED_PAWN_PENALTY_PESTO[GamePhase::ENDGAME];
+                }
+
+                if ((whitePawns & PASSED_PAWN_MASKS[ColourType::BLACK][square]) == 0ULL) {
+                    scoreOpening -= PASSED_PAWN_BONUS_PESTO[rank];
+                    scoreEndgame -= PASSED_PAWN_BONUS_PESTO[rank];
+                }
+
+                const uint64_t stackedPawns = blackPawns & FILE_MASKS[file];
+
+                int numberOfStackedPawns = BitUtility::popCount(stackedPawns);
+
+                if (numberOfStackedPawns > 1) {
+                    scoreOpening -= (numberOfStackedPawns - 1) * STACKED_PAWN_PENALTY_PESTO[GamePhase::OPENING];
+                    scoreEndgame -= (numberOfStackedPawns - 1) * STACKED_PAWN_PENALTY_PESTO[GamePhase::ENDGAME];
+                }
+            }
+
+            if (piece == PieceType::BISHOP) {
+                int bishopAttackValue = BitUtility::popCount(Bishop::getAttacks(square, this->_occupancyBoth)) - BISHOP_OFFSET_VALUE;
+
+                scoreOpening -= bishopAttackValue * BISHOP_MOBILITY_WEIGHT[GamePhase::OPENING];
+                scoreEndgame -= bishopAttackValue * BISHOP_MOBILITY_WEIGHT[GamePhase::ENDGAME];
+            }
+
+            if (piece == PieceType::ROOK) {
+                if ((blackPawns & FILE_MASKS[file]) == 0ULL) {
+                    scoreOpening -= SEMI_OPEN_FILE_SCORE_PESTO;
+                    scoreEndgame -= SEMI_OPEN_FILE_SCORE_PESTO;
+                }
+
+                if ((bothPawns & FILE_MASKS[file]) == 0ULL) {
+                    scoreOpening -= OPEN_FILE_SCORE_PESTO;
+                    scoreEndgame -= OPEN_FILE_SCORE_PESTO;
+                }
+            }
+
+            if (piece == PieceType::QUEEN) {
+                int queenAttackValue = BitUtility::popCount(Queen::getAttacks(square, this->_occupancyBoth)) - QUEEN_OFFSET_VALUE;
+
+                scoreOpening -= queenAttackValue * QUEEN_MOBILITY_WEIGHT[GamePhase::OPENING];
+                scoreEndgame -= queenAttackValue * QUEEN_MOBILITY_WEIGHT[GamePhase::ENDGAME];
+            }
+
+            if (piece == PieceType::KING) {
+                if ((blackPawns & FILE_MASKS[file]) == 0ULL) {
+                    scoreOpening += SEMI_OPEN_FILE_SCORE_PESTO;
+                    scoreEndgame += SEMI_OPEN_FILE_SCORE_PESTO;
+                }
+
+                if ((bothPawns & FILE_MASKS[file]) == 0ULL) {
+                    scoreOpening += OPEN_FILE_SCORE_PESTO;
+                    scoreEndgame += OPEN_FILE_SCORE_PESTO;
+                }
+
+                // Apply king safety factor
+                int kingAttacks = BitUtility::popCount(King::ATTACKS[square] & this->_occupancies[ColourType::BLACK]);
+
+                int kingSafetyBonus = KING_SAFETY_WEIGHT_PESTO * kingAttacks;
+
+                scoreOpening -= kingSafetyBonus;
+                scoreEndgame -= kingSafetyBonus;
+            }
         }
     }
 

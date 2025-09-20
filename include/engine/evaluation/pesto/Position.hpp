@@ -133,15 +133,24 @@ inline constexpr int POSITION_VALUES[2][6][64] = {
 // clang-format on
 
 // Pawn penalties
-inline constexpr int STACKED_PAWN_PENALTY[2] = { -5, -10 };
+inline constexpr int STACKED_PAWN_PENALTY_PESTO[2] = { -5, -10 };
 
-inline constexpr int ISOLATED_PAWN_PENALTY[2] = { -5, -10 };
+inline constexpr int ISOLATED_PAWN_PENALTY_PESTO[2] = { -5, -10 };
 
-inline constexpr int PASSED_PAWN_BONUS[8] = { 0, 10, 30, 50, 75, 100, 150, 200 };
+inline constexpr int PASSED_PAWN_BONUS_PESTO[8] = { 0, 10, 30, 50, 75, 100, 150, 200 };
 
 // Rook open files
-inline constexpr int SEMI_OPEN_FILE_SCORE = 10;
+inline constexpr int SEMI_OPEN_FILE_SCORE_PESTO = 10;
 
-inline constexpr int OPEN_FILE_SCORE = 15;
+inline constexpr int OPEN_FILE_SCORE_PESTO = 15;
+
+inline constexpr int BISHOP_MOBILITY_WEIGHT[2] = { 5, 5 };
+inline constexpr int BISHOP_OFFSET_VALUE = 4;
+
+inline constexpr int QUEEN_MOBILITY_WEIGHT[2] = { 1, 2 };
+inline constexpr int QUEEN_OFFSET_VALUE = 9;
+
+// King safety factor
+inline constexpr int KING_SAFETY_WEIGHT_PESTO = 5;
 
 } // namespace engine::evaluation::pesto
