@@ -81,9 +81,9 @@ class Engine {
     static inline constexpr int _REDUCTION_LIMIT = 3;
 
     // NMP
-    static inline constexpr int _NMP_REDUCTION = 2;
+    static inline constexpr int _NMP_REDUCTION = 1;
 
-    static inline constexpr int _SEARCH_DEPTH = 10;
+    static inline constexpr int _SEARCH_DEPTH = 9;
 
     // Aspiration Window
     static inline constexpr int _ASPIRATION_WINDOW_VALUE = 50;
@@ -186,8 +186,6 @@ class Engine {
 
     bool areSquaresAttacked(uint64_t squares, engine::board::ColourType side);
 
-    int getKingSquare(engine::board::ColourType side);
-
     void updateCastleRights();
 
     void updateCastleRights(engine::board::ColourType side);
@@ -262,7 +260,7 @@ class Engine {
 
     int evaluatePesto(engine::board::ColourType side);
 
-    int perft(int depth);
+    uint64_t perft(int depth);
 
     void reset();
 };

@@ -54,8 +54,25 @@ inline constexpr const char *EN_PASSANT_POSITIONS[] = {
 inline constexpr const char *REPETITION_POSITIONS[] = {
     "2r3k1/R7/8/1R6/8/8/P4KPP/8 w - - 0 40",
 };
-// inline constexpr const char *EN_PASSANT_POSITIONS[1] = {
-//     "4n3/5P2/8/1k6/8/8/8/2K5 w - - 0 1",
-// };
-//
+
+inline constexpr const char *STACKED_PAWN_POSITIONS[] = {
+    "8/p6p/p6p/8/8/P6P/P6P/8 b - - - -",
+};
+
+inline constexpr const char *ISOLATED_PAWN_POSITIONS[] = {
+    "8/p1p1p1pp/8/8/8/8/P1P1P1PP/8 b - - - -",
+};
+
+inline constexpr const char *PASSED_PAWN_POSITIONS[] = {
+    "8/8/8/P1P5/5p1p/8/8/8 b - - - -",
+};
+
+inline constexpr const char *SEMI_OPEN_FILE_POSITIONS[] = {
+    "6k1/5ppp/8/8/8/8/P4P1P/6K1 b - - 0 1",
+};
+
+inline constexpr const char *OPEN_FILE_POSITIONS[] = {
+
+};
+
 } // namespace engine::board
