@@ -83,6 +83,8 @@ uint16_t &Engine::getMove() {
     // LOG_INFO("Performing iterative root search");
     this->searchIterative(this->_SEARCH_DEPTH);
 
+    // this->searchRoot(this->_SEARCH_DEPTH);
+
     // if (!this->_searchResult.isMoveFound) {
     //     throw std::runtime_error("Engine could not find move...");
     // }
@@ -103,7 +105,7 @@ void Engine::runPerft(int depth) {
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    int nodes = this->perft(depth);
+    uint64_t nodes = this->perft(depth);
 
     auto end = std::chrono::high_resolution_clock::now();
 
@@ -722,7 +724,13 @@ bool Engine::isInCheck() {
 }
 
 bool Engine::isInCheck(ColourType side) {
-    int kingSquare = this->getKingSquare(side);
+    const uint64_t king = this->_bitboards[side][PieceType::KING];
+
+    if (this->_bitboards[side][PieceType::KING] == 0ULL) {
+        return false;
+    }
+
+    int kingSquare = BitUtility::getLSBIndex(king);
 
     return this->isSquareAttacked(kingSquare, side);
 }
@@ -770,10 +778,6 @@ bool Engine::areSquaresAttacked(uint64_t squares, ColourType side) {
     }
 
     return false;
-}
-
-int Engine::getKingSquare(ColourType side) {
-    return BitUtility::getLSBIndex(this->_bitboards[side][PieceType::KING]);
 }
 
 void Engine::updateCastleRights() {
@@ -1309,9 +1313,9 @@ void Engine::recordTranspositionTableEntry(int score, int depth, Transposition::
 
 bool Engine::isRepetition(int ply) {
     // BUG: This harms the performance of the engine for some reason
-    if (this->_halfMove >= 100) {
-        return true;
-    }
+    // if (this->_halfMove >= 100) {
+    //     return true;
+    // }
 
     if (ply == 0) {
         return false;
@@ -1332,6 +1336,9 @@ bool Engine::isRepetition(int ply) {
 // Last move is capturing [-]
 // Current best score is much lower than the value of previous ply [-]
 void Engine::searchIterative(int depth) {
+    LOG_INFO("Score for white: {}", this->evaluate(ColourType::WHITE));
+    LOG_INFO("Score for black: {}", this->evaluate(ColourType::BLACK));
+
     std::memset(this->_killerMoves, 0, sizeof(this->_killerMoves));
     std::memset(this->_historyMoves, 0, sizeof(this->_historyMoves));
     std::memset(this->_pvLength, 0, sizeof(this->_pvLength));
@@ -1367,7 +1374,24 @@ void Engine::searchIterative(int depth) {
     this->_searchResult.bestMove = this->_pvTable[0][0];
 
     if (this->_searchResult.bestMove == 0U) {
-        throw std::runtime_error("Engine could not find move...");
+        // throw std::runtime_error("Engine could not find move...");
+        LOG_ERROR("Engine could not find a move...");
+    }
+}
+
+void Engine::searchRoot(int depth) {
+    std::memset(this->_killerMoves, 0, sizeof(this->_killerMoves));
+    std::memset(this->_historyMoves, 0, sizeof(this->_historyMoves));
+    std::memset(this->_pvLength, 0, sizeof(this->_pvLength));
+    std::memset(this->_pvTable, 0, sizeof(this->_pvTable));
+
+    this->search(-Score::INF, Score::INF, depth, 0);
+
+    this->_searchResult.bestMove = this->_pvTable[0][0];
+
+    if (this->_searchResult.bestMove == 0U) {
+        // throw std::runtime_error("Engine could not find move...");
+        LOG_ERROR("Engine could not find a move...");
     }
 }
 
@@ -1379,17 +1403,17 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
     this->_pvLength[ply] = ply;
 
     // TODO: Return contempt
-    if (this->isRepetition(ply)) {
-        this->recordTranspositionTableEntry(0, depth, Transposition::NodeType::EXACT, ply);
-
-        return 0;
-    }
+    // if (this->isRepetition(ply)) {
+    //     this->recordTranspositionTableEntry(0, depth, Transposition::NodeType::EXACT, ply);
+    //
+    //     return 0;
+    // }
 
     int transpositionTableScore = this->probeTranspositionTable(alpha, beta, depth, ply);
 
-    if (transpositionTableScore != -1) {
-        return transpositionTableScore;
-    }
+    // if (transpositionTableScore != -1) {
+    //     return transpositionTableScore;
+    // }
 
     if (depth == 0) {
         return this->quiescence(alpha, beta, ply);
@@ -1507,17 +1531,17 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 int Engine::quiescence(int alpha, int beta, int ply) {
     ++this->_searchResult.nodes;
 
-    if (this->isRepetition(ply)) {
-        this->recordTranspositionTableEntry(0, 0, Transposition::NodeType::EXACT, ply);
-
-        return 0;
-    }
+    // if (this->isRepetition(ply)) {
+    //     this->recordTranspositionTableEntry(0, 0, Transposition::NodeType::EXACT, ply);
+    //
+    //     return 0;
+    // }
 
     int transpositionTableScore = this->probeTranspositionTable(alpha, beta, 0, ply);
 
-    if (transpositionTableScore != -1) {
-        return transpositionTableScore;
-    }
+    // if (transpositionTableScore != -1) {
+    //     return transpositionTableScore;
+    // }
 
     Transposition::NodeType transpositionTableNodeType = Transposition::NodeType::ALPHA;
 
@@ -1549,7 +1573,7 @@ int Engine::quiescence(int alpha, int beta, int ply) {
             --this->_repetitionIndex;
 
             if (score >= beta) {
-                this->recordTranspositionTableEntry(beta, 0, Transposition::NodeType::BETA, ply);
+                // this->recordTranspositionTableEntry(beta, 0, Transposition::NodeType::BETA, ply);
 
                 return beta;
             }
@@ -1564,12 +1588,12 @@ int Engine::quiescence(int alpha, int beta, int ply) {
         if (!isLegalMovesFound) {
             int checkMateScore = Score::getCheckMateScore(ply);
 
-            this->recordTranspositionTableEntry(checkMateScore, 0, Transposition::NodeType::EXACT, ply);
+            // this->recordTranspositionTableEntry(checkMateScore, 0, Transposition::NodeType::EXACT, ply);
 
             return checkMateScore;
         }
 
-        this->recordTranspositionTableEntry(alpha, 0, transpositionTableNodeType, ply);
+        // this->recordTranspositionTableEntry(alpha, 0, transpositionTableNodeType, ply);
 
         return alpha;
     }
@@ -1578,7 +1602,7 @@ int Engine::quiescence(int alpha, int beta, int ply) {
     // int standingPat = this->evaluatePesto(this->_side);
 
     if (standingPat >= beta) {
-        this->recordTranspositionTableEntry(beta, 0, Transposition::NodeType::BETA, ply);
+        // this->recordTranspositionTableEntry(beta, 0, Transposition::NodeType::BETA, ply);
 
         return beta;
     }
@@ -1611,7 +1635,7 @@ int Engine::quiescence(int alpha, int beta, int ply) {
         --this->_repetitionIndex;
 
         if (score >= beta) {
-            this->recordTranspositionTableEntry(beta, 0, Transposition::NodeType::BETA, ply);
+            // this->recordTranspositionTableEntry(beta, 0, Transposition::NodeType::BETA, ply);
 
             return beta;
         }
@@ -1623,7 +1647,7 @@ int Engine::quiescence(int alpha, int beta, int ply) {
         }
     }
 
-    this->recordTranspositionTableEntry(alpha, 0, transpositionTableNodeType, ply);
+    // this->recordTranspositionTableEntry(alpha, 0, transpositionTableNodeType, ply);
 
     return alpha;
 }
@@ -1632,11 +1656,74 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 int Engine::evaluate(ColourType side) {
     int score = 0;
 
+    const uint64_t whitePawns = this->_bitboards[ColourType::WHITE][PieceType::PAWN];
+    const uint64_t blackPawns = this->_bitboards[ColourType::BLACK][PieceType::PAWN];
+
+    const uint64_t bothPawns = whitePawns | blackPawns;
+
     for (uint8_t piece = PieceType::PAWN; piece <= PieceType::KING; ++piece) {
         uint64_t whitePieces = this->_bitboards[ColourType::WHITE][piece];
 
+        // Material
         while (whitePieces) {
             int square = BitUtility::popLSB(whitePieces);
+
+            int file = FILE_FROM_SQUARE[square];
+            int rank = RANK_FROM_SQUARE[square];
+
+            // Pawn penalties and bonuses
+            if (piece == PieceType::PAWN) {
+                // Check if pawn on file is isolated
+                if ((whitePawns & ISOLATED_FILE_MASKS[file]) == 0ULL) {
+                    score += ISOLATED_PAWN_PENALTY;
+                }
+
+                // Check if black pawns blocking path
+                if ((blackPawns & PASSED_PAWN_MASKS[ColourType::WHITE][square]) == 0ULL) {
+                    score += PASSED_PAWN_BONUS[rank];
+                }
+            }
+
+            // Check knight mobility
+            if (piece == PieceType::KNIGHT) {
+                score += BitUtility::popCount(Knight::ATTACKS[square]);
+            }
+            // Check bishop mobility
+            if (piece == PieceType::BISHOP) {
+                score += BitUtility::popCount(Bishop::getAttacks(square, this->_occupancyBoth));
+            }
+
+            // Check rook semi and full open files
+            if (piece == PieceType::ROOK) {
+                if ((whitePawns & FILE_MASKS[file]) == 0ULL) {
+                    score += SEMI_OPEN_FILE_SCORE;
+                }
+
+                if ((bothPawns & FILE_MASKS[file]) == 0ULL) {
+                    score += OPEN_FILE_SCORE;
+                }
+            }
+
+            // Check queen mobility
+            if (piece == PieceType::QUEEN) {
+                score += BitUtility::popCount(Queen::getAttacks(square, this->_occupancyBoth));
+            }
+
+            // We don't want king open files apply penalty
+            if (piece == PieceType::KING) {
+                if ((whitePawns & FILE_MASKS[file]) == 0ULL) {
+                    score -= SEMI_OPEN_FILE_SCORE;
+                }
+
+                if ((bothPawns & FILE_MASKS[file]) == 0ULL) {
+                    score -= OPEN_FILE_SCORE;
+                }
+
+                // Apply king safety factor
+                score += KING_SAFETY_FACTOR * BitUtility::popCount(King::ATTACKS[square] & this->_occupancies[ColourType::WHITE]);
+            }
+
+            // LOG_INFO("File: {}, Rank: {}", BoardUtility::getFile(square), BoardUtility::getRank(square));
 
             score += POSITION_TABLES[piece][square];
         }
@@ -1646,12 +1733,82 @@ int Engine::evaluate(ColourType side) {
         while (blackPieces) {
             int square = BitUtility::popLSB(blackPieces);
 
-            score -= POSITION_TABLES[piece][MIRROR[square]];
+            int mirrorSquare = MIRROR[square];
+
+            int file = FILE_FROM_SQUARE[mirrorSquare];
+            int rank = RANK_FROM_SQUARE[mirrorSquare];
+
+            if (piece == PieceType::PAWN) {
+                if ((blackPawns & ISOLATED_FILE_MASKS[file]) == 0ULL) {
+                    score -= ISOLATED_PAWN_PENALTY;
+                }
+
+                if ((whitePawns & PASSED_PAWN_MASKS[ColourType::BLACK][square]) == 0ULL) {
+                    score -= PASSED_PAWN_BONUS[rank];
+                }
+            }
+
+            if (piece == PieceType::KNIGHT) {
+                score -= BitUtility::popCount(Knight::ATTACKS[square]);
+            }
+
+            if (piece == PieceType::BISHOP) {
+                score -= BitUtility::popCount(Bishop::getAttacks(square, this->_occupancyBoth));
+            }
+
+            if (piece == PieceType::ROOK) {
+                if ((blackPawns & FILE_MASKS[file]) == 0ULL) {
+                    score -= SEMI_OPEN_FILE_SCORE;
+                }
+
+                if ((bothPawns & FILE_MASKS[file]) == 0ULL) {
+                    score -= OPEN_FILE_SCORE;
+                }
+            }
+
+            if (piece == PieceType::QUEEN) {
+                score -= BitUtility::popCount(Queen::getAttacks(square, this->_occupancyBoth));
+            }
+
+            if (piece == PieceType::KING) {
+                if ((blackPawns & FILE_MASKS[file]) == 0ULL) {
+                    score += SEMI_OPEN_FILE_SCORE;
+                }
+
+                if ((bothPawns & FILE_MASKS[file]) == 0ULL) {
+                    score += OPEN_FILE_SCORE;
+                }
+
+                score -= KING_SAFETY_FACTOR * BitUtility::popCount(King::ATTACKS[square] & this->_occupancies[ColourType::BLACK]);
+            }
+
+            score -= POSITION_TABLES[piece][mirrorSquare];
         }
 
         int materialDifference = BitUtility::popCount(this->_bitboards[ColourType::WHITE][piece]) - BitUtility::popCount(this->_bitboards[ColourType::BLACK][piece]);
 
         score += MATERIAL_TABLE[piece] * materialDifference;
+    }
+
+    // Check how many stacked pawns there are
+    for (int file = 0; file < 8; ++file) {
+        uint64_t stackedPawns = whitePawns & FILE_MASKS[file];
+
+        int numberOfStackedPawns = BitUtility::popCount(stackedPawns);
+
+        // Penalty is < 0 so should be fine just adding- white stacked pawns
+        if (numberOfStackedPawns > 1) {
+            score += (numberOfStackedPawns - 1) * STACKED_PAWN_PENALTY;
+        }
+
+        stackedPawns = blackPawns & FILE_MASKS[file];
+
+        numberOfStackedPawns = BitUtility::popCount(stackedPawns);
+
+        // Black stacked pawns
+        if (numberOfStackedPawns > 1) {
+            score -= (numberOfStackedPawns - 1) * STACKED_PAWN_PENALTY;
+        }
     }
 
     return (side == ColourType::WHITE) ? score : -score;
@@ -1698,14 +1855,14 @@ int Engine::evaluatePesto(ColourType side) {
     return (side == ColourType::WHITE) ? score : -score;
 }
 
-int Engine::perft(int depth) {
+uint64_t Engine::perft(int depth) {
     if (depth == 0) {
         return 1;
     }
 
     MoveList moves = this->generateMoves(this->_side);
 
-    int nodes = 0;
+    uint64_t nodes = 0ULL;
 
     for (int i = 0; i < moves.size; ++i) {
         uint16_t &move = moves.moves[i];
