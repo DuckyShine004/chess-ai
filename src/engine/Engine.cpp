@@ -1341,7 +1341,7 @@ bool Engine::isRepetition(int ply) {
 
 // TODO: Search extension
 // Low mobility [-]
-// In-check [-]
+// In-check [+]
 // Last move is capturing [-]
 // Current best score is much lower than the value of previous ply [-]
 void Engine::searchIterative(int depth) {
@@ -1434,6 +1434,11 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
     bool isParentInCheck = this->isInCheck(this->_side);
 
+    // Search extension for parent in check
+    if (isParentInCheck) {
+        ++depth;
+    }
+
     if (this->isNMP(isPVNode, isParentInCheck, depth, ply)) {
         this->_repetitionTable[this->_repetitionIndex++] = this->_zobrist;
 
@@ -1446,8 +1451,6 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
         --this->_repetitionIndex;
 
         if (score >= beta) {
-            // this->recordTranspositionTableEntry(beta, depth, Transposition::NodeType::BETA, ply, ttMove);
-
             return beta;
         }
     }
@@ -1501,14 +1504,6 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
         --this->_repetitionIndex;
 
-        if (score >= beta) {
-            this->storeKillerMove(move, ply);
-
-            this->recordTranspositionTableEntry(beta, depth, Transposition::NodeType::BETA, ply, ttMove);
-
-            return beta;
-        }
-
         if (score > alpha) {
             this->storeHistoryMove(move, this->_side, depth);
 
@@ -1519,19 +1514,21 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
             ttMove = move;
 
             alpha = score;
+
+            if (score >= beta) {
+                this->storeKillerMove(move, ply);
+
+                this->recordTranspositionTableEntry(beta, depth, Transposition::NodeType::BETA, ply, ttMove);
+
+                return beta;
+            }
         }
     }
 
     if (!isLegalMoveFound) {
         if (this->isInCheck(this->_side)) {
-            int checkMateScore = Score::getCheckMateScore(ply);
-
-            // this->recordTranspositionTableEntry(checkMateScore, depth, Transposition::NodeType::EXACT, ply, ttMove);
-
-            return checkMateScore;
+            return Score::getCheckMateScore(ply);
         }
-
-        // this->recordTranspositionTableEntry(0, depth, Transposition::NodeType::EXACT, ply, ttMove);
 
         return 0;
     }
@@ -1550,14 +1547,6 @@ int Engine::quiescence(int alpha, int beta, int ply) {
     //
     //     return 0;
     // }
-
-    // int transpositionTableScore = this->probeTranspositionTable(alpha, beta, 0, ply);
-
-    // if (transpositionTableScore != -1) {
-    //     return transpositionTableScore;
-    // }
-
-    // Transposition::NodeType transpositionTableNodeType = Transposition::NodeType::ALPHA;
 
     // Standing pat is illegal if king is in check
     if (this->isInCheck(this->_side)) {
@@ -1586,28 +1575,18 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 
             --this->_repetitionIndex;
 
-            if (score >= beta) {
-                // this->recordTranspositionTableEntry(beta, 0, Transposition::NodeType::BETA, ply);
-
-                return beta;
-            }
-
             if (score > alpha) {
-                // transpositionTableNodeType = Transposition::NodeType::EXACT;
-
                 alpha = score;
+
+                if (score >= beta) {
+                    return beta;
+                }
             }
         }
 
         if (!isLegalMovesFound) {
-            int checkMateScore = Score::getCheckMateScore(ply);
-
-            // this->recordTranspositionTableEntry(checkMateScore, 0, Transposition::NodeType::EXACT, ply);
-
-            return checkMateScore;
+            return Score::getCheckMateScore(ply);
         }
-
-        // this->recordTranspositionTableEntry(alpha, 0, transpositionTableNodeType, ply);
 
         return alpha;
     }
@@ -1616,14 +1595,10 @@ int Engine::quiescence(int alpha, int beta, int ply) {
     int standingPat = this->evaluatePesto(this->_side);
 
     if (standingPat >= beta) {
-        // this->recordTranspositionTableEntry(beta, 0, Transposition::NodeType::BETA, ply);
-
         return beta;
     }
 
     if (standingPat > alpha) {
-        // transpositionTableNodeType = Transposition::NodeType::EXACT;
-
         alpha = standingPat;
     }
 
@@ -1648,20 +1623,14 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 
         --this->_repetitionIndex;
 
-        if (score >= beta) {
-            // this->recordTranspositionTableEntry(beta, 0, Transposition::NodeType::BETA, ply);
-
-            return beta;
-        }
-
         if (score > alpha) {
-            // transpositionTableNodeType = Transposition::NodeType::EXACT;
-
             alpha = score;
+
+            if (score >= beta) {
+                return beta;
+            }
         }
     }
-
-    // this->recordTranspositionTableEntry(alpha, 0, transpositionTableNodeType, ply);
 
     return alpha;
 }
