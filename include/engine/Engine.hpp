@@ -260,6 +260,8 @@ class Engine {
 
     int evaluatePesto(engine::board::ColourType side);
 
+    FORCE_INLINE int getGamePhaseScore();
+
     uint64_t perft(int depth);
 
     void reset();

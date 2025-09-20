@@ -21,6 +21,7 @@ inline constexpr int MATERIAL_TABLE[6] = {
     1000,
     10000,
 };
+
 // clang-format on
 
 } // namespace engine::evaluation

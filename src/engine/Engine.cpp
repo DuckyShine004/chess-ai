@@ -15,9 +15,9 @@
 #include "engine/evaluation/Material.hpp"
 #include "engine/evaluation/Position.hpp"
 
-#include "engine/evaluation/pesto/MG.hpp"
-#include "engine/evaluation/pesto/EG.hpp"
-#include "engine/evaluation/pesto/Pesto.hpp"
+#include "engine/evaluation/pesto/Phase.hpp"
+#include "engine/evaluation/pesto/Material.hpp"
+#include "engine/evaluation/pesto/Position.hpp"
 
 #include "engine/move/Move.hpp"
 
@@ -1598,8 +1598,8 @@ int Engine::quiescence(int alpha, int beta, int ply) {
         return alpha;
     }
 
-    int standingPat = this->evaluate(this->_side);
-    // int standingPat = this->evaluatePesto(this->_side);
+    // int standingPat = this->evaluate(this->_side);
+    int standingPat = this->evaluatePesto(this->_side);
 
     if (standingPat >= beta) {
         // this->recordTranspositionTableEntry(beta, 0, Transposition::NodeType::BETA, ply);
@@ -1733,7 +1733,7 @@ int Engine::evaluate(ColourType side) {
         while (blackPieces) {
             int square = BitUtility::popLSB(blackPieces);
 
-            int mirrorSquare = MIRROR[square];
+            const int mirrorSquare = MIRROR[square];
 
             int file = FILE_FROM_SQUARE[mirrorSquare];
             int rank = RANK_FROM_SQUARE[mirrorSquare];
@@ -1814,11 +1814,22 @@ int Engine::evaluate(ColourType side) {
     return (side == ColourType::WHITE) ? score : -score;
 }
 
+// s = (so * gps + se * (ops - gps)) / ops
 int Engine::evaluatePesto(ColourType side) {
-    int scoreMG = 0;
-    int scoreEG = 0;
+    GamePhase gamePhase = GamePhase::MIDDLEGAME;
 
-    int phaseMG = 0;
+    int gamePhaseScore = this->getGamePhaseScore();
+
+    if (gamePhaseScore > OPENING_SCORE) {
+        gamePhase = GamePhase::OPENING;
+    } else if (gamePhaseScore < ENDGAME_SCORE) {
+        gamePhase = GamePhase::ENDGAME;
+    }
+
+    const int gamePhaseScoreDifference = OPENING_SCORE - gamePhaseScore;
+
+    int scoreOpening = 0;
+    int scoreEndgame = 0;
 
     for (uint8_t piece = PieceType::PAWN; piece <= PieceType::KING; ++piece) {
         uint64_t whitePieces = this->_bitboards[ColourType::WHITE][piece];
@@ -1826,10 +1837,11 @@ int Engine::evaluatePesto(ColourType side) {
         while (whitePieces) {
             int square = BitUtility::popLSB(whitePieces);
 
-            scoreMG += MG::MATERIAL_VALUES[piece] + MG::POSITION_VALUES[piece][square];
-            scoreEG += EG::MATERIAL_VALUES[piece] + EG::POSITION_VALUES[piece][square];
+            scoreOpening += MATERIAL_VALUES[GamePhase::OPENING][piece];
+            scoreEndgame += MATERIAL_VALUES[GamePhase::ENDGAME][piece];
 
-            phaseMG += Pesto::GAME_PHASE_VALUES[piece];
+            scoreOpening += POSITION_VALUES[GamePhase::OPENING][piece][square];
+            scoreEndgame += POSITION_VALUES[GamePhase::ENDGAME][piece][square];
         }
 
         uint64_t blackPieces = this->_bitboards[ColourType::BLACK][piece];
@@ -1837,22 +1849,45 @@ int Engine::evaluatePesto(ColourType side) {
         while (blackPieces) {
             int square = BitUtility::popLSB(blackPieces);
 
-            scoreMG -= MG::MATERIAL_VALUES[piece] + MG::POSITION_VALUES[piece][MIRROR[square]];
-            scoreEG -= EG::MATERIAL_VALUES[piece] + EG::POSITION_VALUES[piece][MIRROR[square]];
+            const int mirrorSquare = MIRROR[square];
 
-            phaseMG += Pesto::GAME_PHASE_VALUES[piece];
+            scoreOpening -= MATERIAL_VALUES[GamePhase::OPENING][piece];
+            scoreEndgame -= MATERIAL_VALUES[GamePhase::ENDGAME][piece];
+
+            scoreOpening -= POSITION_VALUES[GamePhase::OPENING][piece][mirrorSquare];
+            scoreEndgame -= POSITION_VALUES[GamePhase::ENDGAME][piece][mirrorSquare];
         }
     }
 
-    if (phaseMG > 24) {
-        phaseMG = 24;
+    int score = 0;
+
+    switch (gamePhase) {
+    case GamePhase::OPENING:
+        score = scoreOpening;
+        break;
+    case GamePhase::ENDGAME:
+        score = scoreEndgame;
+        break;
+    case GamePhase::MIDDLEGAME:
+        score = (scoreOpening * gamePhaseScore + scoreEndgame * gamePhaseScoreDifference) / OPENING_SCORE;
+        break;
     }
 
-    int phaseEG = 24 - phaseMG;
-
-    int score = (scoreMG * phaseMG + scoreEG * phaseEG) / 24;
-
     return (side == ColourType::WHITE) ? score : -score;
+}
+
+// gps = cnt(wPiece) * material(piece) + cnt(bPiece) * material(piece)
+// gps = material(piece) * (cnt(wPiece) + cnt(bPiece))
+int Engine::getGamePhaseScore() {
+    int score = 0;
+
+    for (uint8_t piece = PieceType::KNIGHT; piece <= PieceType::QUEEN; ++piece) {
+        int numberOfPieces = BitUtility::popCount(this->_bitboards[ColourType::WHITE][piece]) + BitUtility::popCount(this->_bitboards[ColourType::BLACK][piece]);
+
+        score += MATERIAL_VALUES[GamePhase::OPENING][piece] * numberOfPieces;
+    }
+
+    return score;
 }
 
 uint64_t Engine::perft(int depth) {
