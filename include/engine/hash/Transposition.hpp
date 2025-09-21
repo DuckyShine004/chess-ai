@@ -18,13 +18,15 @@ struct Entry {
     int32_t score;
     int16_t depth;
 
+    uint16_t bestMove;
+
     NodeType nodeType;
 
     Entry() : zobrist(0ULL), score(0), depth(0), nodeType(NodeType::UNKNOWN) {
     }
 };
 
-// 2 MB transposition table = 2mb / 16b entries
+// 2 MB transposition table = 2mb / 32b entries
 inline constexpr size_t TRANSPOSITION_TABLE_BYTES = 2ULL << 20;
 inline constexpr size_t TRANSPOSITION_TABLE_ENTRIES = TRANSPOSITION_TABLE_BYTES / sizeof(Entry);
 inline constexpr size_t TRANSPOSITION_TABLE_MASK = TRANSPOSITION_TABLE_ENTRIES - 1;
