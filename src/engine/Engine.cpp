@@ -80,14 +80,9 @@ void Engine::run() {
 
 // FIX: Find out why there are no optimal moves even when there are
 uint16_t &Engine::getMove() {
-    // LOG_INFO("Performing iterative root search");
     this->searchIterative(this->_SEARCH_DEPTH);
 
     // this->searchRoot(this->_SEARCH_DEPTH);
-
-    // if (!this->_searchResult.isMoveFound) {
-    //     throw std::runtime_error("Engine could not find move...");
-    // }
 
     return this->_searchResult.bestMove;
 }
@@ -1246,6 +1241,10 @@ bool Engine::isNMP(bool isPVNode, bool isParentInCheck, int depth, int ply) {
     return depth >= 3 && !isPVNode && !isParentInCheck && ply > 0;
 }
 
+bool Engine::isRazoring(bool isPVNode, bool isParentInCheck, int depth) {
+    return depth <= 3 && !isPVNode && !isParentInCheck;
+}
+
 // Assume called after move is made
 // DO NOT reduce if we are in check, or we are giving checks or move is tactical
 bool Engine::isLMR(const uint16_t move, bool isPVNode, bool isParentInCheck) {
@@ -1404,6 +1403,10 @@ void Engine::searchRoot(int depth) {
     }
 }
 
+// PERF: Includes:
+// Null move pruning [+]
+// Late move reduction [+]
+// Razoring [-]
 // WARN: Always probing the TT
 int Engine::search(int alpha, int beta, int depth, int ply) {
     ++this->_searchResult.nodes;
@@ -1435,10 +1438,11 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
     bool isParentInCheck = this->isInCheck(this->_side);
 
     // Search extension for parent in check
-    if (isParentInCheck) {
-        ++depth;
-    }
+    // if (isParentInCheck) {
+    //     ++depth;
+    // }
 
+    // NMP
     if (this->isNMP(isPVNode, isParentInCheck, depth, ply)) {
         this->_repetitionTable[this->_repetitionIndex++] = this->_zobrist;
 
@@ -1452,6 +1456,23 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
         if (score >= beta) {
             return beta;
+        }
+    }
+
+    // Razoring- check how "bad" we are doing, and if bad enough, all is lost lol
+    if (this->isRazoring(isPVNode, isParentInCheck, depth)) {
+        int score = this->evaluate(this->_side) + 125;
+
+        if (score < beta) {
+            score += 175;
+
+            if (depth == 1) {
+                return std::max(score, this->quiescence(alpha, beta, ply));
+            }
+
+            if (score < beta && depth <= 2) {
+                return std::max(score, this->quiescence(alpha, beta, ply));
+            }
         }
     }
 
@@ -1504,6 +1525,8 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
         --this->_repetitionIndex;
 
+        // If we return fail hard beta cutoff first, we lose information about the search,
+        // therefore, check alpha then beta
         if (score > alpha) {
             this->storeHistoryMove(move, this->_side, depth);
 
@@ -1541,12 +1564,6 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 // WARN: Don't use TT in quiescence? Cannot prove
 int Engine::quiescence(int alpha, int beta, int ply) {
     ++this->_searchResult.nodes;
-
-    // if (this->isRepetition(ply)) {
-    //     this->recordTranspositionTableEntry(0, 0, Transposition::NodeType::EXACT, ply);
-    //
-    //     return 0;
-    // }
 
     // Standing pat is illegal if king is in check
     if (this->isInCheck(this->_side)) {
@@ -1591,8 +1608,8 @@ int Engine::quiescence(int alpha, int beta, int ply) {
         return alpha;
     }
 
-    // int standingPat = this->evaluate(this->_side);
-    int standingPat = this->evaluatePesto(this->_side);
+    int standingPat = this->evaluate(this->_side);
+    // int standingPat = this->evaluatePesto(this->_side);
 
     if (standingPat >= beta) {
         return beta;
@@ -1647,7 +1664,6 @@ int Engine::evaluate(ColourType side) {
     for (uint8_t piece = PieceType::PAWN; piece <= PieceType::KING; ++piece) {
         uint64_t whitePieces = this->_bitboards[ColourType::WHITE][piece];
 
-        // Material
         while (whitePieces) {
             int square = BitUtility::popLSB(whitePieces);
 

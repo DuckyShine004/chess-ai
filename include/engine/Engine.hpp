@@ -24,17 +24,13 @@ struct SearchResult {
 
     uint16_t bestMove;
 
-    bool isMoveFound;
-
     int nodes;
 
-    SearchResult() : bestScore(-engine::evaluation::Score::INF), isMoveFound(false), nodes(0) {
+    SearchResult() : bestScore(-engine::evaluation::Score::INF), nodes(0) {
     }
 
     void clear() {
         this->bestScore = -engine::evaluation::Score::INF;
-
-        this->isMoveFound = false;
 
         this->nodes = 0;
     }
@@ -77,11 +73,11 @@ class Engine {
 
     // LMR
     static inline constexpr int _FULL_DEPTH = 4;
-    static inline constexpr int _REDUCTION_DEPTH = 1;
+    static inline constexpr int _REDUCTION_DEPTH = 2;
     static inline constexpr int _REDUCTION_LIMIT = 3;
 
     // NMP
-    static inline constexpr int _NMP_REDUCTION = 1;
+    static inline constexpr int _NMP_REDUCTION = 2;
 
     static inline constexpr int _SEARCH_DEPTH = 9;
 
@@ -239,6 +235,8 @@ class Engine {
     int see(int to, engine::board::PieceType toPiece, engine::board::ColourType side);
 
     FORCE_INLINE bool isNMP(bool isPVNode, bool isParentInCheck, int depth, int ply);
+
+    FORCE_INLINE bool isRazoring(bool isPVNode, bool isParentInCheck, int depth);
 
     FORCE_INLINE bool isLMR(const uint16_t move, bool isPVNode, bool isParentInCheck);
 
