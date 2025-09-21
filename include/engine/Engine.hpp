@@ -114,6 +114,8 @@ class Engine {
     int _repetitionIndex;
     uint64_t _repetitionTable[1000];
 
+    std::vector<uint16_t> _moveHistory;
+
     void initialise();
 
     void parseFenPosition(std::string &position);
@@ -245,6 +247,8 @@ class Engine {
     FORCE_INLINE void recordTranspositionTableEntry(int score, int depth, engine::hash::Transposition::NodeType nodeType, int ply, uint16_t bestMove);
 
     FORCE_INLINE bool isRepetition(int ply);
+
+    uint16_t getNotatedMove(std::string &moveString);
 
     void searchIterative(int depth);
 

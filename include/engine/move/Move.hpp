@@ -1,8 +1,12 @@
 #pragma once
 
+#include <string>
 #include <cstdint>
 
 #include "engine/board/Piece.hpp"
+
+#include "logger/LoggerMacros.hpp"
+#include "utility/BoardUtility.hpp"
 
 // Encoding:
 // from and to squares, 0-5,6-11
@@ -75,6 +79,8 @@ inline constexpr int PROMOTION_CAPTURE_OFFSET = 9;
 [[nodiscard]] inline constexpr bool isTactical(uint16_t move);
 
 [[nodiscard]] inline constexpr bool isLMR(uint16_t move);
+
+[[nodiscard]] inline std::string getFromToString(uint16_t move);
 
 [[nodiscard]] inline constexpr uint16_t getMove(int from, int to, MoveType moveType) {
     return from | (to << TO_OFFSET) | (moveType << MOVE_TYPE_OFFSET);
@@ -188,6 +194,13 @@ inline constexpr int PROMOTION_CAPTURE_OFFSET = 9;
     MoveType moveType = static_cast<MoveType>(move >> MOVE_TYPE_OFFSET);
 
     return !(moveType == MoveType::CAPTURE || moveType == MoveType::EN_PASSANT || moveType == MoveType::KING_CASTLE || moveType == MoveType::QUEEN_CASTLE || (MoveType::KNIGHT_PROMOTION <= moveType && moveType <= MoveType::QUEEN_PROMOTION_CAPTURE));
+}
+
+[[nodiscard]] inline std::string getFromToString(uint16_t move) {
+    int from = Move::getFrom(move);
+    int to = Move::getTo(move);
+
+    return utility::BoardUtility::getPositionFromSquare(from) + utility::BoardUtility::getPositionFromSquare(to);
 }
 
 struct MoveList {

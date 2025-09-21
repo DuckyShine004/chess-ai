@@ -4,6 +4,8 @@
 
 #include "engine/Engine.hpp"
 
+#include "engine/opening/Opening.hpp"
+
 #include "engine/board/Fen.hpp"
 #include "engine/board/Castle.hpp"
 #include "engine/board/Square.hpp"
@@ -32,6 +34,8 @@
 #include "utility/BoardUtility.hpp"
 #include "utility/AttackUtility.hpp"
 #include "utility/StringUtility.hpp"
+
+using namespace engine::opening;
 
 using namespace engine::board;
 
@@ -118,6 +122,8 @@ void Engine::printBoard() {
 }
 
 void Engine::initialise() {
+    Opening::initialise();
+
     Pawn::initialise();
     Knight::initialise();
     Bishop::initialise();
@@ -858,11 +864,28 @@ void Engine::makeMove(uint16_t &move) {
         ++this->_halfMove;
     }
 
+    ++this->_fullMove;
+
     this->_undoStack.push_back(std::move(undo));
+
+    this->_moveHistory.push_back(move);
 
     this->_zobrist ^= Zobrist::sideKey;
 
     this->switchSide();
+}
+
+uint16_t Engine::getNotatedMove(std::string &moveString) {
+    std::string fromString = moveString.substr(0, 2);
+    std::string toString = moveString.substr(2);
+
+    int from = BoardUtility::getSquareFromPosition(fromString);
+    int to = BoardUtility::getSquareFromPosition(toString);
+
+    // Can either be quiet, capture, double pawn, en passant
+    uint16_t move = Move::getMove(from, to, MoveType::QUIET);
+
+    return move;
 }
 
 void Engine::makeNullMove() {
@@ -948,11 +971,15 @@ void Engine::unmakeMove(uint16_t &move) {
         this->_zobrist ^= Zobrist::castleKeys[undo.castleRights];
     }
 
+    --this->_fullMove;
+
     this->_castleRights = undo.castleRights;
     this->_enPassantSquare = undo.enPassantSquare;
     this->_halfMove = undo.halfMove;
 
     this->_undoStack.pop_back();
+
+    this->_moveHistory.pop_back();
 }
 
 void Engine::makeQuietMove(int from, int to, PieceType fromPiece) {
@@ -1147,7 +1174,6 @@ void Engine::orderMoves(Move::MoveList &moves, uint16_t ttMove, ColourType side,
 
     ColourType otherSide = BoardUtility::getOtherSide(side);
 
-    // WARN: Potential bug [ply][ply] or [0][ply]
     uint16_t pvMove = this->_pvTable[0][ply];
 
     for (int i = 0; i < moves.size; ++i) {
@@ -1347,6 +1373,22 @@ void Engine::searchIterative(int depth) {
     LOG_INFO("Score for white: {}", this->evaluate(ColourType::WHITE));
     LOG_INFO("Score for black: {}", this->evaluate(ColourType::BLACK));
 
+    // Find the opening move (TSCP opening book)
+    if (this->_fullMove <= Opening::MAX_OPENING_DEPTH) {
+        std::string openingMove = Opening::getRandomMove(this->_moveHistory);
+
+        if (openingMove.empty()) {
+            LOG_WARN("Opening move not found");
+        } else {
+
+            LOG_INFO("Engine opening move: {}", openingMove);
+
+            this->_searchResult.bestMove = this->getNotatedMove(openingMove);
+
+            return;
+        }
+    }
+
     std::memset(this->_killerMoves, 0, sizeof(this->_killerMoves));
     std::memset(this->_historyMoves, 0, sizeof(this->_historyMoves));
     std::memset(this->_pvLength, 0, sizeof(this->_pvLength));
@@ -1379,10 +1421,11 @@ void Engine::searchIterative(int depth) {
         ++currentDepth;
     }
 
+    LOG_INFO("Full moves: {}", this->_fullMove);
+
     this->_searchResult.bestMove = this->_pvTable[0][0];
 
     if (this->_searchResult.bestMove == 0U) {
-        // throw std::runtime_error("Engine could not find move...");
         LOG_ERROR("Engine could not find a move...");
     }
 }

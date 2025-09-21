@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <sstream>
 
 #include "utility/StringUtility.hpp"
@@ -16,6 +17,15 @@ std::vector<std::string> StringUtility::splitStringByWhiteSpace(const std::strin
     }
 
     return strings;
+}
+
+std::string StringUtility::getTrimmedString(const std::string &input) {
+    const char *whiteSpace = " \t\v\r\n";
+
+    size_t start = input.find_first_not_of(whiteSpace);
+    size_t end = input.find_last_not_of(whiteSpace);
+
+    return start == end ? std::string() : input.substr(start, end - start + 1);
 }
 
 } // namespace utility

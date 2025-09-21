@@ -52,17 +52,17 @@ inline void printBoard(uint64_t board[2][6]);
 }
 
 [[nodiscard]] inline int getSquareFromPosition(std::string &position) {
-    int file = position[0] - 'a';
-    int rank = position[1] - '1';
+    int file = (position[0] - 'a');
+    int rank = (position[1] - '1');
 
     return getSquare(rank, file);
 }
 
 [[nodiscard]] inline std::string getPositionFromSquare(int square) {
-    char position[2];
+    std::string position = "";
 
-    position[0] = getFile(square) + 'a';
-    position[1] = getRank(square) + '1';
+    position += (getFile(square) + 'a');
+    position += (getRank(square) + '1');
 
     return position;
 }
