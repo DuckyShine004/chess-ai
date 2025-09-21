@@ -36,7 +36,7 @@ void Application::initialise() {
     // this->_engine.parse(PROMOTION_POSITIONS[0]);
     // this->_engine.parse(KILLER_POSITION);
     // this->_engine.parse(EN_PASSANT_POSITIONS[0]);
-    // this->_engine.parse(PUZZLE_POSITIONS[1]);
+    // this->_engine.parse(PUZZLE_POSITIONS[5]);
     // this->_engine.parse(NMP_POSITIONS[2]);
     // this->_engine.parse(REPETITION_POSITIONS[0]);
     // this->_engine.parse(ISOLATED_PAWN_POSITIONS[0]);
@@ -74,11 +74,11 @@ void Application::run() {
 }
 
 void Application::debug() {
-    // this->_engine.parse(POSITIONS[1]);
-    //
-    // this->_engine.printBoard();
-    //
-    for (int depth = 1; depth <= 6; ++depth) {
+    this->_engine.parse(POSITIONS[4]);
+
+    this->_engine.printBoard();
+
+    for (int depth = 1; depth <= 5; ++depth) {
         this->_engine.runPerft(depth);
     }
     // int moves = 20;

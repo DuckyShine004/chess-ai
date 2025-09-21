@@ -1,6 +1,8 @@
 #include <chrono>
+#include <cstdlib>
 #include <cstring>
 #include <functional>
+#include <iostream>
 
 #include "engine/Engine.hpp"
 
@@ -1347,13 +1349,14 @@ void Engine::recordTranspositionTableEntry(int score, int depth, Transposition::
 
 bool Engine::isRepetition(int ply) {
     // BUG: This harms the performance of the engine for some reason
-    // if (this->_halfMove >= 100) {
-    //     return true;
-    // }
 
     if (ply == 0) {
         return false;
     }
+
+    // if (this->_halfMove >= 100) {
+    //     return true;
+    // }
 
     for (int i = 0; i < this->_repetitionIndex; ++i) {
         if (this->_repetitionTable[i] == this->_zobrist) {
@@ -1375,12 +1378,16 @@ void Engine::searchIterative(int depth) {
 
     // Find the opening move (TSCP opening book)
     if (this->_fullMove <= Opening::MAX_OPENING_DEPTH) {
+        // for (uint16_t move : this->_moveHistory) {
+        //     std::string s = Move::getFromToString(move);
+        //     std::cout << s << " ";
+        // }
+        // std::cout << "\n";
         std::string openingMove = Opening::getRandomMove(this->_moveHistory);
 
         if (openingMove.empty()) {
             LOG_WARN("Opening move not found");
         } else {
-
             LOG_INFO("Engine opening move: {}", openingMove);
 
             this->_searchResult.bestMove = this->getNotatedMove(openingMove);
@@ -1402,7 +1409,7 @@ void Engine::searchIterative(int depth) {
     while (currentDepth <= depth) {
         this->_searchResult.nodes = 0;
 
-        int score = this->search(alpha, beta, currentDepth, 0);
+        int score = this->search(alpha, beta, currentDepth, 0, this->_DO_NMP);
 
         if ((score <= alpha) || (score >= beta)) {
             LOG_INFO("Re-searching depth {} again for alpha: {} beta: {} best score: {}", currentDepth, alpha, beta, score);
@@ -1436,7 +1443,7 @@ void Engine::searchRoot(int depth) {
     std::memset(this->_pvLength, 0, sizeof(this->_pvLength));
     std::memset(this->_pvTable, 0, sizeof(this->_pvTable));
 
-    this->search(-Score::INF, Score::INF, depth, 0);
+    this->search(-Score::INF, Score::INF, depth, 0, this->_DO_NMP);
 
     this->_searchResult.bestMove = this->_pvTable[0][0];
 
@@ -1447,22 +1454,33 @@ void Engine::searchRoot(int depth) {
 }
 
 // PERF: Includes:
+// Static NMP [+]
 // Null move pruning [+]
 // Late move reduction [+]
-// Razoring [-]
+// Razoring [+]
 // WARN: Always probing the TT
-int Engine::search(int alpha, int beta, int depth, int ply) {
+// Also need to increase depth if distance to checkmate is good enough value
+// Or opponent has insufficient material
+int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
     ++this->_searchResult.nodes;
+
+    bool isParentInCheck = this->isInCheck(this->_side);
+
+    if (isParentInCheck) {
+        ++depth;
+    }
+
+    if (depth == 0) {
+        return this->quiescence(alpha, beta, ply);
+    }
+
+    // TODO: Return contempt
+    if (this->isRepetition(ply)) {
+        return 0;
+    }
 
     // Initialise pv length
     this->_pvLength[ply] = ply;
-
-    // TODO: Return contempt
-    // if (this->isRepetition(ply)) {
-    //     this->recordTranspositionTableEntry(0, depth, Transposition::NodeType::EXACT, ply);
-    //
-    //     return 0;
-    // }
 
     uint16_t ttMove = 0U;
 
@@ -1472,26 +1490,39 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
         return transpositionTableScore;
     }
 
-    if (depth == 0) {
-        return this->quiescence(alpha, beta, ply);
-    }
-
     bool isPVNode = (beta - alpha > 1);
 
-    bool isParentInCheck = this->isInCheck(this->_side);
+    int staticEvaluation = this->evaluate(this->_side);
 
-    // Search extension for parent in check
-    // if (isParentInCheck) {
-    //     ++depth;
-    // }
+    // NMP static evaluation
+    // https://github.com/nescitus/cpw-engine/blob/2054969ef201c23e44774fd667c2b6843f04eede/search.cpp#L280
+    if (depth < 3 && !isPVNode && !isParentInCheck && std::abs(beta - 1) > -Score::INF + 100) {
+        const int evaluationMargin = 120 * depth;
 
-    // NMP
-    if (this->isNMP(isPVNode, isParentInCheck, depth, ply)) {
-        this->_repetitionTable[this->_repetitionIndex++] = this->_zobrist;
+        if (staticEvaluation - evaluationMargin >= beta) {
+            return staticEvaluation - evaluationMargin;
+        }
+    }
+
+    // NOTE: NMP
+    // Static evaluation > beta [+]
+    // depth > 2 [+]
+    // Not root [+]
+    // Not pv node [+]
+    // Not in check [+]
+    // Sufficient material [+]
+    if (depth > 2 && canNMP && !isPVNode && !isParentInCheck && staticEvaluation > beta) {
+        this->_repetitionTable[++this->_repetitionIndex] = this->_zobrist;
+
+        int reduction = this->_NMP_REDUCTION;
+
+        if (depth > 6) {
+            ++reduction;
+        }
 
         this->makeNullMove();
 
-        int score = -this->search(-beta, -beta + 1, depth - 1 - this->_NMP_REDUCTION, ply + 1);
+        int score = -this->search(-beta, -beta + 1, depth - 1 - reduction, ply + 1, this->_DO_NOT_NMP);
 
         this->unmakeNullMove();
 
@@ -1504,17 +1535,21 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
     // Razoring- check how "bad" we are doing, and if bad enough, all is lost lol
     if (this->isRazoring(isPVNode, isParentInCheck, depth)) {
-        int score = this->evaluate(this->_side) + 125;
+        int score = staticEvaluation + 125;
 
         if (score < beta) {
-            score += 175;
-
             if (depth == 1) {
                 return std::max(score, this->quiescence(alpha, beta, ply));
             }
 
+            score += 175;
+
             if (score < beta && depth <= 2) {
-                return std::max(score, this->quiescence(alpha, beta, ply));
+                int qScore = this->quiescence(alpha, beta, ply);
+
+                if (qScore < beta) {
+                    return std::max(score, qScore);
+                }
             }
         }
     }
@@ -1536,7 +1571,7 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
         isLegalMoveFound = true;
 
-        this->_repetitionTable[this->_repetitionIndex++] = this->_zobrist;
+        this->_repetitionTable[++this->_repetitionIndex] = this->_zobrist;
 
         this->makeMove(move);
 
@@ -1544,22 +1579,22 @@ int Engine::search(int alpha, int beta, int depth, int ply) {
 
         // Full search first (number of moves searched = i)
         if (i == 0) {
-            score = -this->search(-beta, -alpha, depth - 1, ply + 1);
+            score = -this->search(-beta, -alpha, depth - 1, ply + 1, this->_DO_NMP);
         } else {
             // PERF: LMR tuning
             if (i >= this->_FULL_DEPTH && depth >= this->_REDUCTION_LIMIT && this->isLMR(move, isPVNode, isParentInCheck)) {
-                score = -this->search(-alpha - 1, -alpha, depth - this->_REDUCTION_DEPTH, ply + 1);
+                score = -this->search(-alpha - 1, -alpha, depth - this->_REDUCTION_DEPTH, ply + 1, this->_DO_NMP);
             } else {
                 score = alpha + 1;
             }
 
             // PERF: Bruce mo's bad move proof
             if (score > alpha) {
-                score = -this->search(-alpha - 1, -alpha, depth - 1, ply + 1);
+                score = -this->search(-alpha - 1, -alpha, depth - 1, ply + 1, this->_DO_NMP);
 
                 // PV node cannot both be between alpha and beta
                 if ((score > alpha) && (score < beta)) {
-                    score = -this->search(-beta, -alpha, depth - 1, ply + 1);
+                    score = -this->search(-beta, -alpha, depth - 1, ply + 1, this->_DO_NMP);
                 }
             }
         }
@@ -1625,7 +1660,7 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 
             isLegalMovesFound = true;
 
-            this->_repetitionTable[this->_repetitionIndex++] = this->_zobrist;
+            this->_repetitionTable[++this->_repetitionIndex] = this->_zobrist;
 
             this->makeMove(move);
 
@@ -1673,7 +1708,7 @@ int Engine::quiescence(int alpha, int beta, int ply) {
             continue;
         }
 
-        this->_repetitionTable[this->_repetitionIndex++] = this->_zobrist;
+        this->_repetitionTable[++this->_repetitionIndex] = this->_zobrist;
 
         this->makeMove(capture);
 
@@ -2129,6 +2164,8 @@ void Engine::reset() {
     this->_repetitionIndex = 0;
 
     this->_undoStack.clear();
+
+    this->_moveHistory.clear();
 }
 
 } // namespace engine

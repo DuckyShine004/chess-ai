@@ -15,6 +15,8 @@
 
 namespace application::gui {
 
+inline constexpr engine::board::ColourType PLAYER_SIDE = engine::board::ColourType::BLACK;
+
 class Chess {
   public:
     Chess();

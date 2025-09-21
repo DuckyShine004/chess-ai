@@ -14,9 +14,9 @@
 
 namespace engine::opening::Opening {
 
-inline constexpr int MAX_OPENING_DEPTH = 16;
+inline constexpr int MAX_OPENING_DEPTH = 32;
 
-inline constexpr const char *OPENING_FILE_PATH = "resources/openings/book.txt";
+inline constexpr const char *OPENING_FILE_PATH = "resources/openings/cpw/book.txt";
 
 inline engine::opening::Trie OPENING_TREE = engine::opening::Trie();
 

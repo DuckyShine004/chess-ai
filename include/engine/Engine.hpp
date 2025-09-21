@@ -78,6 +78,8 @@ class Engine {
 
     // NMP
     static inline constexpr int _NMP_REDUCTION = 2;
+    static inline constexpr bool _DO_NMP = true;
+    static inline constexpr bool _DO_NOT_NMP = false;
 
     static inline constexpr int _SEARCH_DEPTH = 9;
 
@@ -254,7 +256,7 @@ class Engine {
 
     void searchRoot(int depth);
 
-    int search(int alpha, int beta, int depth, int ply);
+    int search(int alpha, int beta, int depth, int ply, bool canNMP);
 
     int quiescence(int alpha, int beta, int ply);
 

@@ -24,7 +24,7 @@ Chess::Chess() : _isClicking(false), _isEngineMakingMove(false), _selectedSquare
 void Chess::move(sf::RenderWindow &window, Engine &engine, sf::Vector2i mousePosition) {
     ColourType side = engine.getSide();
 
-    if (side != ColourType::WHITE) {
+    if (side != PLAYER_SIDE) {
         return;
     }
 
@@ -99,7 +99,7 @@ void Chess::makeEngineMove(Engine &engine) {
 void Chess::update(sf::RenderWindow &window, Engine &engine) {
     this->_board.update(window, engine);
 
-    if (engine.getSide() != ColourType::WHITE) {
+    if (engine.getSide() != PLAYER_SIDE) {
         this->makeEngineMove(engine);
     }
 }

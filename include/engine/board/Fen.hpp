@@ -15,25 +15,27 @@ inline constexpr const char *POSITIONS[5] = {
 };
 
 // Two bishops [-]
-// Two knights [+]
 // One rook [+]
 // Two rooks [+]
 // One queen [+]
+// Misc 1 [+]
+// Misc 2 [+]
 inline constexpr const char *PUZZLE_POSITIONS[] = {
     "2b1kb2/8/8/8/8/8/8/4K3 w - - 0 1",
-    "1n2k1n1/8/8/8/8/8/8/4K3 w - - 0 1",
     "4k2r/8/8/8/8/8/8/4K3 w - - 0 1",
     "4k3/8/3K4/8/7r/1r6/8/8 w - - 0 1",
     "3qk3/8/8/8/8/8/8/4K3 w - - 0 1",
+    "RKb5/n7/8/q1P5/1k6/8/8/8 b - - 0 40",
+    "8/1n6/7p/1p4pR/1B1k1pK1/p4P2/B3P3/1nQ4N w - - 0 40",
 };
 
 // Tricky king and pawn endgame [+]
-// Tricky mate in one [-]
-// Tricky endgame with possible checkmate [-]
+// Tricky mate in one [+]
+// Tricky endgame with possible checkmate [+]
 inline constexpr const char* NMP_POSITIONS[] = {
     "8/8/8/8/8/3k4/2p5/2K5 w - - 0 1",
-    "6k1/pp6/2p5/3p4/3Pp1p1/2P1PpPq/PPQ2P2/3R2K1 w - - 0 1",
-    "8/6pp/p2p4/2k1p3/4n3/1r5N/7K/8 b - - 0 1",
+    "6k1/pp6/2p5/3p4/3Pp1p1/2P1PpPq/PPQ2P2/3R2K1 w - - 0 40",
+    "8/6pp/p2p4/2k1p3/4n3/1r5N/7K/8 b - - 0 40",
 };
 // clang-format on
 
