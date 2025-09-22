@@ -79,6 +79,9 @@ void Engine::parse(const char *fen) {
     this->_material_scores[ColourType::BLACK] -= MATERIAL_TABLE[PieceType::KING];
 
     this->_zobrist = Zobrist::hash(this->_bitboards, this->_castleRights, this->_enPassantSquare, this->_side);
+
+    // Record the board position in the repetition table
+    this->_repetitionTable[0] = this->_zobrist;
 }
 
 void Engine::run() {
@@ -881,6 +884,8 @@ void Engine::makeMove(uint16_t &move) {
 
     this->_zobrist ^= Zobrist::sideKey;
 
+    this->_repetitionTable[++this->_repetitionIndex] = this->_zobrist;
+
     this->switchSide();
 }
 
@@ -989,6 +994,8 @@ void Engine::unmakeMove(uint16_t &move) {
     this->_undoStack.pop_back();
 
     this->_moveHistory.pop_back();
+
+    --this->_repetitionIndex;
 }
 
 void Engine::makeQuietMove(int from, int to, PieceType fromPiece) {
@@ -1463,7 +1470,7 @@ void Engine::searchRoot(int depth) {
     }
 }
 
-// PERF: Includes:
+// NOTE: Includes
 // Static NMP [+]
 // Null move pruning [+]
 // Late move reduction [+]
@@ -1522,9 +1529,8 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
     // Not pv node [+]
     // Not in check [+]
     // Sufficient material [+]
+    // Pawns only? [-]
     if (depth > 2 && canNMP && !isPVNode && !isParentInCheck && staticEvaluation > beta && this->_material_scores[this->_side] >= ENDGAME_MATERIAL_SCORE) {
-        this->_repetitionTable[++this->_repetitionIndex] = this->_zobrist;
-
         int reduction = this->_NMP_REDUCTION;
 
         if (depth > 6) {
@@ -1537,14 +1543,12 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
 
         this->unmakeNullMove();
 
-        --this->_repetitionIndex;
-
         if (score >= beta) {
             return beta;
         }
     }
 
-    // Razoring- check how "bad" we are doing, and if bad enough, all is lost lol
+    // Razoring- check how "bad" we are doing in terms of quiet moves, and if bad enough, there is no point to making quiet moves
     if (this->isRazoring(isPVNode, isParentInCheck, depth)) {
         int score = staticEvaluation + 125;
 
@@ -1582,8 +1586,6 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
 
         isLegalMoveFound = true;
 
-        this->_repetitionTable[++this->_repetitionIndex] = this->_zobrist;
-
         this->makeMove(move);
 
         int score;
@@ -1592,14 +1594,14 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
         if (i == 0) {
             score = -this->search(-beta, -alpha, depth - 1, ply + 1, this->_DO_NMP);
         } else {
-            // PERF: LMR tuning
+            // NOTE: LMR tuning
             if (i >= this->_FULL_DEPTH && depth >= this->_REDUCTION_LIMIT && this->isLMR(move, isPVNode, isParentInCheck)) {
                 score = -this->search(-alpha - 1, -alpha, depth - this->_REDUCTION_DEPTH, ply + 1, this->_DO_NMP);
             } else {
                 score = alpha + 1;
             }
 
-            // PERF: Bruce mo's bad move proof
+            // NOTE: Bruce mo's bad move proof
             if (score > alpha) {
                 score = -this->search(-alpha - 1, -alpha, depth - 1, ply + 1, this->_DO_NMP);
 
@@ -1611,8 +1613,6 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
         }
 
         this->unmakeMove(move);
-
-        --this->_repetitionIndex;
 
         // If we return fail hard beta cutoff first, we lose information about the search,
         // therefore, check alpha then beta
@@ -1650,7 +1650,7 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
     return alpha;
 }
 
-// WARN: Don't use TT in quiescence? Cannot prove
+// WARN: Don't use TT in quiescence? Cannot prove, implicitly skips quiescence if in check, since depth += 1
 int Engine::quiescence(int alpha, int beta, int ply) {
     ++this->_searchResult.nodes;
 
@@ -1671,15 +1671,11 @@ int Engine::quiescence(int alpha, int beta, int ply) {
 
             isLegalMovesFound = true;
 
-            this->_repetitionTable[++this->_repetitionIndex] = this->_zobrist;
-
             this->makeMove(move);
 
             int score = -this->quiescence(-beta, -alpha, ply + 1);
 
             this->unmakeMove(move);
-
-            --this->_repetitionIndex;
 
             if (score > alpha) {
                 alpha = score;
@@ -1719,15 +1715,11 @@ int Engine::quiescence(int alpha, int beta, int ply) {
             continue;
         }
 
-        this->_repetitionTable[++this->_repetitionIndex] = this->_zobrist;
-
         this->makeMove(capture);
 
         int score = -this->quiescence(-beta, -alpha, ply + 1);
 
         this->unmakeMove(capture);
-
-        --this->_repetitionIndex;
 
         if (score > alpha) {
             alpha = score;
