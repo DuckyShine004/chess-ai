@@ -75,6 +75,9 @@ void Engine::parse(const char *fen) {
     this->parseFenHalfMove(states[4]);
     this->parseFenFullMove(states[5]);
 
+    this->_material_scores[ColourType::WHITE] -= MATERIAL_TABLE[PieceType::KING];
+    this->_material_scores[ColourType::BLACK] -= MATERIAL_TABLE[PieceType::KING];
+
     this->_zobrist = Zobrist::hash(this->_bitboards, this->_castleRights, this->_enPassantSquare, this->_side);
 }
 
@@ -261,6 +264,8 @@ void Engine::createPiece(int square, PieceType piece, ColourType side) {
 
     this->_occupancyBoth |= bitboard_square;
 
+    this->_material_scores[side] += MATERIAL_TABLE[piece];
+
     // PERF: Optimise if too slow
     this->_zobrist ^= Zobrist::pieceKeys[side][piece][square];
 }
@@ -291,6 +296,8 @@ void Engine::removePiece(int square, PieceType piece, ColourType side) {
     this->_occupancies[side] &= inverted_bitboard_square;
 
     this->_occupancyBoth &= inverted_bitboard_square;
+
+    this->_material_scores[side] -= MATERIAL_TABLE[piece];
 
     // PERF: Optimise if too slow
     this->_zobrist ^= Zobrist::pieceKeys[side][piece][square];
@@ -1376,6 +1383,9 @@ void Engine::searchIterative(int depth) {
     LOG_INFO("Score for white: {}", this->evaluate(ColourType::WHITE));
     LOG_INFO("Score for black: {}", this->evaluate(ColourType::BLACK));
 
+    LOG_INFO("Material score for white: {}", this->_material_scores[ColourType::WHITE]);
+    LOG_INFO("Material score for black: {}", this->_material_scores[ColourType::BLACK]);
+
     // Find the opening move (TSCP opening book)
     if (this->_fullMove <= Opening::MAX_OPENING_DEPTH) {
         // for (uint16_t move : this->_moveHistory) {
@@ -1464,6 +1474,9 @@ void Engine::searchRoot(int depth) {
 int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
     ++this->_searchResult.nodes;
 
+    // Initialise pv length
+    this->_pvLength[ply] = ply;
+
     bool isParentInCheck = this->isInCheck(this->_side);
 
     if (isParentInCheck) {
@@ -1479,9 +1492,6 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
         return 0;
     }
 
-    // Initialise pv length
-    this->_pvLength[ply] = ply;
-
     uint16_t ttMove = 0U;
 
     int transpositionTableScore = this->probeTranspositionTable(alpha, beta, depth, ply, ttMove);
@@ -1493,6 +1503,7 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
     bool isPVNode = (beta - alpha > 1);
 
     int staticEvaluation = this->evaluate(this->_side);
+    // int staticEvaluation = this->evaluatePesto(this->_side);
 
     // NMP static evaluation
     // https://github.com/nescitus/cpw-engine/blob/2054969ef201c23e44774fd667c2b6843f04eede/search.cpp#L280
@@ -1511,7 +1522,7 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
     // Not pv node [+]
     // Not in check [+]
     // Sufficient material [+]
-    if (depth > 2 && canNMP && !isPVNode && !isParentInCheck && staticEvaluation > beta) {
+    if (depth > 2 && canNMP && !isPVNode && !isParentInCheck && staticEvaluation > beta && this->_material_scores[this->_side] >= ENDGAME_MATERIAL_SCORE) {
         this->_repetitionTable[++this->_repetitionIndex] = this->_zobrist;
 
         int reduction = this->_NMP_REDUCTION;
@@ -2153,6 +2164,8 @@ void Engine::reset() {
     std::memset(this->_bitboards, 0ULL, sizeof(this->_bitboards));
 
     std::memset(this->_occupancies, 0ULL, sizeof(this->_occupancies));
+
+    std::memset(this->_material_scores, 0, sizeof(this->_occupancies));
 
     std::memset(this->_repetitionTable, 0ULL, sizeof(this->_repetitionTable));
 

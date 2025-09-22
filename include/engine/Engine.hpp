@@ -91,6 +91,7 @@ class Engine {
     uint64_t _bitboards[2][6];
     uint64_t _occupancies[2];
     uint64_t _occupancyBoth;
+    int _material_scores[2];
 
     uint64_t _zobrist;
 
