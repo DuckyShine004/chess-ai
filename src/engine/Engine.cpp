@@ -1486,10 +1486,6 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
 
     bool isParentInCheck = this->isInCheck(this->_side);
 
-    if (isParentInCheck) {
-        ++depth;
-    }
-
     // In case NMP reduction causes depth < 0
     if (depth <= 0) {
         return this->quiescence(alpha, beta, ply);
@@ -1513,6 +1509,10 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
     int staticEvaluation = this->evaluate(this->_side);
     // int staticEvaluation = this->evaluatePesto(this->_side);
 
+    if (isParentInCheck) {
+        ++depth;
+    }
+
     // NMP static evaluation
     // https://github.com/nescitus/cpw-engine/blob/2054969ef201c23e44774fd667c2b6843f04eede/search.cpp#L280
     if (depth < 3 && !isPVNode && !isParentInCheck && std::abs(beta - 1) > -Score::INF + 100) {
@@ -1530,11 +1530,11 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
     // Not pv node [+]
     // Not in check [+]
     // Sufficient material [+]
-    // Pawns only? [-]
-    // BUG: Fix NMP
+    // BUG: Fix NMP- partial fix is to add a naive re-search with a reduced null window
+    // Bug causes ~ -50 elo
     // Switch to verified NMP? https://arxiv.org/pdf/0808.1125
     // Currently using an ALWAYS verify NMP with reduced null window
-    if (depth > 2 && canNMP && !isPVNode && !isParentInCheck && staticEvaluation > beta) {
+    if (depth > 2 && canNMP && !isPVNode && !isParentInCheck && staticEvaluation > beta && this->_material_scores[this->_side] > ENDGAME_MATERIAL_SCORE) {
         int reduction = this->_NMP_REDUCTION;
 
         if (depth > 6) {
@@ -1543,14 +1543,30 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
 
         this->makeNullMove();
 
-        int score = -this->search(-beta, -beta + 1, depth - 1 - reduction, ply + 1, this->_DO_NOT_NMP);
+        int score;
+
+        // Root ply?
+        if (depth - 1 - reduction < 1) {
+            score = -this->quiescence(-beta, -beta + 1, ply + 1);
+        } else {
+            score = -this->search(-beta, -beta + 1, depth - 1 - reduction, ply + 1, this->_DO_NOT_NMP);
+        }
 
         this->unmakeNullMove();
 
         // Do not return unproven mate scores
         if (score >= beta && score < Score::CHECKMATE_THRESHOLD) {
-            int value = this->search(beta - 1, beta, depth - reduction, ply, this->_DO_NOT_NMP);
+            // Verify with full window search
+            int value;
 
+            // Root ply?
+            if (depth - 1 - reduction < 1) {
+                value = this->quiescence(beta - 1, beta, ply);
+            } else {
+                value = this->search(beta - 1, beta, depth - 1 - reduction, ply, this->_DO_NOT_NMP);
+            }
+
+            // Verified zugzwang did not occur
             if (value >= beta) {
                 return beta;
             }
@@ -1579,8 +1595,6 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
     }
 
     bool isLegalMoveFound = false;
-
-    int bestScore = -Score::INF;
 
     MoveList moves = this->generateMoves(this->_side);
 
@@ -1624,10 +1638,6 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
         }
 
         this->unmakeMove(move);
-
-        if (score > bestScore) {
-            bestScore = score;
-        }
 
         // If we return fail hard beta cutoff first, we lose information about the search,
         // therefore, check alpha then beta

@@ -20,6 +20,11 @@ inline constexpr const char *POSITIONS[5] = {
 // One queen [+]
 // Misc 1 [+]
 // Misc 2 [+]
+// Misc 3 [+]
+// Misc 4 [+]
+// Misc 5 [+]
+// Misc 6 [+]
+// Misc 7 [+]
 inline constexpr const char *PUZZLE_POSITIONS[] = {
     "2b1kb2/8/8/8/8/8/8/4K3 w - - 0 1",
     "4k2r/8/8/8/8/8/8/4K3 w - - 0 1",
@@ -27,6 +32,11 @@ inline constexpr const char *PUZZLE_POSITIONS[] = {
     "3qk3/8/8/8/8/8/8/4K3 w - - 0 1",
     "RKb5/n7/8/q1P5/1k6/8/8/8 b - - 0 40",
     "8/1n6/7p/1p4pR/1B1k1pK1/p4P2/B3P3/1nQ4N w - - 0 40",
+    "8/p3r1r1/3ppb2/4k1p1/2R1N1Qp/6p1/5B2/KB3R2 w - - 0 40",
+    "K1N1Qn2/2knp1R1/1pB5/NP4q1/2R2rb1/8/7B/8 w - - 0 40",
+    "8/5p2/7B/3BkN1K/8/4N3/8/8 w - - 0 40",
+    "6Q1/8/8/6pk/8/6P1/4K2P/7R w - - 0 40",
+    "8/8/8/8/2K5/Q7/1NkP4/2b1R3 w - - 0 40",
 };
 
 // Tricky king and pawn endgame [+]
