@@ -1490,7 +1490,8 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
         ++depth;
     }
 
-    if (depth == 0) {
+    // In case NMP reduction causes depth < 0
+    if (depth <= 0) {
         return this->quiescence(alpha, beta, ply);
     }
 
@@ -1530,7 +1531,10 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
     // Not in check [+]
     // Sufficient material [+]
     // Pawns only? [-]
-    if (depth > 2 && canNMP && !isPVNode && !isParentInCheck && staticEvaluation > beta && this->_material_scores[this->_side] >= ENDGAME_MATERIAL_SCORE) {
+    // BUG: Fix NMP
+    // Switch to verified NMP? https://arxiv.org/pdf/0808.1125
+    // Currently using an ALWAYS verify NMP with reduced null window
+    if (depth > 2 && canNMP && !isPVNode && !isParentInCheck && staticEvaluation > beta) {
         int reduction = this->_NMP_REDUCTION;
 
         if (depth > 6) {
@@ -1543,8 +1547,13 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
 
         this->unmakeNullMove();
 
-        if (score >= beta) {
-            return beta;
+        // Do not return unproven mate scores
+        if (score >= beta && score < Score::CHECKMATE_THRESHOLD) {
+            int value = this->search(beta - 1, beta, depth - reduction, ply, this->_DO_NOT_NMP);
+
+            if (value >= beta) {
+                return beta;
+            }
         }
     }
 
@@ -1571,6 +1580,8 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
 
     bool isLegalMoveFound = false;
 
+    int bestScore = -Score::INF;
+
     MoveList moves = this->generateMoves(this->_side);
 
     Transposition::NodeType transpositionTableNodeType = Transposition::NodeType::ALPHA;
@@ -1590,7 +1601,7 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
 
         int score;
 
-        // Full search first (number of moves searched = i)
+        // Full search first (number of moves searched = i) and negascout pv
         if (i == 0) {
             score = -this->search(-beta, -alpha, depth - 1, ply + 1, this->_DO_NMP);
         } else {
@@ -1613,6 +1624,10 @@ int Engine::search(int alpha, int beta, int depth, int ply, bool canNMP) {
         }
 
         this->unmakeMove(move);
+
+        if (score > bestScore) {
+            bestScore = score;
+        }
 
         // If we return fail hard beta cutoff first, we lose information about the search,
         // therefore, check alpha then beta

@@ -83,6 +83,9 @@ class Engine {
 
     static inline constexpr int _SEARCH_DEPTH = 9;
 
+    // Repetition table size
+    static inline constexpr int _REPETITION_TABLE_SIZE = 1024;
+
     // Aspiration Window
     static inline constexpr int _ASPIRATION_WINDOW_VALUE = 50;
 
@@ -115,7 +118,7 @@ class Engine {
     uint16_t _pvTable[engine::move::MAX_PLY][engine::move::MAX_PLY];
 
     int _repetitionIndex;
-    uint64_t _repetitionTable[1000];
+    uint64_t _repetitionTable[_REPETITION_TABLE_SIZE];
 
     std::vector<uint16_t> _moveHistory;
 
