@@ -903,10 +903,8 @@ uint16_t Engine::getNotatedMove(std::string &moveString) {
 }
 
 void Engine::makeNullMove() {
-    // TODO: remember to update zobrist if we have TT
     Undo undo;
 
-    // Only need to copy the en passant square
     undo.enPassantSquare = this->_enPassantSquare;
 
     if (this->_enPassantSquare != -1) {
@@ -1181,7 +1179,6 @@ void Engine::storePVMove(const uint16_t move, int ply) {
 // TODO: Sort moves
 // TT hash moves [+]
 // PV moves [+]
-// Refutation Table [-]
 // MVV-LVA captures + (SEE?) [+][-]
 // Killer Moves [+]
 // History [+]
